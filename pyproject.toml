@@ -1,0 +1,12 @@
+# Phase 1 holds docs and the hygiene test only; the `kestrel` package and its [project] table arrive in Phase 2.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
