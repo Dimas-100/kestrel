@@ -113,6 +113,29 @@ def test_two_snapshots_of_an_unchanged_warehouse_open_it_once(tmp_path, monkeypa
     assert (first.generated_at, second.generated_at) == (NOW, later)
 
 
+def test_the_cache_re_reads_at_least_once_a_minute(tmp_path, monkeypatch):
+    path = household(tmp_path)
+    calls = []
+    real_connect = fdc.connect
+
+    @contextmanager
+    def counting(*args, **kwargs):
+        calls.append(1)
+        with real_connect(*args, **kwargs) as conn:
+            yield conn
+
+    monkeypatch.setattr(fdc, "connect", counting)
+    clock = [1000.0]
+    monkeypatch.setattr(fdc, "_clock", lambda: clock[0])
+    connector(path).snapshot(NOW)  # t: a fresh load
+    clock[0] += 30
+    connector(path).snapshot(NOW)  # t+30s, file state unchanged: still cached
+    assert len(calls) == 1
+    clock[0] += 31  # t+61s since the first load
+    connector(path).snapshot(NOW)
+    assert len(calls) == 2  # a same-size write can leave the file state looking unchanged; the minute bound catches it
+
+
 def test_a_wal_change_is_seen_by_the_next_snapshot(tmp_path):
     path = household(tmp_path, wal=True)  # the collector's own journal mode
     before = {a.id: a for a in connector(path).snapshot(NOW).accounts}

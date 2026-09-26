@@ -2570,6 +2570,29 @@ def test_two_snapshots_of_an_unchanged_warehouse_open_it_once(tmp_path, monkeypa
     assert (first.generated_at, second.generated_at) == (NOW, later)
 
 
+def test_the_cache_re_reads_at_least_once_a_minute(tmp_path, monkeypatch):
+    path = household(tmp_path)
+    calls = []
+    real_connect = fdc.connect
+
+    @contextmanager
+    def counting(*args, **kwargs):
+        calls.append(1)
+        with real_connect(*args, **kwargs) as conn:
+            yield conn
+
+    monkeypatch.setattr(fdc, "connect", counting)
+    clock = [1000.0]
+    monkeypatch.setattr(fdc, "_clock", lambda: clock[0])
+    connector(path).snapshot(NOW)  # t: a fresh load
+    clock[0] += 30
+    connector(path).snapshot(NOW)  # t+30s, file state unchanged: still cached
+    assert len(calls) == 1
+    clock[0] += 31  # t+61s since the first load
+    connector(path).snapshot(NOW)
+    assert len(calls) == 2  # a same-size write can leave the file state looking unchanged; the minute bound catches it
+
+
 def test_a_wal_change_is_seen_by_the_next_snapshot(tmp_path):
     path = household(tmp_path, wal=True)  # the collector's own journal mode
     before = {a.id: a for a in connector(path).snapshot(NOW).accounts}
@@ -2800,6 +2823,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import threading
+import time as _time  # aliased: `time` below is datetime.time, used for the US close
 import unicodedata
 from bisect import bisect_left
 from collections import defaultdict
@@ -3008,10 +3032,14 @@ class _Loaded:
     last_success: datetime | None
 
 
+_clock = _time.monotonic  # a module-level seam a test can replace
+# the file state can miss a same-size write within one timestamp tick; a minute bounds how stale a read can be
+CACHE_SECONDS = 60
+
 _CACHE_LOCK = threading.Lock()
-# resolved warehouse path -> (the state it was loaded at, the data). One entry per path; the server serves requests
-# from a thread pool, so the dict itself is guarded, but a load's disk I/O runs outside the lock.
-_CACHE: dict[Path, tuple[tuple, _Loaded]] = {}
+# resolved warehouse path -> (the state it was loaded at, when it was loaded, the data). One entry per path; the
+# server serves requests from a thread pool, so the dict itself is guarded, but a load's disk I/O runs outside it.
+_CACHE: dict[Path, tuple[tuple, float, _Loaded]] = {}
 
 
 class FdcConnector:
@@ -3040,14 +3068,14 @@ class FdcConnector:
 
     def _load(self) -> _Loaded:
         """The warehouse's data, from the cache when the file (and its WAL side file) haven't changed since the
-        cached load, else freshly read and cached. A load that raises is never cached; a missing file is still
-        "no warehouse at <path>", raised by `connect` before any of this."""
+        cached load and that load is under CACHE_SECONDS old, else freshly read and cached. A load that raises is
+        never cached; a missing file is still "no warehouse at <path>", raised by `connect` before any of this."""
         resolved = self.path.resolve()
         key = (resolved, _file_state(resolved), _file_state(_wal_path(resolved)), self._benchmark_symbol())
         with _CACHE_LOCK:
             cached = _CACHE.get(resolved)
-            if cached is not None and cached[0] == key:
-                return cached[1]
+            if cached is not None and cached[0] == key and _clock() - cached[1] < CACHE_SECONDS:
+                return cached[2]
         try:
             with connect(self.path, self.timeout) as conn:
                 check_schema(conn, self.path)
@@ -3055,7 +3083,7 @@ class FdcConnector:
         except sqlite3.Error as exc:
             raise ConnectorError(f"the warehouse couldn't be read: {exc}") from None
         with _CACHE_LOCK:
-            _CACHE[resolved] = (key, data)
+            _CACHE[resolved] = (key, _clock(), data)
         return data
 
     def _read(self, conn: sqlite3.Connection) -> _Loaded:
@@ -3218,7 +3246,7 @@ def collect(profile: Profile, now: datetime) -> Snapshot:
 - [ ] **Step 4: Run everything and watch it pass**
 
 Run: `.venv/Scripts/python -m pytest && .venv/Scripts/python -m ruff check .`
-Expected: `173 passed` (`test_fdc_connector.py` 28); `All checks passed!`.
+Expected: `174 passed` (`test_fdc_connector.py` 29); `All checks passed!`.
 
 - [ ] **Step 5: Commit**
 

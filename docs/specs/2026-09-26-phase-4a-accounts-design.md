@@ -72,7 +72,7 @@ The connector returns only accounts, holdings, account history, the benchmark an
 
 ### 2.4 Performance
 
-The server collects once per request. Measured: 50–90 ms per snapshot on a household warehouse, and more as its history grows, so the connector caches its reads: the key is the warehouse's and its `-wal` file's modification time and size, so a sync is seen at once and an unchanged warehouse is not re-read.
+The server collects once per request. Measured: 50–90 ms per snapshot on a household warehouse, and more as its history grows, so the connector caches its reads: the key is the warehouse's and its `-wal` file's modification time and size, so a sync is seen at once and an unchanged warehouse is not re-read, and re-read at least once a minute, since a same-size write can leave both unchanged.
 
 ## 3. Contract (additive; `contract_version` stays `"1"`)
 
