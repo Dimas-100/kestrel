@@ -13,9 +13,11 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
 from .connectors import collect
+from .contract import Money
 from .profile import Profile
 from .views.home import HomeView, home_view
 from .views.shell import ShellView, shell_view
+from .views.strategy import StrategiesView, StrategyView, strategies_view, strategy_view
 
 WEB_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
 LOCAL_HOSTS = ("127.0.0.1", "localhost")
@@ -58,6 +60,19 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
     def home() -> HomeView:
         now = clock()
         return home_view(collect(profile, now), profile, now)
+
+    @app.get("/api/strategies", response_model=StrategiesView)
+    def strategies() -> StrategiesView:
+        now = clock()
+        return strategies_view(collect(profile, now), profile, now)
+
+    @app.get("/api/strategies/{strategy_id}", response_model=StrategyView)
+    def strategy(strategy_id: str, book: Money = "real") -> StrategyView:
+        now = clock()
+        view = strategy_view(collect(profile, now), profile, now, strategy_id, book)
+        if view is None:
+            raise HTTPException(status_code=404, detail=f"no such strategy: {strategy_id}")
+        return view
 
     @app.get("/api/{rest:path}", include_in_schema=False)
     def unknown_api(rest: str) -> None:

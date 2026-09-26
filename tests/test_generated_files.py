@@ -14,6 +14,9 @@ GENERATED = [
     (ROOT / "docs" / "contract" / "snapshot.schema.json", ["schema"]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "home.json", ["demo", "--view", "home", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "shell.json", ["demo", "--view", "shell", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "strategies.json", ["demo", "--view", "strategies", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "strategy-rsi2.json",
+     ["demo", "--view", "strategy", "--id", "rsi2", "--now", NOW]),
 ]
 
 

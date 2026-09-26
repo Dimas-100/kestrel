@@ -55,3 +55,19 @@ def test_check_fails_when_a_source_cannot_be_read(capsysbinary, tmp_path):
     profile.write_text('[[sources]]\nid = "desk"\nkind = "feed"\n', encoding="utf-8")
     code, out, _ = run(capsysbinary, "check", "--profile", str(profile))
     assert code == 1 and "error" in out
+
+
+def test_demo_prints_the_strategy_views(capsysbinary):
+    code, out, _ = run(capsysbinary, "demo", "--view", "strategies", "--now", NOW)
+    assert code == 0 and [c["id"] for c in json.loads(out)["strategies"]] == ["rsi2", "ibs", "leader", "verticals"]
+    code, out, _ = run(capsysbinary, "demo", "--view", "strategy", "--id", "rsi2", "--now", NOW)
+    assert code == 0 and json.loads(out)["book"] == "real"
+    code, out, _ = run(capsysbinary, "demo", "--view", "strategy", "--id", "rsi2", "--book", "paper", "--now", NOW)
+    assert code == 0 and json.loads(out)["primary"] == "rsi2-paper"
+
+
+def test_demo_strategy_needs_a_known_id(capsysbinary):
+    code, _, err = run(capsysbinary, "demo", "--view", "strategy", "--now", NOW)
+    assert code == 2 and "--view strategy needs --id" in err
+    code, _, err = run(capsysbinary, "demo", "--view", "strategy", "--id", "nope", "--now", NOW)
+    assert code == 2 and "no strategy 'nope' in the demo data" in err

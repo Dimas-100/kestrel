@@ -115,3 +115,26 @@ def test_the_api_works_without_a_built_front_end():
 def test_a_nul_character_in_a_path_gets_the_app_not_an_error(client):
     response = client.get("/strategies%00x")
     assert response.status_code == 200 and "<title>kestrel</title>" in response.text
+
+
+def test_the_strategy_list_and_one_strategy(client):
+    cards = client.get("/api/strategies").json()["strategies"]
+    assert [c["id"] for c in cards] == ["rsi2", "ibs", "leader", "verticals"]
+    real = client.get("/api/strategies/rsi2").json()
+    assert (real["book"], real["primary"], real["toggle"]) == ("real", "rsi2-real", True)
+    assert client.get("/api/strategies/rsi2?book=paper").json()["primary"] == "rsi2-paper"
+
+
+def test_an_unknown_strategy_is_a_json_404(client):
+    response = client.get("/api/strategies/nope")
+    assert response.status_code == 404 and response.json()["detail"] == "no such strategy: nope"
+
+
+def test_a_book_other_than_real_or_paper_is_refused(client):
+    assert client.get("/api/strategies/rsi2?book=both").status_code == 422
+
+
+def test_writes_to_the_strategy_routes_are_refused(client):
+    for path in ("/api/strategies", "/api/strategies/rsi2"):
+        for method in ("post", "put", "patch", "delete"):
+            assert getattr(client, method)(path).status_code == 405, (method, path)

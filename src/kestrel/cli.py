@@ -73,6 +73,7 @@ def _demo(args: argparse.Namespace) -> int:
     from .connectors import collect
     from .views.home import home_view
     from .views.shell import shell_view
+    from .views.strategy import strategies_view, strategy_view
 
     now = _now(args.now)
     snapshot = collect(DEMO_PROFILE, now)
@@ -80,6 +81,17 @@ def _demo(args: argparse.Namespace) -> int:
         _emit(home_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view == "shell":
         _emit(shell_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "strategies":
+        _emit(strategies_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "strategy":
+        if not args.id:
+            print("--view strategy needs --id, e.g. --id rsi2", file=sys.stderr)
+            return 2
+        view = strategy_view(snapshot, DEMO_PROFILE, now, args.id, args.book)
+        if view is None:
+            print(f"no strategy {args.id!r} in the demo data", file=sys.stderr)
+            return 2
+        _emit(view.model_dump_json(indent=2))
     else:
         _emit(snapshot.model_dump_json(indent=2))
     return 0
@@ -102,7 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     check.add_argument("--profile", type=Path)
     check.set_defaults(run=_check)
     demo = sub.add_parser("demo", help="print the demo data as JSON (an example feed payload)")
-    demo.add_argument("--view", choices=["snapshot", "home", "shell"], default="snapshot")
+    demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy"], default="snapshot")
+    demo.add_argument("--id", help="the strategy --view strategy shows, e.g. rsi2")
+    demo.add_argument("--book", choices=["real", "paper"], default="real", help="the money --view strategy shows")
     demo.add_argument("--now", help="ISO time with offset, for reproducible output")
     demo.set_defaults(run=_demo)
     schema = sub.add_parser("schema", help="print the data contract as JSON Schema")
