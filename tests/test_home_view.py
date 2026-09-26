@@ -174,3 +174,27 @@ def test_a_real_book_on_its_first_day_does_not_empty_the_comparison():
 def test_a_book_below_its_band_links_to_its_strategy(demo_home):
     below = next(a for a in demo_home.attention if a.title == "Opening leader is below its expected band")
     assert below.link == "/strategies/leader"
+
+
+def test_until_a_real_book_has_a_history_the_trading_accounts_are_the_trading_line():
+    d = dt.date
+    days = [d(2026, 1, 2), d(2026, 3, 2), d(2026, 5, 1), d(2026, 7, 1), d(2026, 9, 1), d(2026, 9, 25)]
+    trading = [ValuePoint(date=day, value=1000 + 20 * i) for i, day in enumerate(days)]  # +10%
+    lt = [ValuePoint(date=day, value=100 + i) for i, day in enumerate(days)]  # +5%
+    accounts = [Account(id="desk", name="Trading", category="trading", value=1100, as_of=NOW),
+                Account(id="lt", name="Index fund", category="long_term", value=105, as_of=NOW)]
+    history = [Series(id="desk", points=trading), Series(id="lt", points=lt)]
+    book = Book(id="real", name="Real", money="real", strategy_id="s", status="running", started=d(2026, 9, 24),
+                value=2100)
+
+    def lines(book_points):
+        snapshot = Snapshot(generated_at=NOW, accounts=accounts, account_history=history,
+                            books=[book] if book_points else [], book_history=[Series(id="real", points=book_points)])
+        comparison = home_view(snapshot, Profile(), NOW).comparison
+        return {line.key: (line.label, line.return_pct) for line in comparison.lines}
+
+    assert lines([]) == {"trading": ("Trading", 10.0), "long_term": ("Long-term", 5.0)}
+    first_day = [ValuePoint(date=d(2026, 9, 25), value=2000)]
+    assert lines(first_day)["trading"] == ("Trading", 10.0)  # one point is not a history yet
+    two_days = [ValuePoint(date=d(2026, 9, 24), value=2000), ValuePoint(date=d(2026, 9, 25), value=2100)]
+    assert lines(two_days)["trading"] == ("Trading", 5.0)

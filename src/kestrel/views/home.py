@@ -191,7 +191,11 @@ def _line(key, label, points: list[ValuePoint], dates: list[dt.date]) -> Line | 
 def _comparison(snapshot: Snapshot, profile: Profile, today: dt.date, real_books: list[Book]) -> Comparison:
     history = {s.id: s.points for s in snapshot.account_history}
     book_history = {s.id: s.points for s in snapshot.book_history}
-    trading = sum_series([book_history[b.id] for b in real_books if b.id in book_history])
+    real = [book_history[b.id] for b in real_books if b.id in book_history]
+    if not any(len(points) >= 2 for points in real):
+        # until a real book has a history of its own, the trading accounts are the trading money
+        real = [history[a.id] for a in snapshot.accounts if a.category == "trading" and a.id in history]
+    trading = sum_series(real)
     long_term = sum_series([history[a.id] for a in snapshot.accounts if a.category == "long_term" and a.id in history])
     bench = list(snapshot.benchmark.points) if snapshot.benchmark else []
     start, window = dt.date(today.year, 1, 1), "ytd"
