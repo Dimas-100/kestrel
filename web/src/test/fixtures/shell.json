@@ -1,0 +1,53 @@
+{
+  "name": "Alex",
+  "app": {
+    "name": "kestrel",
+    "accent": "rufous",
+    "theme": "system",
+    "gain_loss": "green-red",
+    "density": "comfortable",
+    "currency": "USD",
+    "timezone": "America/New_York"
+  },
+  "benchmark_label": "S&P 500",
+  "now": "2026-09-25T21:08:00Z",
+  "sources": [
+    {
+      "id": "demo-portfolio",
+      "label": "Portfolio",
+      "kind": "data collector",
+      "last_success": "2026-09-25T21:06:00Z",
+      "status": "ok",
+      "detail": ""
+    },
+    {
+      "id": "demo-desk",
+      "label": "Trading desk",
+      "kind": "feed",
+      "last_success": "2026-09-25T21:07:00Z",
+      "status": "ok",
+      "detail": ""
+    },
+    {
+      "id": "demo-paper",
+      "label": "Paper broker",
+      "kind": "rails",
+      "last_success": "2026-09-25T21:02:00Z",
+      "status": "ok",
+      "detail": ""
+    },
+    {
+      "id": "demo-savings",
+      "label": "Savings",
+      "kind": "bank link",
+      "last_success": "2026-09-24T19:08:00Z",
+      "status": "stale",
+      "detail": ""
+    }
+  ],
+  "counts": {
+    "accounts": 4,
+    "books": 5,
+    "strategies": 4
+  }
+}

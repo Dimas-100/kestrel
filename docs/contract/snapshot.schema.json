@@ -1,0 +1,787 @@
+{
+  "$defs": {
+    "Account": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "institution": {
+          "default": "",
+          "title": "Institution",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "long_term",
+            "trading",
+            "cash",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "cash": {
+          "default": 0.0,
+          "title": "Cash",
+          "type": "number"
+        },
+        "as_of": {
+          "format": "date-time",
+          "title": "As Of",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "value",
+        "as_of"
+      ],
+      "title": "Account",
+      "type": "object"
+    },
+    "Alert": {
+      "properties": {
+        "level": {
+          "enum": [
+            "serious",
+            "warning",
+            "note"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "link": {
+          "default": "",
+          "title": "Link",
+          "type": "string"
+        }
+      },
+      "required": [
+        "level",
+        "title"
+      ],
+      "title": "Alert",
+      "type": "object"
+    },
+    "Benchmark": {
+      "properties": {
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/ValuePoint"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "symbol",
+        "label",
+        "points"
+      ],
+      "title": "Benchmark",
+      "type": "object"
+    },
+    "Book": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "money": {
+          "enum": [
+            "real",
+            "paper"
+          ],
+          "title": "Money",
+          "type": "string"
+        },
+        "strategy_id": {
+          "title": "Strategy Id",
+          "type": "string"
+        },
+        "account_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Account Id"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "paused",
+            "parked"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "started": {
+          "format": "date",
+          "title": "Started",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "slots_total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slots Total"
+        },
+        "next_run": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Run"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "money",
+        "strategy_id",
+        "status",
+        "started",
+        "value"
+      ],
+      "title": "Book",
+      "type": "object"
+    },
+    "Expected": {
+      "properties": {
+        "win_rate": {
+          "title": "Win Rate",
+          "type": "number"
+        },
+        "avg_trade_pct": {
+          "title": "Avg Trade Pct",
+          "type": "number"
+        },
+        "avg_win_pct": {
+          "title": "Avg Win Pct",
+          "type": "number"
+        },
+        "avg_loss_pct": {
+          "title": "Avg Loss Pct",
+          "type": "number"
+        },
+        "trades_per_month": {
+          "title": "Trades Per Month",
+          "type": "number"
+        },
+        "sd_trade_pct": {
+          "title": "Sd Trade Pct",
+          "type": "number"
+        },
+        "distribution": {
+          "default": [],
+          "items": {
+            "type": "number"
+          },
+          "title": "Distribution",
+          "type": "array"
+        },
+        "source": {
+          "default": "",
+          "title": "Source",
+          "type": "string"
+        },
+        "window": {
+          "default": "",
+          "title": "Window",
+          "type": "string"
+        }
+      },
+      "required": [
+        "win_rate",
+        "avg_trade_pct",
+        "avg_win_pct",
+        "avg_loss_pct",
+        "trades_per_month",
+        "sd_trade_pct"
+      ],
+      "title": "Expected",
+      "type": "object"
+    },
+    "Holding": {
+      "properties": {
+        "account_id": {
+          "title": "Account Id",
+          "type": "string"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "quantity": {
+          "title": "Quantity",
+          "type": "number"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "cost_basis": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Basis"
+        }
+      },
+      "required": [
+        "account_id",
+        "symbol",
+        "quantity",
+        "price",
+        "value"
+      ],
+      "title": "Holding",
+      "type": "object"
+    },
+    "Position": {
+      "properties": {
+        "book_id": {
+          "title": "Book Id",
+          "type": "string"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "quantity": {
+          "title": "Quantity",
+          "type": "number"
+        },
+        "entry_price": {
+          "title": "Entry Price",
+          "type": "number"
+        },
+        "last_price": {
+          "title": "Last Price",
+          "type": "number"
+        },
+        "stop_price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Price"
+        },
+        "opened": {
+          "format": "date",
+          "title": "Opened",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "book_id",
+        "symbol",
+        "quantity",
+        "entry_price",
+        "last_price",
+        "opened"
+      ],
+      "title": "Position",
+      "type": "object"
+    },
+    "Run": {
+      "properties": {
+        "time": {
+          "format": "date-time",
+          "title": "Time",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "book_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Book Id"
+        },
+        "status": {
+          "enum": [
+            "done",
+            "due",
+            "late",
+            "failed",
+            "paused"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "time",
+        "label",
+        "status"
+      ],
+      "title": "Run",
+      "type": "object"
+    },
+    "Series": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/ValuePoint"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "points"
+      ],
+      "title": "Series",
+      "type": "object"
+    },
+    "Source": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "last_success": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Success"
+        },
+        "status": {
+          "default": "ok",
+          "enum": [
+            "ok",
+            "stale",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Step": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "params": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Params",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label",
+        "title",
+        "text"
+      ],
+      "title": "Step",
+      "type": "object"
+    },
+    "Strategy": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "steps": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "sizing": {
+          "default": "",
+          "title": "Sizing",
+          "type": "string"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expected"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "review_at_trades": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review At Trades"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Strategy",
+      "type": "object"
+    },
+    "Trade": {
+      "properties": {
+        "book_id": {
+          "title": "Book Id",
+          "type": "string"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "opened": {
+          "format": "date",
+          "title": "Opened",
+          "type": "string"
+        },
+        "closed": {
+          "format": "date",
+          "title": "Closed",
+          "type": "string"
+        },
+        "entry_price": {
+          "title": "Entry Price",
+          "type": "number"
+        },
+        "exit_price": {
+          "title": "Exit Price",
+          "type": "number"
+        },
+        "quantity": {
+          "title": "Quantity",
+          "type": "number"
+        },
+        "pnl": {
+          "title": "Pnl",
+          "type": "number"
+        },
+        "return_pct": {
+          "title": "Return Pct",
+          "type": "number"
+        },
+        "r_multiple": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "R Multiple"
+        },
+        "exit_reason": {
+          "default": "",
+          "title": "Exit Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "book_id",
+        "symbol",
+        "opened",
+        "closed",
+        "entry_price",
+        "exit_price",
+        "quantity",
+        "pnl",
+        "return_pct"
+      ],
+      "title": "Trade",
+      "type": "object"
+    },
+    "ValuePoint": {
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "net_flow": {
+          "default": 0.0,
+          "title": "Net Flow",
+          "type": "number"
+        }
+      },
+      "required": [
+        "date",
+        "value"
+      ],
+      "title": "ValuePoint",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "contract_version": {
+      "default": "1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "sources": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "accounts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Account"
+      },
+      "title": "Accounts",
+      "type": "array"
+    },
+    "holdings": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Holding"
+      },
+      "title": "Holdings",
+      "type": "array"
+    },
+    "account_history": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Series"
+      },
+      "title": "Account History",
+      "type": "array"
+    },
+    "books": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Book"
+      },
+      "title": "Books",
+      "type": "array"
+    },
+    "book_history": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Series"
+      },
+      "title": "Book History",
+      "type": "array"
+    },
+    "positions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Position"
+      },
+      "title": "Positions",
+      "type": "array"
+    },
+    "trades": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Trade"
+      },
+      "title": "Trades",
+      "type": "array"
+    },
+    "strategies": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Strategy"
+      },
+      "title": "Strategies",
+      "type": "array"
+    },
+    "runs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Run"
+      },
+      "title": "Runs",
+      "type": "array"
+    },
+    "alerts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Alert"
+      },
+      "title": "Alerts",
+      "type": "array"
+    },
+    "benchmark": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Benchmark"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "generated_at"
+  ],
+  "title": "Snapshot",
+  "type": "object"
+}
