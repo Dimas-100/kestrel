@@ -1,0 +1,224 @@
+{
+  "as_of": "2026-09-25T21:08:00Z",
+  "count": 4,
+  "total": 162265.11,
+  "growth": {
+    "ytd": {
+      "start_date": "2026-01-01",
+      "start": 139653.46,
+      "deposits": 11100.0,
+      "market": 11511.65,
+      "end": 162265.11
+    },
+    "1y": {
+      "start_date": "2025-09-25",
+      "start": 123300.0,
+      "deposits": 15900.0,
+      "market": 23065.11,
+      "end": 162265.11
+    },
+    "all": {
+      "start_date": "2025-09-25",
+      "start": 123300.0,
+      "deposits": 15900.0,
+      "market": 23065.11,
+      "end": 162265.11
+    }
+  },
+  "accounts": [
+    {
+      "id": "roth",
+      "name": "Roth IRA",
+      "institution": "Brokerage A",
+      "account_type": "Roth IRA",
+      "category": "long_term",
+      "value": 67890.81,
+      "share": 41.84,
+      "day_change": -49.79,
+      "day_pct": -0.07,
+      "year_market": 5603.44
+    },
+    {
+      "id": "brokerage",
+      "name": "Brokerage",
+      "institution": "Brokerage A",
+      "account_type": "Brokerage",
+      "category": "long_term",
+      "value": 51663.74,
+      "share": 31.84,
+      "day_change": 146.99,
+      "day_pct": 0.29,
+      "year_market": 3362.77
+    },
+    {
+      "id": "savings",
+      "name": "High-yield savings",
+      "institution": "Bank C",
+      "account_type": "Savings",
+      "category": "cash",
+      "value": 24242.85,
+      "share": 14.94,
+      "day_change": 3.82,
+      "day_pct": 0.02,
+      "year_market": 701.08
+    },
+    {
+      "id": "trading",
+      "name": "Trading account",
+      "institution": "Brokerage B",
+      "account_type": "Individual",
+      "category": "trading",
+      "value": 18467.71,
+      "share": 11.38,
+      "day_change": -94.32,
+      "day_pct": -0.51,
+      "year_market": 1844.36
+    }
+  ],
+  "holdings": [
+    {
+      "symbol": "SPY",
+      "name": "S&P 500 index fund",
+      "cash": false,
+      "value": 61723.68,
+      "share": 38.04,
+      "accounts": [
+        "Brokerage",
+        "Roth IRA"
+      ]
+    },
+    {
+      "symbol": "",
+      "name": "Cash",
+      "cash": true,
+      "value": 31904.07,
+      "share": 19.66,
+      "accounts": [
+        "Brokerage",
+        "High-yield savings",
+        "Roth IRA",
+        "Trading account"
+      ]
+    },
+    {
+      "symbol": "XLV",
+      "name": "Health care sector fund",
+      "cash": false,
+      "value": 14257.06,
+      "share": 8.79,
+      "accounts": [
+        "Roth IRA"
+      ]
+    },
+    {
+      "symbol": "XLK",
+      "name": "Technology sector fund",
+      "cash": false,
+      "value": 11365.75,
+      "share": 7.0,
+      "accounts": [
+        "Brokerage"
+      ]
+    },
+    {
+      "symbol": "XLP",
+      "name": "Consumer staples sector fund",
+      "cash": false,
+      "value": 10862.49,
+      "share": 6.69,
+      "accounts": [
+        "Roth IRA"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "name": "Costco",
+      "cash": false,
+      "value": 6198.95,
+      "share": 3.82,
+      "accounts": [
+        "Brokerage"
+      ]
+    },
+    {
+      "symbol": "HD",
+      "name": "Home Depot",
+      "cash": false,
+      "value": 5166.29,
+      "share": 3.18,
+      "accounts": [
+        "Brokerage"
+      ]
+    },
+    {
+      "symbol": "XLE",
+      "name": "Energy sector fund",
+      "cash": false,
+      "value": 4133.01,
+      "share": 2.55,
+      "accounts": [
+        "Brokerage"
+      ]
+    },
+    {
+      "symbol": "PG",
+      "name": "Procter & Gamble",
+      "cash": false,
+      "value": 3101.6,
+      "share": 1.91,
+      "accounts": [
+        "Trading account"
+      ]
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft",
+      "cash": false,
+      "value": 3074.4,
+      "share": 1.89,
+      "accounts": [
+        "Trading account"
+      ]
+    },
+    {
+      "symbol": "JPM",
+      "name": "JPMorgan Chase",
+      "cash": false,
+      "value": 2978.5,
+      "share": 1.84,
+      "accounts": [
+        "Trading account"
+      ]
+    },
+    {
+      "symbol": "CAT",
+      "name": "Caterpillar",
+      "cash": false,
+      "value": 2849.7,
+      "share": 1.76,
+      "accounts": [
+        "Trading account"
+      ]
+    },
+    {
+      "symbol": "KO",
+      "name": "Coca-Cola",
+      "cash": false,
+      "value": 2583.15,
+      "share": 1.59,
+      "accounts": [
+        "Brokerage"
+      ]
+    },
+    {
+      "symbol": "XLI",
+      "name": "Industrials sector fund",
+      "cash": false,
+      "value": 2066.46,
+      "share": 1.27,
+      "accounts": [
+        "Brokerage"
+      ]
+    }
+  ]
+}

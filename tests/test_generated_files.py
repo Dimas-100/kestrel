@@ -17,6 +17,9 @@ GENERATED = [
     (ROOT / "web" / "src" / "test" / "fixtures" / "strategies.json", ["demo", "--view", "strategies", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "strategy-rsi2.json",
      ["demo", "--view", "strategy", "--id", "rsi2", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "accounts.json", ["demo", "--view", "accounts", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "account-roth.json",
+     ["demo", "--view", "account", "--id", "roth", "--now", NOW]),
 ]
 
 

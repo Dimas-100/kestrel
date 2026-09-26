@@ -2,6 +2,7 @@ import json
 import re
 
 import pytest
+from fdc_fixture import Warehouse
 
 import kestrel.cli
 import kestrel.server
@@ -105,3 +106,31 @@ def test_the_demo_flag_shows_the_demo_whatever_profile_toml_says(capsysbinary, t
     with pytest.raises(SystemExit) as refused:
         main(["check", "--demo", "--profile", "profile.toml"])
     assert refused.value.code == 2
+
+
+def test_demo_prints_the_account_views(capsysbinary):
+    code, out, _ = run(capsysbinary, "demo", "--view", "accounts", "--now", NOW)
+    assert code == 0 and json.loads(out)["count"] == 4
+    code, out, _ = run(capsysbinary, "demo", "--view", "account", "--id", "savings", "--now", NOW)
+    savings = json.loads(out)
+    assert code == 0 and savings["holdings"] == [] and savings["cash"] == savings["value"]
+    code, _, err = run(capsysbinary, "demo", "--view", "account", "--now", NOW)
+    assert code == 2 and "--view account needs --id, e.g. --id roth" in err
+    code, _, err = run(capsysbinary, "demo", "--view", "account", "--id", "nope", "--now", NOW)
+    assert code == 2 and "no account 'nope' in the demo data" in err
+
+
+def test_check_prints_a_warehouses_accounts_whatever_their_labels(capsysbinary, tmp_path):
+    w = Warehouse(tmp_path / "warehouse.db")
+    w.account("Épargne · Alex", "unknown", "savings")
+    w.account("★ ★ ★", "webull", "brokerage")
+    w.close()
+    profile = tmp_path / "profile.toml"
+    profile.write_text('[[sources]]\nid = "portfolio"\nkind = "fdc"\nlabel = "Portfolio"\npath = "warehouse.db"\n'
+                       '[sources.categories]\n"account" = "trading"\n', encoding="utf-8")
+    code, out, _ = run(capsysbinary, "check", "--profile", str(profile))
+    assert code == 0 and "Portfolio        fdc              never  2 accounts · 0 holdings · no prices yet" in out
+    assert [line for line in out.splitlines() if line.startswith(" " * 9)] == [
+        "         epargne-alex     cash             Épargne · Alex",
+        "         account          trading          ★ ★ ★",
+    ]

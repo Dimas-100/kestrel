@@ -138,3 +138,22 @@ def test_writes_to_the_strategy_routes_are_refused(client):
     for path in ("/api/strategies", "/api/strategies/rsi2"):
         for method in ("post", "put", "patch", "delete"):
             assert getattr(client, method)(path).status_code == 405, (method, path)
+
+
+def test_the_account_list_and_one_account(client):
+    listed = client.get("/api/accounts").json()
+    assert [a["id"] for a in listed["accounts"]] == ["roth", "brokerage", "savings", "trading"]
+    assert list(listed["growth"]) == ["ytd", "1y", "all"]
+    roth = client.get("/api/accounts/roth").json()
+    assert (roth["name"], roth["holdings"][0]["symbol"]) == ("Roth IRA", "SPY")
+
+
+def test_an_unknown_account_is_a_json_404(client):
+    response = client.get("/api/accounts/nope")
+    assert response.status_code == 404 and response.json() == {"detail": "no such account: nope"}
+
+
+def test_writes_to_the_account_routes_are_refused(client):
+    for path in ("/api/accounts", "/api/accounts/roth"):
+        for method in ("post", "put", "patch", "delete"):
+            assert getattr(client, method)(path).status_code == 405, (method, path)
