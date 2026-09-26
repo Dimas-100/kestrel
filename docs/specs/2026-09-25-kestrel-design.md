@@ -80,7 +80,9 @@ A private trading system plugs in through the generic **feed** connector (§8). 
 2. **Net worth.** The hero figure, then Today / Month / Year deltas (the year notes how much of it was deposits). Below that, a one-year line with a dotted *what you deposited* step line; the gap between the two is labelled as market growth.
 3. **Where it sits.** A 100-cell waffle (long-term / trading / cash) and the accounts list.
 4. **Trading vs your index money.** The headline comparison:
-   - year-to-date return of the real trading books against the long-term accounts and the benchmark, all starting at 0%,
+   - year-to-date return of the real trading books against the long-term accounts and the benchmark, all starting at 0%
+     on the same day (the latest first day among them: a book opened in July is compared from July, and the words say
+     "since 1 Jul"),
    - each line's worst drop,
    - a plain-English verdict with its sample-size caveat.
 5. **Needs you.** Serious, then warning, then note. Each item has an icon, a label, one line of detail, and a link to the page that resolves it. Examples: an unprotected position, a stale source, a strategy below its expected band.

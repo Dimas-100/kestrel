@@ -79,6 +79,7 @@ export interface Line {
 
 export interface Comparison {
   window: 'ytd' | '12m'
+  start: string // the lines' shared first day
   dates: string[]
   lines: Line[]
   gap_pts: number | null

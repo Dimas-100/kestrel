@@ -97,4 +97,16 @@ describe('words from the data', () => {
     expect(v?.caveat).toBe('34 real trades so far — early evidence. The strategy is reviewed at 50.')
     expect(verdict({ ...homeFixture.comparison, gap_pts: null })).toBeNull()
   })
+
+  it('names the shared start when a line begins later in the year', async () => {
+    const late: HomeView = { ...homeFixture, comparison: { ...homeFixture.comparison, start: '2026-07-01' } }
+    expect(summaryParts(late).trading).toBe('Trading is ahead of your index money by 2.9 pts since 1 Jul.')
+    expect(verdict(late.comparison)?.headline).toMatch(/^Trading is ahead by 2\.9 pts since 1 Jul, with a/)
+    // the year's first close can fall a few days into January: that is still "this year"
+    const firstClose: HomeView = { ...homeFixture, comparison: { ...homeFixture.comparison, start: '2026-01-05' } }
+    expect(summaryParts(firstClose).trading).toMatch(/this year\.$/)
+    renderApp('/', { home: late })
+    const cmp = await screen.findByRole('region', { name: 'Trading vs your index money' })
+    expect(within(cmp).getByText(/^Since 1 Jul · real money only/)).toBeTruthy()
+  })
 })

@@ -11,16 +11,33 @@ const STYLE: Record<Line['key'], Pick<ChartSeries, 'color' | 'style'>> = {
   benchmark: { color: 'var(--ref)', style: 'dotted' },
 }
 
+const DAY_MS = 86_400_000
+const GRACE_DAYS = 7 // a year's first close can fall as late as 4 January (New Year's Day, then a weekend)
+
+/** The comparison's period in words. Every line starts on the same day; when that day is later than the window's
+ *  own start (say a book opened in July), the words name it: "since 1 Jul". */
+export function period(c: Comparison): { phrase: string; title: string } {
+  const last = c.dates[c.dates.length - 1] ?? c.start
+  const opens = c.window === 'ytd' ? Date.parse(`${c.start.slice(0, 4)}-01-01`) : Date.parse(last) - 365 * DAY_MS
+  if (Date.parse(c.start) - opens > GRACE_DAYS * DAY_MS) {
+    const day = monthLabel(c.start, true)
+    return { phrase: `since ${day}`, title: `Since ${day}` }
+  }
+  return c.window === 'ytd'
+    ? { phrase: 'this year', title: 'Year to date' }
+    : { phrase: 'over the past 12 months', title: 'Past 12 months' }
+}
+
 export function verdict(c: Comparison): { headline: string; caveat: string } | null {
   if (c.gap_pts == null) return null
-  const period = c.window === 'ytd' ? 'this year' : 'over the past 12 months'
+  const { phrase } = period(c)
   const gap = Math.abs(c.gap_pts).toFixed(1)
   const trading = c.lines.find((l) => l.key === 'trading')
   const longTerm = c.lines.find((l) => l.key === 'long_term')
   const drops = trading && longTerm ? ` (${pct(trading.max_drop_pct)} vs ${pct(longTerm.max_drop_pct)})` : ''
   const headline = Math.abs(c.gap_pts) < 0.05
-    ? `Trading is level with your index money ${period}.`
-    : `Trading is ${c.gap_pts > 0 ? 'ahead' : 'behind'} by ${gap} pts ${period}, with a ${c.shallower ? 'shallower' : 'deeper'} worst drop${drops}.`
+    ? `Trading is level with your index money ${phrase}.`
+    : `Trading is ${c.gap_pts > 0 ? 'ahead' : 'behind'} by ${gap} pts ${phrase}, with a ${c.shallower ? 'shallower' : 'deeper'} worst drop${drops}.`
   const early = c.review_at != null && c.real_trades < c.review_at
   const caveat = early
     ? `${c.real_trades} real trades so far — early evidence. The strategy is reviewed at ${c.review_at}.`
@@ -34,7 +51,7 @@ export function ComparisonPanel({ c }: { c: Comparison }) {
   const series: ChartSeries[] = c.lines.map((l) => ({ key: l.key, label: l.label, values: l.values, ...STYLE[l.key] }))
   return (
     <Panel id="comparison" title="Trading vs your index money" span={7} height={372}
-      subtitle={`${c.window === 'ytd' ? 'Year to date' : 'Past 12 months'} · real money only · all start at 0%`}
+      subtitle={`${period(c).title} · real money only · all start at 0%`}
       actions={<Seg label="View" options={['Chart', 'Table'] as const} value={view} onChange={setView} />}>
       {c.lines.length === 0 ? (
         <p className="text-ink3 mt-6">No history yet. The comparison appears once your accounts have a few days of data.</p>

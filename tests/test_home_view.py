@@ -3,7 +3,18 @@ import datetime as dt
 import pytest
 
 from kestrel.connectors import collect
-from kestrel.contract import Account, Book, Position, Series, Snapshot, Source, Strategy, Trade, ValuePoint
+from kestrel.contract import (
+    Account,
+    Benchmark,
+    Book,
+    Position,
+    Series,
+    Snapshot,
+    Source,
+    Strategy,
+    Trade,
+    ValuePoint,
+)
 from kestrel.profile import DEMO_PROFILE, Profile
 from kestrel.views.home import home_view
 
@@ -80,6 +91,36 @@ def test_early_january_falls_back_to_twelve_months():
     home = home_view(_tiny([acct], [Series(id="a", points=points)]), Profile(), NOW.replace(month=1, day=2))
     assert home.comparison.window == "12m"
     assert len(home.comparison.dates) == len(days)
+
+
+def test_every_comparison_line_starts_on_the_same_day():
+    """A long-term account held all year (+10%) and a real book opened on 1 July (+4%) are compared from 1 July."""
+    d = dt.date
+    lt = [ValuePoint(date=day, value=v) for day, v in [
+        (d(2026, 1, 1), 100), (d(2026, 4, 1), 102), (d(2026, 7, 1), 105), (d(2026, 8, 3), 106), (d(2026, 9, 1), 108),
+        (d(2026, 9, 25), 110)]]
+    book = [ValuePoint(date=day, value=v) for day, v in [
+        (d(2026, 7, 1), 1000), (d(2026, 7, 15), 1010), (d(2026, 8, 3), 1020), (d(2026, 9, 1), 1030),
+        (d(2026, 9, 25), 1040)]]
+    # the benchmark has no close on 1 July itself: it starts from the last close before it
+    spx = [ValuePoint(date=day, value=v) for day, v in [
+        (d(2026, 1, 2), 500), (d(2026, 6, 30), 525), (d(2026, 7, 2), 530), (d(2026, 9, 25), 550)]]
+    snapshot = Snapshot(
+        generated_at=NOW,
+        accounts=[Account(id="lt", name="Index fund", category="long_term", value=110, as_of=NOW)],
+        account_history=[Series(id="lt", points=lt)],
+        books=[Book(id="real", name="Real", money="real", strategy_id="s", status="running", started=d(2026, 7, 1),
+                    value=1040)],
+        book_history=[Series(id="real", points=book)],
+        benchmark=Benchmark(symbol="SPY", label="S&P 500", points=spx),
+    )
+    c = home_view(snapshot, Profile(), NOW).comparison
+    assert c.window == "ytd" and c.start == d(2026, 7, 1) and c.dates[0] == d(2026, 7, 1)
+    assert [line.key for line in c.lines] == ["trading", "long_term", "benchmark"]
+    assert [line.values[0] for line in c.lines] == [0.0, 0.0, 0.0]
+    returns = {line.key: line.return_pct for line in c.lines}
+    assert returns == {"trading": 4.0, "long_term": pytest.approx(4.76), "benchmark": pytest.approx(4.76)}
+    assert c.gap_pts == pytest.approx(-0.76)  # 4.0 - 4.76 over the shared period, not 4.0 - 10.0
 
 
 def test_a_paper_position_without_a_stop_is_not_an_alarm():

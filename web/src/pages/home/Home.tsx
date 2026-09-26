@@ -4,17 +4,17 @@ import { signedMoney } from '../../lib/format'
 import { AllocationPanel } from './AllocationPanel'
 import { AttentionPanel } from './AttentionPanel'
 import { BooksPanel } from './BooksPanel'
-import { ComparisonPanel } from './ComparisonPanel'
+import { ComparisonPanel, period } from './ComparisonPanel'
 import { NetWorthPanel } from './NetWorthPanel'
 import { PositionsPanel, TodayPanel } from './TodayAndPositions'
 
 /** The sentence under the page title, written from the data. */
 export function summaryParts(h: HomeView): { trading: string | null; needs: string } {
   const gap = h.summary.gap_pts
-  const period = h.comparison.window === 'ytd' ? 'this year' : 'over the past 12 months'
+  const { phrase } = period(h.comparison)
   const trading = gap == null ? null : Math.abs(gap) < 0.05
-    ? `Trading is level with your index money ${period}.`
-    : `Trading is ${gap > 0 ? 'ahead of' : 'behind'} your index money by ${Math.abs(gap).toFixed(1)} pts ${period}.`
+    ? `Trading is level with your index money ${phrase}.`
+    : `Trading is ${gap > 0 ? 'ahead of' : 'behind'} your index money by ${Math.abs(gap).toFixed(1)} pts ${phrase}.`
   const n = h.summary.needs_you
   const needs = n === 0 ? 'Nothing needs you.' : n === 1 ? 'One item needs you.' : `${n} items need you.`
   return { trading, needs }

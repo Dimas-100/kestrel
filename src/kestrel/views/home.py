@@ -61,6 +61,7 @@ class Line(View):
 
 class Comparison(View):
     window: Literal["ytd", "12m"]
+    start: dt.date  # the shared first day: later than the window's start when a line's history begins later
     dates: list[dt.date]
     lines: list[Line]
     gap_pts: float | None  # trading minus long-term, in percentage points
@@ -165,6 +166,13 @@ def _window(points: list[ValuePoint], start: dt.date) -> list[ValuePoint]:
     return [p for p in points if p.date >= start]
 
 
+def _from(points: list[ValuePoint], start: dt.date) -> list[ValuePoint]:
+    """The points after `start`, opening on `start` with the value held then (the last point on or before it)."""
+    before = [p for p in points if p.date <= start]
+    after = [p for p in points if p.date > start]
+    return [ValuePoint(date=start, value=before[-1].value), *after] if before else after
+
+
 def _line(key, label, points: list[ValuePoint], dates: list[dt.date]) -> Line | None:
     if len(points) < 2:
         return None
@@ -189,6 +197,12 @@ def _comparison(snapshot: Snapshot, profile: Profile, today: dt.date, real_books
     if len(_window(trading or long_term, start)) < MIN_YTD_POINTS:
         start, window = today - dt.timedelta(days=365), "12m"
     trading, long_term, bench = _window(trading, start), _window(long_term, start), _window(bench, start)
+    firsts = [s[0].date for s in (trading, long_term, bench) if s]
+    if firsts:
+        # every line is measured from the same day: the latest first date, so a book opened in July is not
+        # set against an index fund's whole year
+        start = max(firsts)
+        trading, long_term, bench = _from(trading, start), _from(long_term, start), _from(bench, start)
     dates = sorted({p.date for p in (trading or long_term or bench)})
     lines = [
         line for line in (
@@ -204,7 +218,7 @@ def _comparison(snapshot: Snapshot, profile: Profile, today: dt.date, real_books
     review = [s.review_at_trades for s in snapshot.strategies
               if s.review_at_trades and s.id in {b.strategy_id for b in real_books}]
     return Comparison(
-        window=window, dates=dates, lines=lines,
+        window=window, start=start, dates=dates, lines=lines,
         gap_pts=round(t.return_pct - lt.return_pct, 2) if t and lt else None,
         shallower=(t.max_drop_pct > lt.max_drop_pct) if t and lt else None,
         real_trades=sum(1 for tr in snapshot.trades if tr.book_id in real_ids),
