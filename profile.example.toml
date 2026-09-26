@@ -13,23 +13,29 @@ density = "comfortable"    # comfortable | compact
 currency = "USD"
 timezone = "America/New_York"
 
-[benchmark]
+[benchmark]                # the index your money is compared with; an fdc source draws it from its own prices
 symbol = "SPY"
 label = "S&P 500"
 
-# Where your data comes from. The demo source works out of the box.
+# Where your data comes from. The demo source works out of the box; see docs/connectors.md for every kind.
 [[sources]]
 id = "demo"
 kind = "demo"
 label = "Demo data"
 
-# Coming in a later version (Phase 4):
+# Your accounts, from financial-data-collector's warehouse (read-only). Replace the demo source above with this one:
 #
 # [[sources]]
 # id = "portfolio"
-# kind = "fdc"                       # financial-data-collector's SQLite warehouse, read-only
-# path = "../financial-data-collector/data/warehouse.db"
+# kind = "fdc"
+# label = "Portfolio"
+# path = "../financial-data-collector/data/warehouse.db"   # relative to this file's folder
 # stale_after = "36h"
+#
+# [sources.categories]               # optional: account id or exact label = long_term | trading | cash | other
+# "brokerage-2" = "trading"
+#
+# Coming in Phase 4b:
 #
 # [[sources]]
 # id = "paper"

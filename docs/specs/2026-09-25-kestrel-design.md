@@ -1,7 +1,7 @@
 # kestrel — design
 
 - **Date:** 2026-09-25
-- **Status:** design approved. Phases 0 (mockups), 1 (this repo, spec, design system, hygiene test), 2 (the skeleton) and 3a (the Strategies pages) are done; Phase 3b (Books) is next.
+- **Status:** design approved. Phases 0 (mockups), 1 (this repo, spec, design system, hygiene test), 2 (the skeleton), 3a (the Strategies pages) and 4a (Accounts and the `fdc` connector) are done; Phase 4b (the trading desk's `feed` and `rails`) is next, then 3b (Books).
 - **Look:** Graphite, variant A. The full token and component rules are in [`../design-system.md`](../design-system.md), and reference mockups are in [`../design/mockups/`](../design/mockups/).
 
 ## 1. Why
@@ -133,11 +133,12 @@ kestrel/
   src/kestrel/
     contract.py             pydantic v2 models: the versioned data contract (§7)
     profile.py              profile.toml → Profile; falls back to the demo profile
-    connectors/             base protocol · demo (Phase 2) · fdc · rails · feed (Phase 4)   (§8)
+    connectors/             base protocol · demo (Phase 2) · fdc (Phase 4a) · rails · feed (Phase 4b)   (§8)
     metrics.py              growth net of deposits, drawdown, expected band, waffle rounding
     views/                  one Snapshot → a view model per page: home.py (net worth, allocation, comparison,
                             attention list, books), shell.py (name, settings, sources, counts),
-                            strategy.py (the strategy list and one strategy's eight sections)
+                            strategy.py (the strategy list and one strategy's eight sections),
+                            accounts.py (the account list and one account)
     server.py               FastAPI, GET routes only, binds 127.0.0.1, serves web/dist
     cli.py                  serve · check · demo · schema
   web/                      React + TypeScript + Vite + Tailwind v4, TanStack Router + TanStack Query
@@ -145,7 +146,8 @@ kestrel/
     src/shell/              the frame: sidebar (greeting, grouped nav, sources), top bar, phone drawer and tab bar
     src/charts/             in-house SVG chart kit on d3-scale / d3-shape / d3-array
     src/components/         shared pieces: Panel, Delta, BookMark, MoneyBadge, Seg, icons
-    src/pages/              one folder per page: home/ (Phase 2); strategies/ and strategy/ (Phase 3a); books, accounts, … later
+    src/pages/              one folder per page: home/ (Phase 2); strategies/ and strategy/ (Phase 3a); accounts/ and
+                            account/ (Phase 4a); books, … later
     src/router.tsx          routes: home · accounts · books · strategies · backtests · activity · settings
   docs/                     this spec, design-system.md, data-contract.md, connectors.md, mockups
   tests/                    pytest: contract, connectors, GET-only, import guard, hygiene
@@ -169,7 +171,7 @@ Every connector returns these entities. All money is in the profile currency; al
 | Entity | Key fields |
 |---|---|
 | `Source` | `id`, `label`, `kind`, `last_success`, `status` (ok · stale · error), `detail` |
-| `Account` | `id`, `name`, `institution`, `category` (long_term · trading · cash · other), `value`, `cash`, `as_of` |
+| `Account` | `id`, `name`, `institution`, `account_type`, `category` (long_term · trading · cash · other), `value`, `cash`, `as_of` |
 | `Holding` | `account_id`, `symbol`, `name`, `quantity`, `price`, `value`, `cost_basis` |
 | `ValuePoint` | `date`, `value`, `net_flow` (deposits − withdrawals that day); used for accounts, books and net worth |
 | `Book` | `id`, `name`, `money` (real · paper), `strategy_id`, `account_id?`, `status` (running · paused · parked), `started`, `value`, `slots_total?`, `next_run?` |
@@ -256,7 +258,7 @@ Each phase gets its own spec, plan and build.
 | 1 | This repo: spec, design system, mockups, hygiene test | done |
 | 2 | Skeleton: contract, profile, `demo` connector, server, shell (sidebar, greeting, routing, theming), Home | done |
 | 3 | Books + Strategies pages; the chart kit | 3a done (Strategies, the chart kit); 3b (Books) next |
-| 4 | Accounts; `fdc`, `rails`, `feed` connectors | |
+| 4 | Accounts; `fdc`, `rails`, `feed` connectors | 4a done (Accounts, `fdc`); 4b (`feed`, `rails`) next |
 | 5 | Backtests, Activity, Settings | |
 
 ## 12. Testing

@@ -1,7 +1,7 @@
 # Phase 4a — Accounts and your real data — design
 
 - **Date:** 2026-09-26
-- **Status:** design decided autonomously (owner: "Go ahead proceed autonomously"); plan next.
+- **Status:** built (plan: [`../plans/2026-09-26-phase-4a-accounts.md`](../plans/2026-09-26-phase-4a-accounts.md)).
 - **Parent spec:** [`2026-09-25-kestrel-design.md`](2026-09-25-kestrel-design.md) (§4 Accounts, §7 contract, §8 connectors, §9 profile, §11 phases). This document narrows Phase 4 to its first half: the `fdc` connector and the Accounts pages. The private trading desk's `feed` (and `rails`) is **Phase 4b**, with its own spec; Books stays **Phase 3b**.
 - **Look:** [`../design-system.md`](../design-system.md). There is no Accounts mockup; the pages reuse the panels, tables and charts already built for Home and the Strategy page.
 

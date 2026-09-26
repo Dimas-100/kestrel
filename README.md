@@ -4,8 +4,8 @@
 book appear side by side. Each strategy gets a page that shows how it trades and whether it's behaving the way its
 backtest said it would.
 
-> **Status: Phase 3a of 5 — Home and the Strategies pages run.** Both work end to end on demo data; Books,
-> Accounts, Backtests, Activity and Settings arrive in later phases. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
+> **Status: Phase 4a of 5 — Home, Accounts and the Strategies pages run.** Accounts read your own data from
+> financial-data-collector, or the demo; Books, Backtests, Activity and Settings arrive in later phases. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
 
 ## What it shows
 
@@ -25,7 +25,11 @@ backtest said it would.
   - trade anatomy,
   - return against worst drop,
   - month by month.
-- **Books, Accounts, Backtests, Activity and Settings** are built from the same components.
+- **Accounts:**
+  - every account's value, and how much of its growth was your deposits versus the market,
+  - what each account holds, its weight and its gain,
+  - everything you hold, added up across accounts.
+- **Books, Backtests, Activity and Settings** are built from the same components.
 
 Reference mockups, drawn with fictional demo data; clone and open them in a browser:
 [Home](docs/design/mockups/home.html) ·
@@ -68,6 +72,17 @@ python -m venv .venv && .venv/bin/pip install -e .      # Windows: .venv\Scripts
 Make it yours: copy `profile.example.toml` to `profile.toml` (gitignored) and set your name, look and sources.
 `kestrel check` validates the profile and tries every source; `kestrel demo` prints the demo data as an example feed;
 `kestrel schema` prints the [data contract](docs/data-contract.md).
+
+### Point it at your own data
+
+1. Fill a warehouse with [financial-data-collector](https://github.com/Dimas-100/financial-data-collector)
+   (`fdc sync`).
+2. In `profile.toml`, swap the demo source for the commented `fdc` block: `path` is the warehouse, relative to
+   `profile.toml`, and `[sources.categories]` files your trading accounts under `trading`.
+3. Run `kestrel check`: the source should read `ok`, with every account and its category listed under it (never a
+   balance). Then `kestrel serve`; `kestrel serve --demo` still shows the demo.
+
+Every source and what it reads: [docs/connectors.md](docs/connectors.md).
 
 ## License
 

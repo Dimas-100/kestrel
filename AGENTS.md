@@ -12,7 +12,8 @@ specific to one assistant.
 with pages that explain each strategy and whether it is behaving as expected. The design is in
 `docs/specs/2026-09-25-kestrel-design.md`, and the look is in `docs/design-system.md`.
 
-**Status:** Phase 3a of 5 — the skeleton plus the Strategies pages (the list, one strategy, the chart kit). Books is Phase 3b.
+**Status:** Phase 4a of 5 — the skeleton, the Strategies pages and the Accounts pages, with the `fdc` connector reading
+financial-data-collector's warehouse. The trading desk's `feed` and `rails` are Phase 4b; Books is Phase 3b.
 
 ## Hard invariants
 
@@ -57,6 +58,7 @@ with pages that explain each strategy and whether it is behaving as expected. Th
 | `src/kestrel/` | Contract, profile, connectors, views, the read-only server, the CLI |
 | `web/src/` | The app: `styles/tokens.css` (design tokens), `shell/`, `charts/`, `pages/` |
 | `docs/data-contract.md` | The Snapshot format any source speaks; schema in `docs/contract/` |
+| `docs/connectors.md` | Every connector, what it reads, and how to point kestrel at your own data |
 | `tests/test_read_only_guard.py` · `tests/test_hygiene.py` | Never an order path · never private data in git |
 
 ## How work happens
