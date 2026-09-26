@@ -25,6 +25,7 @@ interface Props {
 }
 
 const AXIS_W = 52
+const STOP_LABEL_W = 120 // "Stop 1,234.56 · −12%" at 11px
 const HALO = { stroke: 'var(--panel)', strokeWidth: 3, paintOrder: 'stroke' } as const // text readable over candles
 const IND_H = 76
 const IND_GAP = 14
@@ -39,7 +40,7 @@ export function CandleChart(props: Props) {
   const plotW = Math.max(40, width - AXIS_W)
   const layout = bandLayout(bars.length, plotW, 12, 0.6)
   const low = Math.min(min(bars, (b) => b.low) ?? 0, stop ?? Infinity)
-  const high = max(bars, (b) => b.high) ?? 1
+  const high = Math.max(max(bars, (b) => b.high) ?? 1, stop ?? -Infinity)
   const pad = (high - low) * 0.16 || 1 // room for the markers and their labels
   const y = scaleLinear().domain([low - pad, high + pad]).nice(4).range([height - 4, 6])
   const candles = candleShapes(bars, plotW, y)
@@ -69,7 +70,9 @@ export function CandleChart(props: Props) {
   // fell (a stop), the sell label moves up so the two never print over each other
   const buyY = y(bars[entry].low) + 30
   const sellY = Math.min(y(bars[exit].high) - 20, Math.abs(at(exit) - at(entry)) < 96 ? buyY - 18 : Infinity)
-  const stopLabelLeft = x0 > 150
+  // the stop label goes left of the holding window when there's room, else right of it, else inside it under the
+  // line: never into the price axis
+  const stopSide = x0 > 150 ? 'left' : plotW - x1 >= STOP_LABEL_W + 8 ? 'right' : 'inside'
   const bar = hover == null ? null : bars[hover]
 
   return (
@@ -87,7 +90,8 @@ export function CandleChart(props: Props) {
         {stop != null && (
           <g>
             <line x1={x0} x2={x1} y1={y(stop)} y2={y(stop)} stroke="var(--serious)" strokeWidth={1.5} />
-            <text x={stopLabelLeft ? x0 - 8 : x1 + 8} y={y(stop) + 4} textAnchor={stopLabelLeft ? 'end' : 'start'}
+            <text x={stopSide === 'left' ? x0 - 8 : stopSide === 'right' ? x1 + 8 : x1 - 6}
+              y={y(stop) + (stopSide === 'inside' ? 16 : 4)} textAnchor={stopSide === 'right' ? 'start' : 'end'}
               fill="var(--ink2)" {...HALO} style={{ font: '500 11px var(--k-sans)' }}>
               Stop {num(stop)} · {stopBelow}
             </text>

@@ -13,7 +13,7 @@ const rsi = { label: 'RSI(2)', values: [null, null, 88.2, 93.1],
 const trade = { entry: 1, exit: 3, entryPrice: 100, exitPrice: 104 }
 
 describe('CandleChart', () => {
-  it('draws the candles, the holding window, both markers and the stop', () => {
+  it('draws the candles, the holding window, both markers and the stop, on the scale and clear of the axis', () => {
     const { container } = render(<CandleChart bars={bars} indicator={rsi} stop={92} {...trade} ariaLabel="HD" />)
     expect(container.querySelectorAll('[data-candle]')).toHaveLength(4)
     expect(container.querySelectorAll('[data-window]')).toHaveLength(2) // price panel and indicator panel
@@ -21,6 +21,13 @@ describe('CandleChart', () => {
     expect(screen.getByText('Sell 104.00')).toBeTruthy()
     expect(screen.getByText('Stop 92.00 · −8%')).toBeTruthy()
     expect(screen.getByText('RSI(2)')).toBeTruthy()
+    // the exit is the last bar, so the stop label sits inside the window, clear of the price axis (the plot is 588 wide)
+    const label = screen.getByText('Stop 92.00 · −8%')
+    expect([label.getAttribute('text-anchor'), Number(label.getAttribute('x')) <= 588]).toEqual(['end', true])
+    // a stop above every high still lands on the price panel (210 tall)
+    const above = render(<CandleChart bars={bars} indicator={null} stop={110} {...trade} ariaLabel="HD" />)
+    const y1 = Number(above.container.querySelector('line[stroke="var(--serious)"]')?.getAttribute('y1'))
+    expect(y1 >= 4 && y1 <= 206).toBe(true)
   })
 
   it('leaves out the stop and the indicator panel when the chart has none', () => {
