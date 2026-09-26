@@ -56,4 +56,20 @@ describe('CandleChart', () => {
     render(<CandleChart bars={[]} indicator={null} stop={null} {...trade} ariaLabel="HD" />)
     expect(screen.getByText('No chart for this trade.')).toBeTruthy()
   })
+
+  it('gives the price axis enough decimals that neighbouring ticks read differently', () => {
+    const quiet = [
+      { date: '2026-09-14', open: 20.1, high: 21.1, low: 19.6, close: 20.4 },
+      { date: '2026-09-15', open: 20.4, high: 20.9, low: 19.9, close: 20.2 },
+      { date: '2026-09-16', open: 20.2, high: 20.8, low: 20.0, close: 20.5 },
+      { date: '2026-09-17', open: 20.5, high: 21.0, low: 20.1, close: 20.7 },
+    ]
+    const { container } = render(
+      <CandleChart bars={quiet} indicator={null} stop={null} entry={0} exit={3} entryPrice={20.1} exitPrice={20.7}
+        ariaLabel="Quiet" />,
+    )
+    const texts = [...container.querySelectorAll('[data-axis="price"]')].map((t) => t.textContent)
+    expect(new Set(texts).size).toBe(texts.length)
+    expect(texts).toContain('20.5')
+  })
 })

@@ -79,6 +79,13 @@ export function indexAt(x: number, n: number, width: number): number {
   return Math.min(n - 1, Math.max(0, Math.floor(x / (width / n))))
 }
 
+/** Decimals that tell neighbouring axis ticks apart: 0 for a step of 1 or more, 1 for 0.5 or 0.2, 2 for 0.05. */
+export function tickDecimals(ticks: number[]): number {
+  if (ticks.length < 2) return 0
+  const step = Math.abs(ticks[1] - ticks[0])
+  return step > 0 ? Math.max(0, Math.ceil(-Math.log10(step) - 1e-6)) : 0
+}
+
 export interface OHLC { open: number; high: number; low: number; close: number }
 export interface Candle { x: number; w: number; up: boolean; bodyTop: number; bodyH: number; wickTop: number;
   wickBottom: number }

@@ -4,7 +4,7 @@ import { max, min } from 'd3-array'
 import { scaleLinear } from 'd3-scale'
 import { area, curveLinear, curveStepAfter, line } from 'd3-shape'
 import type { PointerEvent } from 'react'
-import { clampTip, nearestIndex, tickIndices } from './geometry'
+import { clampTip, nearestIndex, tickDecimals, tickIndices } from './geometry'
 import { useIndex, useWidth } from './hooks'
 import { Tip } from './marks'
 
@@ -31,7 +31,7 @@ interface Props {
   series: ChartSeries[]
   height: number
   ariaLabel: string
-  yFormat: (value: number) => string
+  yFormat: (value: number, decimals: number) => string
   valueFormat: (value: number) => string
   xLabel: (iso: string) => string
   tipTitle: (iso: string) => string
@@ -111,7 +111,7 @@ export function LineChart(props: Props) {
             <line x1={0} x2={plotW} y1={y(t)} y2={y(t)}
               stroke={props.zeroLine && t === 0 ? 'var(--line2)' : 'var(--line)'} />
             <text x={plotW + 10} y={y(t) + 4} fill="var(--ink3)" style={{ font: '11px var(--k-mono)' }}>
-              {props.yFormat(t)}
+              {props.yFormat(t, tickDecimals(yTicks))}
             </text>
           </g>
         ))}

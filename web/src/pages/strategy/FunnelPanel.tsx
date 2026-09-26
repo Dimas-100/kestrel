@@ -42,7 +42,7 @@ export function FunnelPanel({ v }: { v: StrategyView }) {
               <>
                 <LineChart dates={trades} series={series} band={band} height={214} zeroLine
                   ariaLabel="Running average return per trade, with the expected range"
-                  yFormat={(value) => pct(value, 0)} valueFormat={(value) => pct(value, 2)} xLabel={(t) => t}
+                  yFormat={(value, d) => pct(value, d)} valueFormat={(value) => pct(value, 2)} xLabel={(t) => t}
                   tipTitle={(t) => `After trade ${t}`} />
                 <div className="text-2xs text-ink3 text-center">trade number</div>
               </>

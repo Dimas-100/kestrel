@@ -54,11 +54,11 @@ export function SlotsPanel({ v }: { v: StrategyView }) {
         <div className="mt-auto border-t border-line pt-3">
           <div className="label">Close to a signal</div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {s.watch.map((w) => (
-              <span key={w.symbol} className="chip">
+            {s.watch.map((w, i) => (
+              <span key={`${w.symbol}-${i}`} className="chip max-w-full">
                 <span className="num font-semibold text-ink1">{w.symbol}</span>
                 <span className="num">{w.label} {w.value == null ? '—' : num(w.value, 1)}</span>
-                {w.note && <span className="text-ink3">{w.note}</span>}
+                {w.note && <span className="text-ink3 min-w-0" style={{ whiteSpace: 'normal' }}>{w.note}</span>}
               </span>
             ))}
           </div>

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ValuePoint } from '../lib/api'
 import {
-  bandLayout, baseline, candleShapes, cellWash, clampTip, indexAt, nearestIndex, placeLabels, tickIndices, windowPoints,
-  yearSpans,
+  bandLayout, baseline, candleShapes, cellWash, clampTip, indexAt, nearestIndex, placeLabels, tickDecimals,
+  tickIndices, windowPoints, yearSpans,
 } from './geometry'
 
 const p = (date: string, value: number, net_flow = 0): ValuePoint => ({ date, value, net_flow })
@@ -85,6 +85,16 @@ describe('chart geometry', () => {
   it('washes a month cell by the size of its move and leaves a small one neutral', () => {
     expect([cellWash(1.2), cellWash(-0.8), cellWash(9)]).toEqual([22, 18, 60])
     expect([cellWash(0.3), cellWash(null)]).toEqual([null, null])
+  })
+  it('picks enough decimals to tell neighbouring axis ticks apart', () => {
+    expect(tickDecimals([19.5, 20, 20.5, 21])).toBe(1)
+    expect(tickDecimals([0, 1, 2])).toBe(0)
+    expect(tickDecimals([0, 2, 4])).toBe(0)
+    expect(tickDecimals([0, 0.1, 0.2])).toBe(1)
+    expect(tickDecimals([0.1, 0.2, 0.30000000000000004])).toBe(1)
+    expect(tickDecimals([0, 0.05, 0.1])).toBe(2)
+    expect(tickDecimals([5])).toBe(0)
+    expect(tickDecimals([])).toBe(0)
   })
   it('groups months under their year', () => {
     expect(yearSpans(['2025-10', '2025-11', '2025-12', '2026-01'])).toEqual([

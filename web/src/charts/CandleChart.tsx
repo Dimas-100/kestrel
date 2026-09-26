@@ -5,7 +5,7 @@ import { scaleLinear } from 'd3-scale'
 import { line } from 'd3-shape'
 import type { CSSProperties, PointerEvent } from 'react'
 import { monthLabel, num, pct, shortDate } from '../lib/format'
-import { bandLayout, candleShapes, clampTip, indexAt, tickIndices } from './geometry'
+import { bandLayout, candleShapes, clampTip, indexAt, tickDecimals, tickIndices } from './geometry'
 import { useIndex, useWidth } from './hooks'
 import { Empty, Tip } from './marks'
 
@@ -29,7 +29,6 @@ const STOP_LABEL_W = 120 // "Stop 1,234.56 · −12%" at 11px
 const HALO = { stroke: 'var(--panel)', strokeWidth: 3, paintOrder: 'stroke' } as const // text readable over candles
 const IND_H = 76
 const IND_GAP = 14
-const price = (v: number) => num(v, v < 10 ? 2 : 0)
 
 export function CandleChart(props: Props) {
   const { bars, indicator, stop, entry, exit, height = 210 } = props
@@ -44,6 +43,8 @@ export function CandleChart(props: Props) {
   const pad = (high - low) * 0.16 || 1 // room for the markers and their labels
   const y = scaleLinear().domain([low - pad, high + pad]).nice(4).range([height - 4, 6])
   const candles = candleShapes(bars, plotW, y)
+  const ticks = y.ticks(4)
+  const tickDigits = tickDecimals(ticks)
   const panelTop = height + IND_GAP
   const total = height + (indicator ? IND_GAP + IND_H : 0) + 20
   const x0 = entry * layout.step
@@ -80,10 +81,12 @@ export function CandleChart(props: Props) {
       <svg width={width} height={total} role="img" aria-label={props.ariaLabel} tabIndex={0}
         style={{ display: 'block', overflow: 'visible', touchAction: 'pan-y' }}
         onPointerMove={onPointer} onPointerLeave={() => setHover(null)} onKeyDown={onKey} onBlur={() => setHover(null)}>
-        {y.ticks(4).map((t) => (
+        {ticks.map((t) => (
           <g key={t}>
             <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} stroke="var(--line)" />
-            <text x={plotW + 10} y={y(t) + 4} fill="var(--ink3)" style={{ font: '11px var(--k-mono)' }}>{price(t)}</text>
+            <text data-axis="price" x={plotW + 10} y={y(t) + 4} fill="var(--ink3)" style={{ font: '11px var(--k-mono)' }}>
+              {num(t, tickDigits)}
+            </text>
           </g>
         ))}
         <rect data-window="price" x={x0} y={4} width={x1 - x0} height={height - 8} fill="var(--ink1)" fillOpacity={0.045} />
