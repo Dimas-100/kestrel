@@ -9,10 +9,12 @@ import re
 import tomllib
 from datetime import timedelta
 from pathlib import Path
-from typing import Literal
+from typing import Literal, get_args
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+
+from .contract import Category
 
 
 class ProfileError(Exception):
@@ -77,6 +79,20 @@ class SourceCfg(BaseModel):
         parse_duration(value)
         return value
 
+    @model_validator(mode="after")
+    def _known_categories(self) -> SourceCfg:
+        # a typo in a category must stop the profile: silently falling back would file the money under another heading
+        categories = getattr(self, "categories", None)
+        if categories is None:
+            return self
+        if not isinstance(categories, dict):
+            raise ValueError("categories must be a table: account id or label = category")
+        known = get_args(Category)
+        for key, value in categories.items():
+            if value not in known:
+                raise ValueError(f"unknown category {value!r} for {key!r} (use {', '.join(known[:-1])} or {known[-1]})")
+        return self
+
     @property
     def stale_delta(self) -> timedelta:
         return parse_duration(self.stale_after)
@@ -108,10 +124,18 @@ class Profile(_Strict):
 DEMO_PROFILE = Profile(you=You(name="Alex"))
 
 
+def _resolve_paths(raw: dict, folder: Path) -> None:
+    """A relative `path` in a source is relative to the profile's own folder, not to wherever kestrel was started."""
+    sources = raw.get("sources")
+    for source in sources if isinstance(sources, list) else []:
+        if isinstance(source, dict) and isinstance(source.get("path"), str) and not Path(source["path"]).is_absolute():
+            source["path"] = str((folder / source["path"]).resolve())
+
+
 def load_profile(path: Path | None = None) -> tuple[Profile, str]:
     """Load a profile. With no path: ./profile.toml when it exists, else the built-in demo profile.
 
-    Returns the profile and where it came from (for `kestrel check`).
+    Returns the profile and where it came from (for `kestrel check`). Relative source paths come back absolute.
     """
     if path is None:
         path = Path("profile.toml")
@@ -129,6 +153,7 @@ def load_profile(path: Path | None = None) -> tuple[Profile, str]:
         raw = tomllib.loads(text)
     except tomllib.TOMLDecodeError as exc:
         raise ProfileError(f"{path}: {exc}") from None
+    _resolve_paths(raw, path.parent)
     try:
         return Profile.model_validate(raw), str(path)
     except ValidationError as exc:

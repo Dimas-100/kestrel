@@ -112,3 +112,27 @@ def test_durations():
     assert parse_duration("2d") == timedelta(days=2)
     with pytest.raises(ValueError):
         parse_duration("soon")
+
+
+def test_a_relative_source_path_is_relative_to_the_profile_not_the_working_directory(tmp_path, monkeypatch):
+    home, elsewhere = tmp_path / "kestrel", tmp_path / "elsewhere"
+    home.mkdir()
+    elsewhere.mkdir()
+    absolute = (tmp_path / "other" / "warehouse.db").as_posix()
+    path = write(home, '[[sources]]\nid = "portfolio"\nkind = "fdc"\npath = "../collector/data/warehouse.db"\n'
+                       f'[[sources]]\nid = "second"\nkind = "fdc"\npath = "{absolute}"\n')
+    monkeypatch.chdir(elsewhere)
+    profile, _ = load_profile(path)
+    assert Path(getattr(profile.sources[0], "path")) == (tmp_path / "collector" / "data" / "warehouse.db").resolve()
+    assert Path(getattr(profile.sources[1], "path")) == Path(absolute)
+    assert not hasattr(DEMO_PROFILE.sources[0], "path")
+
+
+def test_an_unknown_category_is_a_profile_error(tmp_path):
+    source = '[[sources]]\nid = "portfolio"\nkind = "fdc"\npath = "w.db"\n'
+    with pytest.raises(ProfileError, match=r"unknown category 'trade' for 'Brokerage' \(use long_term, trading"):
+        load_profile(write(tmp_path, source + '[sources.categories]\n"Brokerage" = "trade"\n'))
+    with pytest.raises(ProfileError, match="categories must be a table"):
+        load_profile(write(tmp_path, source + 'categories = "trading"\n'))
+    profile, _ = load_profile(write(tmp_path, source + '[sources.categories]\n"brokerage-2" = "trading"\n'))
+    assert getattr(profile.sources[0], "categories") == {"brokerage-2": "trading"}

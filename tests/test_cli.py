@@ -1,9 +1,12 @@
 import json
+import re
 
 import pytest
 
 import kestrel.cli
+import kestrel.server
 from kestrel.cli import main
+from kestrel.profile import DEMO_PROFILE
 
 NOW = "2026-09-25T21:08:00+00:00"
 
@@ -71,3 +74,34 @@ def test_demo_strategy_needs_a_known_id(capsysbinary):
     assert code == 2 and "--view strategy needs --id" in err
     code, _, err = run(capsysbinary, "demo", "--view", "strategy", "--id", "nope", "--now", NOW)
     assert code == 2 and "no strategy 'nope' in the demo data" in err
+
+
+def test_check_lists_each_sources_accounts_but_never_a_balance(capsysbinary, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    code, out, _ = run(capsysbinary, "check")
+    assert code == 0
+    assert [line for line in out.splitlines() if line.startswith(" " * 9)] == [
+        "         roth             long_term        Roth IRA",
+        "         brokerage        long_term        Brokerage",
+        "         trading          trading          Trading account",
+        "         savings          cash             High-yield savings",
+    ]
+    assert "$" not in out and not re.search(r"\d{4}", out)  # no balances, no amounts
+
+
+def test_the_demo_flag_shows_the_demo_whatever_profile_toml_says(capsysbinary, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "profile.toml").write_text('[you]\nname = "Sam"\n[[sources]]\nid = "desk"\nkind = "feed"\n',
+                                           encoding="utf-8")
+    code, out, _ = run(capsysbinary, "check")
+    assert code == 1 and "hello, Sam" in out
+    code, out, _ = run(capsysbinary, "check", "--demo")
+    assert code == 0 and out.startswith("profile: built-in demo profile - hello, Alex")
+    served = []
+    monkeypatch.setattr("uvicorn.run", lambda app, **kwargs: None)
+    monkeypatch.setattr(kestrel.server, "create_app", lambda profile, **kwargs: served.append(profile))
+    code, out, _ = run(capsysbinary, "serve", "--demo", "--no-open")
+    assert code == 0 and served == [DEMO_PROFILE] and "profile: built-in demo profile" in out
+    with pytest.raises(SystemExit) as refused:
+        main(["check", "--demo", "--profile", "profile.toml"])
+    assert refused.value.code == 2

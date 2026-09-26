@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .contract import Snapshot
-from .profile import DEMO_PROFILE, ProfileError, load_profile
+from .profile import DEMO_PROFILE, Profile, ProfileError, load_profile
 
 HOST = "127.0.0.1"  # never listen beyond this computer
 
@@ -31,13 +31,20 @@ def _now(text: str | None) -> datetime:
     return value
 
 
+def _profile(args: argparse.Namespace) -> tuple[Profile, str]:
+    """--demo shows the demo whatever profile.toml says; otherwise --profile, else ./profile.toml, else the demo."""
+    if args.demo:
+        return DEMO_PROFILE, "built-in demo profile"
+    return load_profile(args.profile)
+
+
 def _serve(args: argparse.Namespace) -> int:
     import uvicorn
 
     from .server import WEB_DIST, create_app
 
     try:
-        profile, origin = load_profile(args.profile)
+        profile, origin = _profile(args)
     except ProfileError as exc:
         print(f"profile problem: {exc}", file=sys.stderr)
         return 2
@@ -56,17 +63,24 @@ def _check(args: argparse.Namespace) -> int:
     from .views.home import age_text
 
     try:
-        profile, origin = load_profile(args.profile)
+        profile, origin = _profile(args)
     except ProfileError as exc:
         print(f"profile problem: {exc}", file=sys.stderr)
         return 2
     now = datetime.now(timezone.utc)
-    snapshot = collect(profile, now)
-    print(f"profile: {origin} - hello, {profile.you.name}")
-    for s in snapshot.sources:
-        age = f"{age_text(now - s.last_success)} ago" if s.last_success else "never"
-        print(f"  {s.status:<5}  {s.label:<16} {s.kind:<16} {age}  {s.detail}".rstrip())
-    return 1 if any(s.status == "error" for s in snapshot.sources) else 0
+    # UTF-8 out: a source's detail or an account's name can carry any character
+    _emit(f"profile: {origin} - hello, {profile.you.name}")
+    failed = False
+    for cfg in profile.sources:
+        # one source at a time, so each source's accounts print under it; never a balance
+        part = collect(profile.model_copy(update={"sources": [cfg]}), now)
+        for s in part.sources:
+            age = f"{age_text(now - s.last_success)} ago" if s.last_success else "never"
+            _emit(f"  {s.status:<5}  {s.label:<16} {s.kind:<16} {age}  {s.detail}".rstrip())
+            failed = failed or s.status == "error"
+        for a in part.accounts:
+            _emit(f"{'':9}{a.id:<16} {a.category:<16} {a.name}")
+    return 1 if failed else 0
 
 
 def _demo(args: argparse.Namespace) -> int:
@@ -106,13 +120,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="kestrel", description="A calm, read-only home for all your money.")
     sub = parser.add_subparsers(dest="command", required=True)
     serve = sub.add_parser("serve", help="run the dashboard on this computer")
-    serve.add_argument("--profile", type=Path, help="profile file (default: ./profile.toml, else demo data)")
     serve.add_argument("--port", type=int, default=8030)
     serve.add_argument("--no-open", action="store_true", help="don't open a browser")
     serve.set_defaults(run=_serve)
     check = sub.add_parser("check", help="validate the profile and try every source")
-    check.add_argument("--profile", type=Path)
     check.set_defaults(run=_check)
+    for command in (serve, check):
+        which = command.add_mutually_exclusive_group()
+        which.add_argument("--profile", type=Path, help="profile file (default: ./profile.toml, else demo data)")
+        which.add_argument("--demo", action="store_true", help="show the demo data, whatever profile.toml says")
     demo = sub.add_parser("demo", help="print the demo data as JSON (an example feed payload)")
     demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy"], default="snapshot")
     demo.add_argument("--id", help="the strategy --view strategy shows, e.g. rsi2")
