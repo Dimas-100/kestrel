@@ -8,14 +8,18 @@ import math
 from statistics import fmean
 from typing import Literal
 
-from ..contract import Book, Expected, Money, Snapshot, Step, Trade
-from ..metrics import expected_band
+from ..contract import Bar, Book, Expected, Indicator, Money, Snapshot, Step, Trade, TradeChart, ValuePoint, WatchItem
+from ..metrics import expected_band, growth_index, max_drawdown_pct, sum_series
 from ..profile import Profile
 from .home import MIN_TRADES_FOR_VERDICT, View, _book_rows
 
 BUCKET_LOW, BUCKETS = -10, 20  # 1-point buckets from -10% to +10%; returns beyond fold into the end buckets
 FUNNEL_FROM = 3  # the expected band starts at the third trade
 MONTH_DAYS = 365.25 / 12
+SESSIONS = 40  # "Where the money works" looks at the last 40 sessions
+RECENT = 8  # trades listed beside the anatomy chart
+MONTHS = 12
+YEAR_DAYS, EARLY_DAYS = 365, 90  # a yearly figure needs 90 days of history; under a year it is "early"
 
 Verdict = Literal["in_band", "below", "above", "early", "none"]
 Status = Literal["ok", "above", "below", "early", "none"]
@@ -91,6 +95,92 @@ class Funnel(View):
     hi: list[float | None]
 
 
+class Slots(View):
+    book_id: str | None
+    total: int | None  # the book's slots; None when it doesn't report them
+    days: list[dt.date]  # the last 40 sessions
+    used: list[int]  # slots in use each session
+    avg_used: float | None
+    working_pct: float | None  # the average in use as a share of the slots
+    idle: int  # sessions with nothing in use
+    watch: list[WatchItem]
+
+
+class RecentTrade(View):
+    key: str  # "book_id|symbol|opened": how the page picks a trade's chart
+    symbol: str
+    money: Money
+    opened: dt.date
+    closed: dt.date
+    return_pct: float
+    r_multiple: float | None
+    exit_reason: str
+    sessions: int  # sessions held: the weekdays after the open day, up to and including the close
+    chart: bool
+
+
+class AnatomyChart(View):
+    key: str
+    bars: list[Bar]
+    indicator: Indicator | None
+    stop: float | None
+    entry: int  # index of the entry bar
+    exit: int  # index of the exit bar
+    entry_price: float
+    exit_price: float
+
+
+class Anatomy(View):
+    recent: list[RecentTrade]  # the primary book's last 8 closed trades, newest first
+    charts: list[AnatomyChart]  # for the recent trades that have one
+    selected: str | None  # the newest charted trade
+
+
+class WorthPoint(View):
+    key: Literal["backtest", "book", "long_term", "benchmark"]
+    label: str
+    period: str  # "2006–2020" for a backtest, "12 months" or "5 years" for a history
+    early: bool  # 90 to 364 days of history: annualized, but early
+    return_pct: float  # yearly return
+    drop_pct: float  # worst drop, as a positive magnitude
+
+
+class Worth(View):
+    points: list[WorthPoint]
+
+
+class Month(View):
+    month: str  # "2026-09"
+    book: float | None  # the primary book's return that month, in percent
+    long_term: float | None
+    ahead: bool | None  # the book did better than the long-term accounts
+
+
+class MonthFigure(View):
+    month: str
+    value: float
+
+
+class Monthly(View):
+    months: list[Month]  # the last 12 calendar months, oldest first
+    ahead: int
+    compared: int  # months with both figures
+    best: MonthFigure | None
+    worst: MonthFigure | None
+
+
+class TradeRow(View):
+    symbol: str
+    money: Money
+    opened: dt.date
+    closed: dt.date
+    days_held: int  # calendar days
+    return_pct: float
+    r_multiple: float | None
+    pnl: float
+    exit_reason: str
+
+
 class StrategyView(View):
     id: str
     name: str
@@ -104,6 +194,11 @@ class StrategyView(View):
     sizing: str
     behaving: Behaving
     funnel: Funnel
+    slots: Slots
+    anatomy: Anatomy
+    worth: Worth
+    monthly: Monthly
+    trades: list[TradeRow]  # the primary book's closed trades, newest first
 
 
 def closed_trades(snapshot: Snapshot, book_id: str) -> list[Trade]:
@@ -222,6 +317,151 @@ def _funnel(lines: list[FunnelLine], expected: Expected | None) -> Funnel:
     return Funnel(expected=expected.avg_trade_pct if expected else None, lines=lines, lo=lo, hi=hi)
 
 
+def _weekdays_ending(end: dt.date, count: int) -> list[dt.date]:
+    days: list[dt.date] = []
+    day = end
+    while len(days) < count:
+        if day.weekday() < 5:
+            days.append(day)
+        day -= dt.timedelta(days=1)
+    return days[::-1]
+
+
+def _history(snapshot: Snapshot, book_id: str) -> list[ValuePoint]:
+    return list(next((s.points for s in snapshot.book_history if s.id == book_id), []))
+
+
+def _slots(snapshot: Snapshot, book: Book | None, trades: list[Trade], watch: list[WatchItem],
+           today: dt.date) -> Slots:
+    if book is None or book.slots_total is None:
+        return Slots(book_id=book.id if book else None, total=None, days=[], used=[], avg_used=None,
+                     working_pct=None, idle=0, watch=watch)
+    days = sorted({p.date for p in _history(snapshot, book.id)})[-SESSIONS:] or _weekdays_ending(today, SESSIONS)
+    opened = [p.opened for p in snapshot.positions if p.book_id == book.id]
+    used = [sum(1 for t in trades if t.opened <= d <= t.closed) + sum(1 for o in opened if o <= d) for d in days]
+    avg = fmean(used)
+    return Slots(book_id=book.id, total=book.slots_total, days=days, used=used, avg_used=round(avg, 1),
+                 working_pct=round(avg / book.slots_total * 100, 1) if book.slots_total else None,
+                 idle=sum(1 for u in used if u == 0), watch=watch)
+
+
+def _key(book_id: str, symbol: str, opened: dt.date) -> str:
+    return f"{book_id}|{symbol}|{opened.isoformat()}"
+
+
+def _sessions_held(opened: dt.date, closed: dt.date) -> int:
+    return sum(1 for i in range(1, (closed - opened).days + 1) if (opened + dt.timedelta(days=i)).weekday() < 5)
+
+
+def _anatomy_chart(chart: TradeChart, trade: Trade) -> AnatomyChart | None:
+    dates = [b.date for b in chart.bars]
+    if trade.opened not in dates:
+        return None  # a chart that doesn't show the entry can't explain the trade
+    entry = dates.index(trade.opened)
+    exit_ = max(i for i, d in enumerate(dates) if d <= trade.closed)
+    return AnatomyChart(key=_key(trade.book_id, trade.symbol, trade.opened), bars=list(chart.bars),
+                        indicator=chart.indicator, stop=chart.stop, entry=entry, exit=exit_,
+                        entry_price=trade.entry_price, exit_price=trade.exit_price)
+
+
+def _anatomy(snapshot: Snapshot, book: Book | None, trades: list[Trade]) -> Anatomy:
+    if book is None:
+        return Anatomy(recent=[], charts=[], selected=None)
+    by_key = {(c.book_id, c.symbol, c.opened): c for c in snapshot.trade_charts}
+    recent: list[RecentTrade] = []
+    charts: list[AnatomyChart] = []
+    for t in trades[-RECENT:][::-1]:
+        found = by_key.get((t.book_id, t.symbol, t.opened))
+        chart = _anatomy_chart(found, t) if found else None
+        if chart:
+            charts.append(chart)
+        recent.append(RecentTrade(key=_key(t.book_id, t.symbol, t.opened), symbol=t.symbol, money=book.money,
+                                  opened=t.opened, closed=t.closed, return_pct=t.return_pct, r_multiple=t.r_multiple,
+                                  exit_reason=t.exit_reason, sessions=_sessions_held(t.opened, t.closed),
+                                  chart=chart is not None))
+    return Anatomy(recent=recent, charts=charts, selected=charts[0].key if charts else None)
+
+
+def _period(days: int) -> str:
+    months = round(days / MONTH_DAYS)
+    if months >= 24:
+        return f"{round(days / 365.25)} years"
+    return f"{months} month" if months == 1 else f"{months} months"
+
+
+def yearly(points: list[ValuePoint]) -> tuple[float, float, int] | None:
+    """(yearly return %, worst drop % as a positive magnitude, days spanned), or None under 90 days of history."""
+    if len(points) < 2:
+        return None
+    days = (points[-1].date - points[0].date).days
+    index = growth_index(points)
+    if days < EARLY_DAYS or index[-1] <= 0:
+        return None
+    return (index[-1] ** (365 / days) - 1) * 100, -max_drawdown_pct(index), days
+
+
+def _long_term(snapshot: Snapshot) -> list[ValuePoint]:
+    history = {s.id: s.points for s in snapshot.account_history}
+    return sum_series([history[a.id] for a in snapshot.accounts if a.category == "long_term" and a.id in history])
+
+
+def _worth(snapshot: Snapshot, profile: Profile, book: Book | None, expected: Expected | None) -> Worth:
+    points: list[WorthPoint] = []
+    if expected is not None and expected.cagr_pct is not None and expected.max_drawdown_pct is not None:
+        points.append(WorthPoint(key="backtest", label="Backtest", period=expected.window, early=False,
+                                 return_pct=expected.cagr_pct, drop_pct=abs(expected.max_drawdown_pct)))
+    bench = snapshot.benchmark
+    lines = [
+        ("book", f"{book.money.capitalize()} book" if book else "", _history(snapshot, book.id) if book else []),
+        ("long_term", "Long-term accounts", _long_term(snapshot)),
+        ("benchmark", bench.label if bench else profile.benchmark.label, list(bench.points) if bench else []),
+    ]
+    for key, label, history in lines:
+        figure = yearly(history)
+        if figure is not None:
+            ret, drop, days = figure
+            points.append(WorthPoint(key=key, label=label, period=_period(days), early=days < YEAR_DAYS,
+                                     return_pct=round(ret, 2), drop_pct=round(drop, 2)))
+    return Worth(points=points)
+
+
+def monthly_returns(points: list[ValuePoint]) -> dict[str, float]:
+    """Each month's return in percent: its last growth-index value over the month before's (the first month runs
+    from the first point)."""
+    ends: dict[str, float] = {}
+    for p, value in zip(points, growth_index(points)):
+        ends[p.date.strftime("%Y-%m")] = value
+    out: dict[str, float] = {}
+    base = 1.0
+    for month in sorted(ends):
+        out[month] = round((ends[month] / base - 1) * 100, 2) if base > 0 else 0.0
+        base = ends[month]
+    return out
+
+
+def _last_months(today: dt.date) -> list[str]:
+    year, month = today.year, today.month
+    out = []
+    for _ in range(MONTHS):
+        out.append(f"{year:04d}-{month:02d}")
+        year, month = (year - 1, 12) if month == 1 else (year, month - 1)
+    return out[::-1]
+
+
+def _monthly(snapshot: Snapshot, book: Book | None, today: dt.date) -> Monthly:
+    mine = monthly_returns(_history(snapshot, book.id)) if book else {}
+    theirs = monthly_returns(_long_term(snapshot))
+    months = []
+    for m in _last_months(today):
+        a, b = mine.get(m), theirs.get(m)
+        months.append(Month(month=m, book=a, long_term=b, ahead=a > b if a is not None and b is not None else None))
+    shown = [MonthFigure(month=m.month, value=m.book) for m in months if m.book is not None]
+    return Monthly(months=months, ahead=sum(1 for m in months if m.ahead),
+                   compared=sum(1 for m in months if m.ahead is not None),
+                   best=max(shown, key=lambda f: f.value, default=None),
+                   worst=min(shown, key=lambda f: f.value, default=None))
+
+
 def strategies_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> StrategiesView:
     rows = {r.id: r for r in _book_rows(snapshot)}
     counts = {b.id: rows[b.id].trades for b in snapshot.books}
@@ -265,4 +505,11 @@ def strategy_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, strate
             other=_other_book(other, closed[other.id] if other else []),
         ),
         funnel=_funnel(lines, expected),
+        slots=_slots(snapshot, primary, mine, list(strategy.watch), today),
+        anatomy=_anatomy(snapshot, primary, mine),
+        worth=_worth(snapshot, profile, primary, expected),
+        monthly=_monthly(snapshot, primary, today),
+        trades=[TradeRow(symbol=t.symbol, money=primary.money, opened=t.opened, closed=t.closed,
+                         days_held=(t.closed - t.opened).days, return_pct=t.return_pct, r_multiple=t.r_multiple,
+                         pnl=t.pnl, exit_reason=t.exit_reason) for t in mine[::-1]] if primary else [],
     )
