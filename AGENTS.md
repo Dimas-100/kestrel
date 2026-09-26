@@ -12,7 +12,7 @@ specific to one assistant.
 with pages that explain each strategy and whether it is behaving as expected. The design is in
 `docs/specs/2026-09-25-kestrel-design.md`, and the look is in `docs/design-system.md`.
 
-**Status:** Phase 2 of 5 — the skeleton: contract, profile, demo connector, read-only server, shell and Home.
+**Status:** Phase 3a of 5 — the skeleton plus the Strategies pages (the list, one strategy, the chart kit). Books is Phase 3b.
 
 ## Hard invariants
 

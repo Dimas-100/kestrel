@@ -4,8 +4,8 @@
 book appear side by side. Each strategy gets a page that shows how it trades and whether it's behaving the way its
 backtest said it would.
 
-> **Status: Phase 2 of 5 — the skeleton runs.** Home works end to end on demo data; Accounts, Books, Strategies,
-> Backtests, Activity and Settings arrive in later phases. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
+> **Status: Phase 3a of 5 — Home and the Strategies pages run.** Both work end to end on demo data; Books,
+> Accounts, Backtests, Activity and Settings arrive in later phases. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
 
 ## What it shows
 

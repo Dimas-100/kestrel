@@ -1,7 +1,7 @@
 # Phase 3a — Strategies — design
 
 - **Date:** 2026-09-26
-- **Status:** design approved in conversation. Awaiting spec review, then the implementation plan.
+- **Status:** built (plan: [`../plans/2026-09-26-phase-3a-strategies.md`](../plans/2026-09-26-phase-3a-strategies.md)).
 - **Parent spec:** [`2026-09-25-kestrel-design.md`](2026-09-25-kestrel-design.md) (§4 Strategy page, §7 contract, §11 phases). This document narrows Phase 3 to its first half. The Books pages are **Phase 3b**, with their own spec.
 - **Look:** [`../design-system.md`](../design-system.md) and the approved mockup [`../design/mockups/strategy.html`](../design/mockups/strategy.html).
 

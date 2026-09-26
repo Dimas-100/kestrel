@@ -1,7 +1,7 @@
 # kestrel — design
 
 - **Date:** 2026-09-25
-- **Status:** design approved. Phases 0 (mockups), 1 (this repo, spec, design system, hygiene test) and 2 (the skeleton) are done; Phase 3 is next.
+- **Status:** design approved. Phases 0 (mockups), 1 (this repo, spec, design system, hygiene test), 2 (the skeleton) and 3a (the Strategies pages) are done; Phase 3b (Books) is next.
 - **Look:** Graphite, variant A. The full token and component rules are in [`../design-system.md`](../design-system.md), and reference mockups are in [`../design/mockups/`](../design/mockups/).
 
 ## 1. Why
@@ -136,7 +136,8 @@ kestrel/
     connectors/             base protocol · demo (Phase 2) · fdc · rails · feed (Phase 4)   (§8)
     metrics.py              growth net of deposits, drawdown, expected band, waffle rounding
     views/                  one Snapshot → a view model per page: home.py (net worth, allocation, comparison,
-                            attention list, books), shell.py (name, settings, sources, counts)
+                            attention list, books), shell.py (name, settings, sources, counts),
+                            strategy.py (the strategy list and one strategy's eight sections)
     server.py               FastAPI, GET routes only, binds 127.0.0.1, serves web/dist
     cli.py                  serve · check · demo · schema
   web/                      React + TypeScript + Vite + Tailwind v4, TanStack Router + TanStack Query
@@ -144,7 +145,7 @@ kestrel/
     src/shell/              the frame: sidebar (greeting, grouped nav, sources), top bar, phone drawer and tab bar
     src/charts/             in-house SVG chart kit on d3-scale / d3-shape / d3-array
     src/components/         shared pieces: Panel, Delta, BookMark, MoneyBadge, Seg, icons
-    src/pages/              one folder per page: home/ (Phase 2); accounts, books, strategies, … from Phase 3
+    src/pages/              one folder per page: home/ (Phase 2); strategies/ and strategy/ (Phase 3a); books, accounts, … later
     src/router.tsx          routes: home · accounts · books · strategies · backtests · activity · settings
   docs/                     this spec, design-system.md, data-contract.md, connectors.md, mockups
   tests/                    pytest: contract, connectors, GET-only, import guard, hygiene
@@ -254,7 +255,7 @@ Each phase gets its own spec, plan and build.
 | 0 | Graphite mockups; variant A chosen | done |
 | 1 | This repo: spec, design system, mockups, hygiene test | done |
 | 2 | Skeleton: contract, profile, `demo` connector, server, shell (sidebar, greeting, routing, theming), Home | done |
-| 3 | Books + Strategies pages; the chart kit | next |
+| 3 | Books + Strategies pages; the chart kit | 3a done (Strategies, the chart kit); 3b (Books) next |
 | 4 | Accounts; `fdc`, `rails`, `feed` connectors | |
 | 5 | Backtests, Activity, Settings | |
 
