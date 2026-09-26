@@ -29,8 +29,13 @@ describe('MonthGrid', () => {
 
   it('reads out a month from the keyboard', () => {
     render(<MonthGrid months={months} bookLabel="Real" money="real" ariaLabel="Months" />)
-    fireEvent.keyDown(screen.getByRole('group', { name: 'Months' }), { key: 'End' })
+    const group = screen.getByRole('group', { name: 'Months' })
+    fireEvent.keyDown(group, { key: 'End' })
     expect(screen.getByRole('status').textContent).toBe('Jan 2026Real+0.3%Long-term+2.9%Ahead?no')
+    // scrolled sideways (a narrow panel), the tooltip still follows the month, not the unscrolled grid
+    const before = parseFloat(screen.getByRole('status').style.left)
+    fireEvent.scroll(group.parentElement!, { target: { scrollLeft: 100 } })
+    expect(parseFloat(screen.getByRole('status').style.left)).toBeCloseTo(before - 100)
   })
 
   it('has a table view', () => {

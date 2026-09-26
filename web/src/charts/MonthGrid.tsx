@@ -1,5 +1,6 @@
 // Month by month: the book's monthly returns over the long-term accounts', as a diverging grid with an
 // "ahead?" row. Colour is never alone: every cell prints its value and the ahead row says yes or no.
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent } from 'react'
 import { BookMark } from '../components/bits'
 import { Icon } from '../components/Icon'
@@ -44,14 +45,24 @@ export function MonthGrid({ months, bookLabel, money, ariaLabel }: {
 }) {
   const [wrapRef, width] = useWidth<HTMLDivElement>(480)
   const { index: hover, set: setHover, onKey } = useIndex(months.length)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrollX, setScrollX] = useState(0)
+  const inner = Math.max(width, MIN_W)
+  const col = (inner - LABEL_W) / Math.max(1, months.length)
+  useEffect(() => {
+    // a month picked from the keyboard scrolls into view when the grid is wider than its panel
+    const el = scrollRef.current
+    if (!el || hover == null || el.scrollWidth <= el.clientWidth) return
+    const left = LABEL_W + hover * col
+    if (left < el.scrollLeft) el.scrollLeft = left
+    else if (left + col > el.scrollLeft + el.clientWidth) el.scrollLeft = left + col - el.clientWidth
+  }, [hover, col])
   if (!months.some((m) => m.book != null || m.long_term != null)) return <Empty>No monthly history yet.</Empty>
 
   const grid: CSSProperties = {
     display: 'grid', gridTemplateColumns: `${LABEL_W}px repeat(${months.length}, minmax(0, 1fr))`, gap: 3,
     alignItems: 'center', minWidth: MIN_W,
   }
-  const inner = Math.max(width, MIN_W)
-  const col = (inner - LABEL_W) / months.length
   const onPointer = (event: PointerEvent<HTMLDivElement>) => {
     const cell = (event.target as HTMLElement).closest<HTMLElement>('[data-i]')
     setHover(cell ? Number(cell.dataset.i) : null)
@@ -60,7 +71,7 @@ export function MonthGrid({ months, bookLabel, money, ariaLabel }: {
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', width: '100%' }}>
-      <div className="table-scroll">
+      <div ref={scrollRef} className="table-scroll" onScroll={(e) => setScrollX(e.currentTarget.scrollLeft)}>
         <div role="group" aria-label={ariaLabel} tabIndex={0} style={grid} onKeyDown={onKey}
           onPointerMove={onPointer} onPointerLeave={() => setHover(null)} onBlur={() => setHover(null)}>
           <div />
@@ -94,7 +105,7 @@ export function MonthGrid({ months, bookLabel, money, ariaLabel }: {
         </div>
       </div>
       {m != null && hover != null && (
-        <Tip left={clampTip(LABEL_W + (hover + 0.5) * col, width)} top={-8} title={monthName(m.month)} rows={[
+        <Tip left={clampTip(LABEL_W + (hover + 0.5) * col - scrollX, width)} top={-8} title={monthName(m.month)} rows={[
           [bookLabel, m.book == null ? '—' : pct(m.book, 1)],
           ['Long-term', m.long_term == null ? '—' : pct(m.long_term, 1)],
           ['Ahead?', aheadText(m.ahead)],
