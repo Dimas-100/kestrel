@@ -62,8 +62,8 @@ stale_after = "36h"
 | `Account.account_type` (new, §3) | `accounts.account_type`, display text: `roth_ira` → Roth IRA, `traditional_ira` → Traditional IRA, `brokerage` → Brokerage, `crypto` → Crypto, `401k` → 401(k), else title-cased with `_` → space |
 | `Account.category` | profile override, else by type: `roth_ira`, `traditional_ira`, `ira`, `rollover_ira`, `sep_ira`, `simple_ira`, `401k`, `403b`, `457b`, `hsa`, `pension`, `brokerage` → `long_term`; `checking`, `savings`, `cash`, `money_market` → `cash`; anything else (incl. `crypto`) → `other` |
 | `Account.value`, `cash`, `as_of` | the most recent of (a) the last `account_values_daily` row (`total`, `cash`) and (b) the last history point (§ below; cash from `cash_daily`). On the same date the snapshot row wins. `as_of` = that date at 16:00 America/New_York (the US close) |
-| `Holding` | `positions_latest` rows for the account (joined by label): `symbol`, `description` → `name`, `quantity`, `price`, `market_value` → `value`, `cost_basis_total` → `cost_basis`. A row with no `market_value` is left out and counted in the source detail; a row with no `price` gets `market_value / quantity` |
-| `account_history` | one `Series` per account: per date, `SUM(holdings_daily.market_value)` + `cash_daily.amount` (the same join `portfolio_daily_full` uses, grouped by account too), dates ascending |
+| `Holding` | `positions_latest` rows for the account (joined by label): `symbol`, `description` → `name`, `quantity`, `price`, `market_value` → `value`, `cost_basis_total` → `cost_basis`, `as_of_date` → `as_of`. A row with no `market_value` is left out and counted in the source detail; a row with no `price` gets `market_value / quantity` |
+| `account_history` | one `Series` per account: per date, `SUM(holdings_daily.market_value)` + `cash_daily.amount` (the same join `portfolio_daily_full` uses, grouped by account too), dates ascending. The latest `account_values_daily` row replaces the point of its day (keeping its `net_flow`) or, when newer, adds a day carrying the flows since the last replayed day; a snapshot-only account gets a one-point series. So `Account.value` is always the last point |
 | `ValuePoint.net_flow` | `transactions` per account and `trade_date`: `contribution` counts as its signed `amount` (a negative one is a reversal); `withdrawal` always counts as `-abs(amount)`; `transfer` counts as its signed `amount`. A flow on a date with no history point is added to the next history date (so a weekend deposit is never lost); flows after the last point are dropped |
 | `benchmark` | when `prices` has rows for the profile's `benchmark.symbol`: `Benchmark(symbol, label, points)` from `adj_close` by date (dividends included, like the accounts). Otherwise no benchmark, and the source detail says "no <SYMBOL> prices in the warehouse" |
 | `Source` | `kind = "fdc"`; `last_success` = the latest `finished_at` of an `ok` `derive` run (else of any `ok` run; else none); `detail` like "4 accounts · 15 holdings · prices to 24 Sep", plus the left-out and benchmark notes |
@@ -77,6 +77,7 @@ The server collects once per request. Measured: 50–90 ms per snapshot on a hou
 ## 3. Contract (additive; `contract_version` stays `"1"`)
 
 - `Account.account_type: str = ""`: display text for the kind of account ("Roth IRA", "Brokerage"). Regenerate `docs/contract/snapshot.schema.json`.
+- `Holding.as_of: dt.date | None = None`: the day the holding was reported (added after the final review; the account page says when it is older than the value).
 - The demo connector gains fictional holdings for its accounts and an `account_type` on each, so the Accounts pages and their web fixtures have data.
 
 ## 4. Pages
@@ -87,17 +88,17 @@ Top to bottom:
 
 1. **Header.** Caps "Money", h1 "Accounts", and a sentence written from the data: "4 accounts, $48,210.55 in all. This year the market added ▲ $3,102.40 and you deposited $6,500.00."
 2. **Growth.** A panel with a Seg for the window (This year · 1 year · All) and four tiles: *Started at* (the value at the window's start), *You put in* (deposits minus withdrawals in the window), *The market added* (the rest: end − start − deposits, ▲/▼), *Now*. Under the tiles, one stacked bar in the same order (start, deposits, market) with a table view. "All" starts at the first history point.
-3. **Accounts.** One row per account, largest first: name, "Institution · type", category chip, value, share of all accounts, today's change, and this year's market growth. Each row links to `/accounts/<id>`. On a phone the table scrolls sideways inside its panel, like every other table.
+3. **Accounts.** One row per account, largest first: name, "Institution · type", category chip, value, share of all accounts, the last day's change ("Last day": the history's last day), and this year's market growth. Each row links to `/accounts/<id>`. On a phone the table scrolls sideways inside its panel, like every other table.
 4. **Everything you hold.** Holdings combined across accounts by symbol: symbol, name, value, share of all holdings, and which accounts hold it. Largest first; the first 12, then "Show all N". Cash appears as one row ("Cash", summed across accounts) when any account has cash.
 
-Empty states: no accounts → "No accounts yet. Add a source in profile.toml (see docs/connectors.md)."; an account with no history → its growth shows "—".
+Empty states: no accounts → "No accounts yet. Add a source in profile.toml, or run `kestrel check` if one isn’t reading (see docs/connectors.md)."; an account with no history → its growth shows "—".
 
 ### 4.2 `/accounts/<id>`: one account
 
-1. **Header.** Caps "Account", h1 the name, "Institution · type", the category chip, and "as of Fri 25 Sep".
+1. **Header.** Caps "Account", h1 the name, "Institution · type", the category chip, and "as of Fri 25 Sep" (with the year when it isn't this year).
 2. **Value** (span 8). The account's value over the window, with the dotted "Start + deposits" line Home's net worth panel already draws, so the gap between the lines is market growth. A table view. Its Seg (This year · 1 year · All; default 1 year) sets the window for this panel and the next.
 3. **Growth** (span 4). The same four tiles for that window, then "Money in and out": the last 8 non-zero flows (date, ▲ in / ▼ out, amount).
-4. **Holdings** (span 12). Symbol, name, quantity, price, value, weight (a thin bar plus the percent), cost basis, and unrealized gain ($ and %, ▲/▼; "—" when the cost is unknown). Sortable by value (default) or gain. A final "Cash" row. Totals row.
+4. **Holdings** (span 12). Symbol, name, quantity, price, value, weight (a thin bar plus the percent), cost basis, and unrealized gain ($ and %, ▲/▼; "—" when the cost is unknown). Sortable by value (default) or gain. A final "Cash" row. Totals row. When the holdings were reported before the value's day, a line under the table says so: "Holdings as reported on Thu 24 Sep; the value above is from a newer day."
 
 An unknown id is the in-shell "Not found" page, with Money › Accounts in the breadcrumb.
 
@@ -118,7 +119,7 @@ An unknown id is the in-shell "Not found" page, with Money › Accounts in the b
 ### 5.2 View models and routes
 
 - `AccountsView`: header sentence parts, `growth` per window (`ytd`, `1y`, `all`), `accounts` (rows), `holdings` (combined), `as_of`.
-- `AccountView`: header, `points` (the value series with `net_flow`), `growth` per window (`1y`, `all`, `ytd`), `flows` (the last 8), `holdings` (rows), `cash`, `totals`.
+- `AccountView`: header, `points` (the value series with `net_flow`), `growth` per window (`1y`, `all`, `ytd`), `flows` (the last 8), `holdings` (rows), `holdings_as_of` (the latest day they were reported), `cash`, `totals`.
 - `GET /api/accounts` → `AccountsView`; `GET /api/accounts/{account_id}` → `AccountView`, or JSON 404 `{"detail": "no such account: <id>"}`. Both GET-only, registered before the `/api/{rest:path}` catch-all.
 - `kestrel demo --view accounts` and `--view account --id ID` print them; two generated web fixtures (`accounts.json`, `account-<first demo id>.json`) are pinned by `tests/test_generated_files.py`.
 

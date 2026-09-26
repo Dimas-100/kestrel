@@ -2,8 +2,8 @@
 
 A connector reads one source and returns a Snapshot, the format in [`data-contract.md`](data-contract.md). kestrel
 asks every source in your `profile.toml` each time a page loads. A source that can't be read shows as an error in the
-sidebar's Sources block, and the rest of the page still works. Every connector only reads: none of them writes to its
-source.
+sidebar's Sources block, and the rest of the page still works. Every connector only reads: none of them changes its
+source's data.
 
 | `kind` | Reads | Since |
 |---|---|---|
@@ -42,8 +42,12 @@ stale_after = "36h"
 
 - **`path`** is the warehouse file. A relative path is relative to the folder `profile.toml` is in, not to wherever
   you start kestrel.
-- **Read-only.** The file is opened with `mode=ro` and `query_only` on top, once per page load, and closed straight
-  after. A sync running at the same time is fine: kestrel reads what the collector last committed.
+- **Read-only.** The file is opened with `mode=ro` and `query_only` on top, and closed straight after each read. A
+  sync running at the same time is fine: kestrel reads what the collector last committed. Reading a warehouse in WAL
+  mode (the collector's mode) lets SQLite create its standard `-wal` and `-shm` coordination files beside it when
+  they are missing; kestrel never changes the warehouse's data.
+- **Cached.** kestrel keeps what it read, keyed to the warehouse's and its `-wal` file's size and modification time,
+  so a sync shows up at once (and within a minute at most, for a same-size write that leaves both looking unchanged).
 - **Needs** schema version 3 or later: the tables `accounts`, `transactions`, `prices`, `sync_runs`, `holdings_daily`
   and `cash_daily`, and the views `positions_latest` and `account_values_daily`.
 
@@ -60,31 +64,36 @@ stale_after = "36h"
 Trading money is whatever you file under `trading`. Until a real trading book has a history of its own, Home's
 "Trading vs your index money" draws the trading accounts.
 
-`kestrel check` refuses a category that isn't one of the four, and notes a `categories` entry that matches no
-account on the source's line.
+A category that isn't one of the four is a profile error: `kestrel check` stops before reading any source (see
+Troubleshooting). A `categories` entry that matches no account is noted on the source's line.
 
 ### Values, history and money moved
 
 - **Value and cash:** the newer of the broker's last snapshot (`account_values_daily`) and the last replayed day
   (`holdings_daily` plus `cash_daily`). When both are from the same day, the snapshot wins. A value is as of that
   day's US close.
-- **History:** each account's holdings plus its cash, per day.
+- **History:** each account's holdings plus its cash, per day, ending on the account's value: the snapshot's total
+  replaces the replayed day it shares, a newer snapshot adds its day, and an account with only a snapshot has a
+  one-day history. So the Accounts total, the growth's "Now" and each account's chart agree.
+- **History before the first snapshot** is reconstructed by the collector from the account's transactions. If those
+  don't reach back to when the account was opened, the jump at the first snapshot shows up as market growth in "All".
 - **Money moved in and out,** from `transactions`, so deposits never count as growth:
   - a `contribution` counts as its signed amount (a negative one is a reversal),
   - a `withdrawal` is always money out,
   - a `transfer` keeps its sign; a transfer of shares with no cash amount moves no money,
-  - money moved on a day without history (a Saturday deposit) counts on the next day that has one; money moved
-    after the last day is left for the next sync.
-- **Holdings:** the positions in each account's latest snapshot (`positions_latest`). A position with no market
-  value is left out and counted in the source's detail; one with no price is priced at its value over its quantity.
-  When the replayed history is newer than the last snapshot, the holdings are a day or two older than the value.
+  - money moved on a day without history (a Saturday deposit) counts on the next day that has one, a newer
+    snapshot's day included; money moved after the last day is left for the next sync.
+- **Holdings:** the broker's latest snapshot of each account (`positions_latest`), each with the day it was
+  reported. A position with no market value is left out and counted in the source's detail; one with no price is
+  priced at its value over its quantity. When the replayed history is newer than that snapshot, the holdings are
+  older than the value, and the account page says so under its holdings table.
 
 ### Benchmark
 
 When the warehouse has prices for your profile's `[benchmark]` symbol, kestrel draws it from their adjusted closes
-(dividends included, as they are in the accounts), over the same days as your accounts' history. Pick a symbol the
-collector already prices, such as an index fund you hold. Otherwise there is no benchmark line, and the source's
-detail says `no SPY prices in the warehouse`.
+(dividends included, as they are in the accounts), starting at the last close on or before the first day of your
+accounts' history. Pick a symbol the collector already prices, such as an index fund you hold. Otherwise there is no
+benchmark line, and the source's detail says `no SPY prices in the warehouse`.
 
 ### Freshness
 
@@ -96,15 +105,18 @@ warehouse that has never finished a step shows as stale.
 
 Run `kestrel check`. Under the source's line it lists each account as `id  category  name`, never a balance.
 
-| `kestrel check` says | What to do |
+| The source's line says | What to do |
 |---|---|
 | `no warehouse at …` | Check `path`: it is relative to the folder `profile.toml` is in. |
 | `… is not a financial-data-collector warehouse` | The file isn't a collector warehouse (or is empty): check `path`. |
 | `this warehouse is at schema version 2 …` or `this warehouse is missing holdings_daily …` | Update financial-data-collector and run `fdc sync`. |
 | `the warehouse couldn't be read: database is locked` | Another program held the file for more than five seconds. Refresh once it is done. |
-| `unknown category 'trade' for 'Brokerage'` | Use `long_term`, `trading`, `cash` or `other` in `[sources.categories]`. |
 | `no account matches categories 'brokerage-9'` | Use an id from the account lines, or the exact label. |
 | `no SPY prices in the warehouse` | Set `[benchmark] symbol` to something the collector prices, or add it to the collector. |
+
+An unknown category is a profile error, not a line under the source: `kestrel check` stops before reading any source
+with `profile problem: <path>: sources.0: Value error, unknown category 'trade' for 'Brokerage' (use long_term,
+trading, cash or other)` and exits with status 2. Use one of those four in `[sources.categories]`.
 
 ## `feed` and `rails`
 

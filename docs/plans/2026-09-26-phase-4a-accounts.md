@@ -7663,3 +7663,13 @@ On the owner's machine, spec §6: copy `profile.example.toml` to `kestrel/profil
   - **Windows:** the list page opens on This year (the header sentence's window), the account page on 1 year (spec §4.2). "Today" on the list is the money change net of that day's deposits, with its percent under it.
 - **Placeholders:** none; every step has its file blocks or its exact command and output.
 - **Names and types:** the Python view models (Task 5) and `web/src/lib/api.ts` (Task 8) share field names, pinned by the generated fixtures and `satisfies Widen<…>`; the shared pieces (Task 7) are consumed with the same names in Tasks 8–9.
+
+## After the final review
+
+- **I1** One account, one value: the broker's latest snapshot now lays over the replayed history (it replaces the point of its day, keeping that day's `net_flow`; a newer one adds a day carrying the flows since the last replayed day; a snapshot-only account gets a one-point series), so `Account.value` is always the last point and the Accounts total, the growth's "Now" and each chart agree (`fdc.py` `_with_snapshot`; connector and fdc→views tests).
+- **I2** Holdings carry their day: `Holding.as_of` (additive, contract 1) from `positions_latest.as_of_date`, `AccountView.holdings_as_of`, and a line under the account's holdings table when they are older than the value ("Holdings as reported on Thu 24 Sep; the value above is from a newer day.").
+- **I3** `docs/connectors.md` matches the code: the cache keyed to the warehouse's and its `-wal` file's size and time, the WAL side files, an unknown category as a profile error (exit 2), the benchmark's start, reconstructed history before the first snapshot, holdings as the broker's latest snapshot; the README says to pick a benchmark the collector prices.
+- **M1** The empty Accounts page also points at `kestrel check` for a source that isn't reading.
+- **M2** The Accounts table's "Today" column is "Last day" (the history's last day, not the calendar's).
+- **M3** A profile source `path` may start with `~` (expanded before the relative-path check).
+- **M4** The account header's "as of" date carries its year when it isn't this year (`flowDay`).
