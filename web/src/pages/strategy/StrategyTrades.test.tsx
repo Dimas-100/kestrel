@@ -1,0 +1,122 @@
+// The Strategy page's trade-level sections: anatomy, recent trades, is it worth it, month by month, all trades.
+import { fireEvent, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { StrategyView } from '../../lib/api'
+import { renderApp, strategyFixture } from '../../test/renderApp'
+import { reasonWord, sessionsText } from './Anatomy'
+
+const withView = (view: StrategyView) => ({ strategy: [{ id: view.id, book: 'real' as const, view }] })
+const rows = (region: HTMLElement) => within(region).getAllByRole('row').slice(1)
+
+describe('Strategy page, trade by trade', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('opens the newest charted trade in the anatomy chart', async () => {
+    renderApp('/strategies/rsi2')
+    const anatomy = await screen.findByRole('region', { name: 'Trade anatomy' })
+    expect(within(anatomy).getByText('HON · real · bought Thu 10 Sep, sold Fri 18 Sep · stop')).toBeTruthy()
+    expect(anatomy.textContent).toContain('−8.01%')
+    expect(within(anatomy).getByText('−1.00 R')).toBeTruthy()
+    expect(within(anatomy).getByText('6 sessions')).toBeTruthy()
+    expect([sessionsText(0), sessionsText(1), reasonWord('signal'), reasonWord('')]).toEqual(
+      ['Same day', '1 session', 'Signal', '—'])
+    expect(within(anatomy).getByRole('img', { name: 'HON daily bars with the buy, the sell and the stop' })).toBeTruthy()
+    expect(within(anatomy).getByText(/^Stop .* · −8%$/)).toBeTruthy()
+    fireEvent.click(within(anatomy).getByRole('button', { name: 'Table' }))
+    expect(within(anatomy).getAllByRole('row')).toHaveLength(31) // a header and 30 sessions
+  })
+
+  it('picks another recent trade for the chart', async () => {
+    renderApp('/strategies/rsi2')
+    const recent = await screen.findByRole('region', { name: 'Recent trades' })
+    const buttons = within(recent).getAllByRole('button')
+    expect(buttons).toHaveLength(8)
+    expect(buttons[0].getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(recent).getByRole('button', { name: 'TXN, closed Thu 3 Sep' }))
+    expect(within(recent).getByRole('button', { name: 'TXN, closed Thu 3 Sep' }).getAttribute('aria-pressed'))
+      .toBe('true')
+    const anatomy = screen.getByRole('region', { name: 'Trade anatomy' })
+    expect(within(anatomy).getByText('TXN · real · bought Fri 28 Aug, sold Thu 3 Sep · signal')).toBeTruthy()
+    expect(within(recent).getByRole('link', { name: 'All 34' }).getAttribute('href')).toBe('#trades-title')
+  })
+
+  it('lists a trade without a chart plainly, and says so when none has one', async () => {
+    const anatomy = strategyFixture.anatomy
+    const one = {
+      ...anatomy, recent: anatomy.recent.map((r, i) => (i === 1 ? { ...r, chart: false } : r)),
+      charts: anatomy.charts.filter((c) => c.key !== anatomy.recent[1].key),
+    }
+    const { unmount } = renderApp('/strategies/rsi2', withView({ ...strategyFixture, anatomy: one }))
+    const recent = await screen.findByRole('region', { name: 'Recent trades' })
+    expect(within(recent).getAllByRole('button')).toHaveLength(7)
+    expect(within(recent).getByText('no chart')).toBeTruthy()
+    unmount()
+    const none = { ...anatomy, recent: anatomy.recent.map((r) => ({ ...r, chart: false })), charts: [], selected: null }
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, anatomy: none }))
+    const panel = await screen.findByRole('region', { name: 'Trade anatomy' })
+    expect(within(panel).getByText('No chart for these trades.')).toBeTruthy()
+  })
+
+  it('plots yearly return against worst drop, labelled, with a table', async () => {
+    renderApp('/strategies/rsi2')
+    const worth = await screen.findByRole('region', { name: 'Is it worth it?' })
+    expect(within(worth).getByText('Yearly return against the worst drop along the way')).toBeTruthy()
+    for (const text of ['Backtest', 'Real book', 'Long-term accounts', 'S&P 500', '+23.4%/yr · 2006–2020',
+      '+19.0%/yr · 12 months']) {
+      expect(within(worth).getByText(text)).toBeTruthy()
+    }
+    fireEvent.click(within(worth).getByRole('button', { name: 'Table' }))
+    expect(rows(worth).map((r) => r.textContent)).toEqual([
+      'Backtest+23.4%−11.7%2006–2020', 'Real book+19.0%−5.6%12 months', 'Long-term accounts+21.4%−9.0%12 months',
+      'S&P 500+20.5%−11.5%12 months',
+    ])
+  })
+
+  it('marks a book with under a year of history as early', async () => {
+    const points = strategyFixture.worth.points.map((p) => (p.key === 'book' ? { ...p, early: true, period: '7 months' } : p))
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, worth: { points } }))
+    const worth = await screen.findByRole('region', { name: 'Is it worth it?' })
+    expect(within(worth).getByText('+19.0%/yr · 7 months · early')).toBeTruthy()
+  })
+
+  it('sums up month by month against the long-term accounts', async () => {
+    renderApp('/strategies/rsi2')
+    const monthly = await screen.findByRole('region', { name: 'Month by month' })
+    expect(within(monthly).getByText('Real book against your long-term accounts')).toBeTruthy()
+    expect(monthly.textContent).toContain('Months ahead of long-term7 of 12')
+    expect(monthly.textContent).toContain('Best month · Jan▲ up +6.9%')
+    expect(monthly.textContent).toContain('Worst month · Apr▼ down −2.1%')
+    fireEvent.click(within(monthly).getByRole('button', { name: 'Table' }))
+    expect(rows(monthly)).toHaveLength(12)
+  })
+
+  it('lists every closed trade, newest first, and sorts by return or P/L', async () => {
+    renderApp('/strategies/rsi2')
+    const all = await screen.findByRole('region', { name: 'All trades' })
+    expect(within(all).getByText('Real book · 34 closed trades')).toBeTruthy()
+    expect(rows(all)).toHaveLength(34)
+    expect(rows(all)[0].textContent).toBe('HONreal10 Sep18 Sep8▼ down −8.01%−1.00▼ down −$225.72Stop')
+    const closed = within(all).getByRole('columnheader', { name: 'Closed' })
+    expect(closed.getAttribute('aria-sort')).toBe('descending')
+    fireEvent.click(within(all).getByRole('button', { name: 'Return' }))
+    expect(rows(all)[0].textContent).toContain('HD')
+    expect(within(all).getByRole('columnheader', { name: 'Return' }).getAttribute('aria-sort')).toBe('descending')
+    fireEvent.click(within(all).getByRole('button', { name: 'Return' }))
+    expect(rows(all)[0].textContent).toContain('−8.09%')
+    fireEvent.click(within(all).getByRole('button', { name: 'P/L' }))
+    expect(rows(all)[0].textContent).toContain('+$111.45')
+  })
+
+  it('says so when the book has no closed trades', async () => {
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, trades: [] }))
+    const all = await screen.findByRole('region', { name: 'All trades' })
+    expect(within(all).getByText('No closed trades yet.')).toBeTruthy()
+  })
+
+  it('links a book below its band on Home to its strategy', async () => {
+    renderApp('/')
+    const needs = await screen.findByRole('region', { name: 'Needs you' })
+    const item = within(needs).getAllByRole('listitem').find((li) => li.textContent?.includes('below its expected band'))
+    expect(item && within(item).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('/strategies/leader')
+  })
+})

@@ -3,10 +3,14 @@ import { BookMark, Seg } from '../../components/bits'
 import { type Expected, HttpError, type Money, type StrategyView, useStrategy } from '../../lib/api'
 import { Soon } from '../Soon'
 import { BookChips, MONEY_WORD } from '../strategies/Strategies'
+import { AnatomySection } from './Anatomy'
 import { BehavingPanel, ScorecardPanel } from './Behaving'
 import { FunnelPanel } from './FunnelPanel'
 import { HowItTrades } from './HowItTrades'
+import { MonthlyPanel } from './MonthlyPanel'
 import { SlotsPanel } from './SlotsPanel'
+import { TradesPanel } from './TradesPanel'
+import { WorthPanel } from './WorthPanel'
 
 const BOOKS = ['Real', 'Paper'] as const
 
@@ -59,6 +63,11 @@ export function Strategy({ id, book, onBook }: { id: string; book: Money; onBook
         <ScorecardPanel v={v} />
         <FunnelPanel v={v} />
         <SlotsPanel v={v} />
+        {/* keyed by book: switching Real | Paper starts again from that book's newest charted trade */}
+        <AnatomySection key={v.primary ?? 'none'} v={v} />
+        <WorthPanel v={v} />
+        <MonthlyPanel v={v} />
+        <TradesPanel v={v} />
       </div>
     </>
   )

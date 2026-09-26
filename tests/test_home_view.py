@@ -169,3 +169,8 @@ def test_a_real_book_on_its_first_day_does_not_empty_the_comparison():
     assert c.window == "ytd" and c.start == d(2026, 1, 2) and len(c.dates) > 200
     assert [line.key for line in c.lines] == ["long_term", "benchmark"]
     assert c.gap_pts is None
+
+
+def test_a_book_below_its_band_links_to_its_strategy(demo_home):
+    below = next(a for a in demo_home.attention if a.title == "Opening leader is below its expected band")
+    assert below.link == "/strategies/leader"

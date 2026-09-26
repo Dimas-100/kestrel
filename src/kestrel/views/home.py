@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from statistics import fmean
 from typing import Literal
+from urllib.parse import quote
 
 from pydantic import BaseModel
 
@@ -289,8 +290,9 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
             review = strategies_review.get(row.id)
             detail = f"{row.trades} of {review} {row.money} trades · reviewed at {review}" if review else \
                 f"{row.trades} {row.money} trades"
+            # the strategy's own page; its id is escaped so an odd id can't bend the link into another path
             items.append(Attention(level="note", title=f"{row.name} is below its expected band", detail=detail,
-                                   link="/strategies"))
+                                   link=f"/strategies/{quote(books[row.id].strategy_id, safe='')}"))
     items.extend(Attention(level=a.level, title=a.title, detail=a.detail, link=a.link) for a in snapshot.alerts)
     order = {"serious": 0, "warning": 1, "note": 2}
     return sorted(items, key=lambda a: order[a.level])
