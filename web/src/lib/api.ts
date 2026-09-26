@@ -366,6 +366,92 @@ export interface StrategyView {
   trades: TradeRow[]
 }
 
+// --- the Accounts pages (src/kestrel/views/accounts.py) ---------------------------------------------------------
+
+export type Window = 'ytd' | '1y' | 'all'
+export type Category = 'long_term' | 'trading' | 'cash' | 'other'
+
+export interface Growth {
+  start_date: string // the day the starting value is from
+  start: number
+  deposits: number // deposits minus withdrawals
+  market: number
+  end: number
+}
+
+export interface AccountLine {
+  id: string
+  name: string
+  institution: string
+  account_type: string
+  category: Category
+  value: number
+  share: number | null
+  day_change: number | null
+  day_pct: number | null
+  year_market: number | null
+}
+
+export interface CombinedHolding {
+  symbol: string // empty on the cash row
+  name: string
+  cash: boolean
+  value: number
+  share: number | null
+  accounts: string[]
+}
+
+export interface AccountsView {
+  as_of: string
+  count: number
+  total: number
+  growth: Record<Window, Growth | null>
+  accounts: AccountLine[]
+  holdings: CombinedHolding[]
+}
+
+export interface Flow {
+  date: string
+  amount: number // positive in, negative out
+}
+
+export interface HoldingRow {
+  symbol: string
+  name: string
+  quantity: number
+  price: number
+  value: number
+  weight: number | null
+  cost_basis: number | null
+  gain: number | null
+  gain_pct: number | null
+}
+
+export interface Totals {
+  value: number
+  cost_basis: number | null
+  gain: number | null
+  gain_pct: number | null
+  unknown_cost: number
+}
+
+export interface AccountView {
+  id: string
+  name: string
+  institution: string
+  account_type: string
+  category: Category
+  value: number
+  as_of: string
+  points: ValuePoint[]
+  growth: Record<Window, Growth | null>
+  flows: Flow[]
+  holdings: HoldingRow[]
+  cash: number
+  cash_weight: number | null
+  totals: Totals
+}
+
 /** A non-2xx answer, with its status, so a page can tell "not found" from "the server is down". */
 export class HttpError extends Error {
   readonly status: number
@@ -390,6 +476,20 @@ export function useShell() {
 
 export function useHome() {
   return useQuery({ queryKey: ['home'], queryFn: () => getJson<HomeView>('/api/home'), refetchInterval: MINUTE })
+}
+
+export function useAccounts() {
+  return useQuery({
+    queryKey: ['accounts'], queryFn: () => getJson<AccountsView>('/api/accounts'), refetchInterval: MINUTE,
+  })
+}
+
+export function useAccount(id: string) {
+  return useQuery({
+    queryKey: ['account', id],
+    queryFn: () => getJson<AccountView>(`/api/accounts/${encodeURIComponent(id)}`),
+    refetchInterval: MINUTE,
+  })
 }
 
 export function useStrategies() {

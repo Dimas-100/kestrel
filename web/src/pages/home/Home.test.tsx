@@ -26,6 +26,14 @@ describe('Home', () => {
     expect(within(nw).getByText(`.${cents}`)).toBeTruthy()
   })
 
+  it('opens an account from Where it sits', async () => {
+    renderApp('/')
+    const where = await screen.findByRole('region', { name: 'Where it sits' })
+    const roth = within(where).getByRole('link', { name: /^Roth IRA/ })
+    expect(roth.getAttribute('href')).toBe('/accounts/roth')
+    expect(within(where).getAllByRole('link')).toHaveLength(homeFixture.accounts.length + 1) // and "4 accounts"
+  })
+
   it('switches a chart to its table', async () => {
     renderApp('/')
     const nw = await screen.findByRole('region', { name: 'Net worth' })

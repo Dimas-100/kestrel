@@ -2,8 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
-import type { HomeView, Money, ShellView, StrategiesView, StrategyView } from '../lib/api'
+import type { AccountsView, AccountView, HomeView, Money, ShellView, StrategiesView, StrategyView } from '../lib/api'
 import { createAppRouter } from '../router'
+import accountJson from './fixtures/account-roth.json'
+import accountsJson from './fixtures/accounts.json'
 import homeJson from './fixtures/home.json'
 import shellJson from './fixtures/shell.json'
 import strategiesJson from './fixtures/strategies.json'
@@ -21,12 +23,16 @@ export const homeFixture = (homeJson satisfies Widen<HomeView>) as unknown as Ho
 export const shellFixture = (shellJson satisfies Widen<ShellView>) as unknown as ShellView
 export const strategiesFixture = (strategiesJson satisfies Widen<StrategiesView>) as unknown as StrategiesView
 export const strategyFixture = (strategyJson satisfies Widen<StrategyView>) as unknown as StrategyView
+export const accountsFixture = (accountsJson satisfies Widen<AccountsView>) as unknown as AccountsView
+export const accountFixture = (accountJson satisfies Widen<AccountView>) as unknown as AccountView
 
 interface Data {
   home?: HomeView
   shell?: ShellView
   strategies?: StrategiesView | null // null: leave it unanswered, so the page fetches (and the fetch fails)
   strategy?: { id: string; book: Money; view: StrategyView }[] // answers for GET /api/strategies/{id}?book=
+  accounts?: AccountsView | null
+  account?: { id: string; view: AccountView }[] // answers for GET /api/accounts/{id}
 }
 
 /** The whole app at `path`, with the API answered from fixtures. Any other network call goes to `fetchImpl`, which
@@ -39,6 +45,10 @@ export function renderApp(path = '/', data: Data = {}, fetchImpl?: (url: string)
   if (data.strategies !== null) client.setQueryData(['strategies'], data.strategies ?? strategiesFixture)
   for (const { id, book, view } of data.strategy ?? [{ id: 'rsi2', book: 'real', view: strategyFixture }]) {
     client.setQueryData(['strategy', id, book], view)
+  }
+  if (data.accounts !== null) client.setQueryData(['accounts'], data.accounts ?? accountsFixture)
+  for (const { id, view } of data.account ?? [{ id: 'roth', view: accountFixture }]) {
+    client.setQueryData(['account', id], view)
   }
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
   const view = render(

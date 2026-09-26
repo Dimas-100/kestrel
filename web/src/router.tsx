@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, type RouterHistory, useNavigate } from '@tanstack/react-router'
 import type { Money } from './lib/api'
+import { Accounts } from './pages/accounts/Accounts'
 import { Home } from './pages/home/Home'
 import { Soon } from './pages/Soon'
 import { Strategies } from './pages/strategies/Strategies'
@@ -38,7 +39,7 @@ function StrategyRoute() {
 
 const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/', component: Home }),
-  later('/accounts', 'Accounts', 'Every account, what it holds, and how much of its growth was your deposits — Phase 4.'),
+  createRoute({ getParentRoute: () => root, path: '/accounts', component: Accounts }),
   later('/books', 'Books', 'Each book, real or paper: equity against its benchmark, drawdown, trades — Phase 3.'),
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
   strategyRoute,
