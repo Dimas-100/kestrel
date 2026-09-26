@@ -35,7 +35,7 @@ function AccountsPanel({ accounts }: { accounts: AccountLine[] }) {
           <thead>
             <tr>
               <th>Account</th><th>Category</th><th className="r">Value</th><th className="r">Share</th>
-              <th className="r">Today</th><th className="r">Market this year</th>
+              <th className="r">Last day</th><th className="r">Market this year</th>
             </tr>
           </thead>
           <tbody>
@@ -136,7 +136,10 @@ export function Accounts() {
         )}
       </header>
       {v.count === 0 ? (
-        <div className="panel text-ink2">No accounts yet. Add a source in profile.toml (see docs/connectors.md).</div>
+        <div className="panel text-ink2">
+          No accounts yet. Add a source in profile.toml, or run <code>kestrel check</code> if one isn&rsquo;t reading
+          (see docs/connectors.md).
+        </div>
       ) : (
         <div className="grid12">
           <GrowthPanel growth={v.growth} asOf={v.as_of} />

@@ -24,6 +24,12 @@ describe('Account page', { timeout: 15_000 }, () => {
     expect(title.closest('header')?.textContent).toBe('AccountRoth IRABrokerage A · Roth IRALong-termas of Fri 25 Sep')
   })
 
+  it('gives the year of a value from before this year', async () => {
+    renderApp('/accounts/roth', withView({ ...accountFixture, as_of: '2025-12-31' }))
+    const title = await screen.findByRole('heading', { level: 1, name: 'Roth IRA' })
+    expect(title.closest('header')?.textContent).toBe('AccountRoth IRABrokerage A · Roth IRALong-termas of 31 Dec 2025')
+  })
+
   it('draws a year of value against the start plus deposits, as a chart or a table', async () => {
     renderApp('/accounts/roth')
     const value = await findPanel('Value')
@@ -84,6 +90,19 @@ describe('Account page', { timeout: 15_000 }, () => {
     expect(rows(panelEl).map((r) => r?.slice(0, 3))).toEqual(['XLP', 'SPY', 'XLV', 'Cas'])
     expect(within(panelEl).getByText('The cost and gain totals leave out 1 holding with no cost basis.')).toBeTruthy()
     expect([quantityText(1200), quantityText(0.000123), quantityText(-2.5)]).toEqual(['1,200', '0.000123', '−2.5'])
+  })
+
+  it('says when the holdings were reported before the value’s day, and only then', async () => {
+    const older = async (day: string | null) => {
+      const { unmount } = renderApp('/accounts/roth', withView({ ...accountFixture, holdings_as_of: day }))
+      const lines = [...(await findPanel('Holdings')).querySelectorAll('p')].map((p) => p.textContent)
+      unmount()
+      return lines.find((line) => line?.startsWith('Holdings as reported'))
+    }
+    expect(await older('2026-09-24')).toBe('Holdings as reported on Thu 24 Sep; the value above is from a newer day.')
+    expect(await older('2025-11-03')).toBe('Holdings as reported on 3 Nov 2025; the value above is from a newer day.')
+    expect(await older(null)).toBeUndefined()
+    expect(await older('2026-09-25')).toBeUndefined() // the value's own day
   })
 
   it('prints a margin debit with a true minus, and a closed account plainly', async () => {

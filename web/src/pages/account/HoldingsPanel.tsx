@@ -3,6 +3,7 @@ import { Empty } from '../../charts/marks'
 import { CATEGORY_COLOR, Delta, Missing, Panel, type Sort, SortHeader, toggleSort } from '../../components/bits'
 import type { AccountView, HoldingRow } from '../../lib/api'
 import { MINUS, money, num, pct, signedMoney } from '../../lib/format'
+import { flowDay } from './AccountGrowth'
 
 type SortKey = 'value' | 'gain'
 const SORT_VALUE: Record<SortKey, (h: HoldingRow) => number | null> = { value: (h) => h.value, gain: (h) => h.gain }
@@ -47,8 +48,8 @@ function Gain({ gain, pctValue }: { gain: number | null; pctValue: number | null
   )
 }
 
-/** What the account holds, then its cash and the totals. */
-export function HoldingsPanel({ v }: { v: AccountView }) {
+/** What the account holds, then its cash and the totals; `year` is this year, whose dates go without one. */
+export function HoldingsPanel({ v, year }: { v: AccountView; year: string }) {
   const [sort, setSort] = useState<Sort<SortKey>>({ key: 'value', dir: 'desc' })
   const onSort = (key: SortKey) => setSort((s) => toggleSort(s, key))
   const color = CATEGORY_COLOR[v.category] ?? 'var(--ink3)'
@@ -107,6 +108,12 @@ export function HoldingsPanel({ v }: { v: AccountView }) {
             <p className="text-xs text-ink3 mt-2">
               The cost and gain totals leave out {t.unknown_cost} holding{t.unknown_cost === 1 ? '' : 's'} with no cost
               basis.
+            </p>
+          )}
+          {/* the holdings are the broker's last snapshot, which can be older than the day the value is from */}
+          {v.holdings_as_of != null && v.holdings_as_of < v.as_of && (
+            <p className="text-xs text-ink3 mt-2">
+              Holdings as reported on {flowDay(v.holdings_as_of, year)}; the value above is from a newer day.
             </p>
           )}
         </>

@@ -447,6 +447,7 @@ export interface AccountView {
   growth: Record<Window, Growth | null>
   flows: Flow[]
   holdings: HoldingRow[]
+  holdings_as_of: string | null // the latest day the holdings were reported; null when the source doesn't say
   cash: number
   cash_weight: number | null
   totals: Totals

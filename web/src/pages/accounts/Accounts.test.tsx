@@ -57,6 +57,9 @@ describe('Accounts', { timeout: 15_000 }, () => {
   it('lists every account, largest first, each opening its own page', async () => {
     renderApp('/accounts')
     const accounts = await findPanel('Accounts')
+    // "Last day": the change on the history's last day (Friday's all weekend), not the calendar day's
+    expect([...accounts.querySelectorAll('thead th')].map((th) => th.textContent)).toEqual([
+      'Account', 'Category', 'Value', 'Share', 'Last day', 'Market this year'])
     expect(rows(accounts)).toEqual([
       'Roth IRABrokerage A · Roth IRALong-term$67,890.8141.8%▼ down −$49.79−0.07%▲ up +$5,603.44',
       'BrokerageBrokerage A · BrokerageLong-term$51,663.7431.8%▲ up +$146.99+0.29%▲ up +$3,362.77',
@@ -83,8 +86,10 @@ describe('Accounts', { timeout: 15_000 }, () => {
     const none: AccountsView = { ...accountsFixture, count: 0, total: 0, accounts: [], holdings: [],
       growth: { ytd: null, '1y': null, all: null } }
     renderApp('/accounts', { accounts: none })
-    expect(await screen.findByText('No accounts yet. Add a source in profile.toml (see docs/connectors.md).'))
-      .toBeTruthy()
+    const empty = await screen.findByText(/^No accounts yet\./)
+    expect(empty.textContent).toBe('No accounts yet. Add a source in profile.toml, or run kestrel check if one isn’t '
+      + 'reading (see docs/connectors.md).')
+    expect(empty.querySelector('code')?.textContent).toBe('kestrel check')
     expect(document.querySelector('.panel-title')).toBeNull()
   })
 
