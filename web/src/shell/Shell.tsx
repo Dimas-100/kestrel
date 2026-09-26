@@ -1,0 +1,194 @@
+// The frame around every page: sidebar (greeting, navigation, sources), top bar, phone tab bar.
+import { useQueryClient } from '@tanstack/react-query'
+import { Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { Icon, type IconName, Mark } from '../components/Icon'
+import { type ShellView, type Source, useShell } from '../lib/api'
+import { ago, setCurrency, timeHM } from '../lib/format'
+import { clockLine, greeting } from '../lib/greeting'
+import { useTheme } from '../lib/theme'
+
+type CountKey = keyof ShellView['counts']
+interface NavItem { to: string; label: string; icon: IconName; count?: CountKey }
+
+export const NAV: { group: string; items: NavItem[] }[] = [
+  { group: 'Overview', items: [{ to: '/', label: 'Home', icon: 'home' }] },
+  { group: 'Money', items: [{ to: '/accounts', label: 'Accounts', icon: 'accounts', count: 'accounts' }] },
+  {
+    group: 'Trading',
+    items: [
+      { to: '/books', label: 'Books', icon: 'books', count: 'books' },
+      { to: '/strategies', label: 'Strategies', icon: 'strategy', count: 'strategies' },
+    ],
+  },
+  { group: 'Research', items: [{ to: '/backtests', label: 'Backtests', icon: 'backtests' }] },
+  {
+    group: 'System',
+    items: [
+      { to: '/activity', label: 'Activity', icon: 'activity' },
+      { to: '/settings', label: 'Settings', icon: 'settings' },
+    ],
+  },
+]
+
+const TABS: NavItem[] = [
+  { to: '/', label: 'Home', icon: 'home' },
+  { to: '/accounts', label: 'Accounts', icon: 'accounts' },
+  { to: '/books', label: 'Books', icon: 'books' },
+  { to: '/strategies', label: 'Strategies', icon: 'strategy' },
+  { to: '/settings', label: 'More', icon: 'more' },
+]
+
+function crumbs(pathname: string): [string, string] {
+  for (const { group, items } of NAV) {
+    const item = items.find((i) => i.to === pathname)
+    if (item) return [group, item.label]
+  }
+  return ['kestrel', 'Not found']
+}
+
+const STATUS_ICON: Record<Source['status'], { name: IconName; color: string; text: string }> = {
+  ok: { name: 'checkCircle', color: 'var(--good)', text: 'up to date' },
+  stale: { name: 'clock', color: 'var(--warn)', text: 'stale' },
+  error: { name: 'alert', color: 'var(--serious)', text: 'error' },
+}
+
+function SourceRow({ source, now }: { source: Source; now: Date }) {
+  const status = STATUS_ICON[source.status]
+  return (
+    <div className="flex items-center gap-2.5 h-7 text-xs" title={source.detail || undefined}>
+      <Icon name={status.name} size={14} style={{ color: status.color }} />
+      <span className="text-ink2">{source.label}</span>
+      <span className="text-ink3 text-[11px] truncate">{source.kind}</span>
+      <span className="sr-only">{status.text}</span>
+      <span className="num ml-auto text-[11px]" style={{ color: source.status === 'ok' ? 'var(--ink3)' : status.color }}>
+        {ago(source.last_success, now)}
+      </span>
+    </div>
+  )
+}
+
+function Sidebar({ shell }: { shell?: ShellView }) {
+  const now = shell ? new Date(shell.now) : null
+  const tz = shell?.app.timezone ?? 'UTC'
+  return (
+    <aside className="sidebar" aria-label="Sidebar">
+      <div className="flex items-center gap-2.5 px-1.5 h-9">
+        <Mark />
+        <span className="text-base font-semibold tracking-tight">{shell?.app.name ?? 'kestrel'}</span>
+      </div>
+      <div className="px-2 pt-6 pb-2">
+        <div className="text-[13px] text-ink3">{now ? `${greeting(now, tz)},` : ' '}</div>
+        <div className="text-[26px] font-semibold tracking-[-0.03em] mt-0.5">{shell?.name ?? ' '}</div>
+        <div className="num text-[11px] text-ink3 mt-1.5">{now ? clockLine(now, tz) : ' '}</div>
+      </div>
+      <nav aria-label="Main" className="flex flex-col gap-0.5">
+        {NAV.map(({ group, items }) => (
+          <div key={group} className="flex flex-col gap-0.5">
+            <div className="label px-2.5 pt-4 pb-1.5">{group}</div>
+            {items.map((item) => (
+              <Link key={item.to} to={item.to} className="nav-item ease"
+                activeOptions={{ exact: item.to === '/' }} activeProps={{ 'aria-current': 'page' }}>
+                <Icon name={item.icon} size={17} />
+                <span>{item.label}</span>
+                {item.count && shell && <span className="num ml-auto text-[11px] text-ink3">{shell.counts[item.count]}</span>}
+              </Link>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div className="mt-auto border-t border-line pt-3.5 px-1.5">
+        <div className="label mb-1.5">Sources</div>
+        {now && shell?.sources.map((s) => <SourceRow key={s.id} source={s} now={now} />)}
+      </div>
+    </aside>
+  )
+}
+
+function TopBar({ pathname, shell, theme, onToggleTheme, onMenu }: {
+  pathname: string; shell?: ShellView; theme: 'dark' | 'light'; onToggleTheme: () => void; onMenu: () => void
+}) {
+  const client = useQueryClient()
+  const [group, page] = crumbs(pathname)
+  return (
+    <header className="topbar">
+      <button type="button" className="icon-btn menu-btn" aria-label="Open menu" onClick={onMenu}>
+        <Icon name="menu" size={18} />
+      </button>
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px]">
+        <span className="text-ink3 hide-narrow">{group}</span>
+        <Icon name="chevron" size={14} style={{ color: 'var(--ink3)' }} />
+        <span className="font-medium">{page}</span>
+      </nav>
+      <div className="ml-auto flex items-center gap-3">
+        {shell && (
+          <span className="text-xs text-ink3 hide-narrow">Updated {timeHM(shell.now, shell.app.timezone)}</span>
+        )}
+        <button type="button" className="icon-btn" aria-label="Refresh data" onClick={() => client.invalidateQueries()}>
+          <Icon name="refresh" size={16} />
+        </button>
+        <button type="button" className="icon-btn" onClick={onToggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} />
+        </button>
+      </div>
+    </header>
+  )
+}
+
+function TabBar() {
+  return (
+    <nav className="tabbar" aria-label="Tabs">
+      {TABS.map((tab) => (
+        <Link key={tab.to} to={tab.to} activeOptions={{ exact: tab.to === '/' }} activeProps={{ 'aria-current': 'page' }}
+          className="flex flex-col items-center justify-center gap-1 min-h-12 text-[11px] font-medium text-ink3 aria-[current=page]:text-ink1">
+          <Icon name={tab.icon} size={20} />
+          {tab.label}
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
+export function Shell() {
+  const shell = useShell()
+  const app = shell.data?.app
+  const [theme, toggleTheme] = useTheme(app?.theme ?? 'system')
+  const [drawer, setDrawer] = useState(false)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+
+  useEffect(() => setDrawer(false), [pathname]) // navigating closes the phone drawer
+  useEffect(() => {
+    if (app) setCurrency(app.currency)
+    document.title = app?.name ?? 'kestrel'
+  }, [app])
+  useEffect(() => {
+    // theme the whole document so overscroll and scrollbars match
+    const root = document.documentElement
+    root.classList.add('k')
+    root.dataset.theme = theme
+    root.dataset.accent = app?.accent ?? 'rufous'
+    root.dataset.gl = app?.gain_loss ?? 'green-red'
+    root.dataset.density = app?.density ?? 'comfortable'
+  }, [theme, app])
+
+  return (
+    <div className="shell" data-drawer={drawer ? 'open' : 'closed'}>
+      <Sidebar shell={shell.data} />
+      <div className="scrim" aria-hidden="true" onClick={() => setDrawer(false)} />
+      <div className="main">
+        <TopBar pathname={pathname} shell={shell.data} theme={theme} onToggleTheme={toggleTheme}
+          onMenu={() => setDrawer(true)} />
+        <main className="content" id="main">
+          {shell.isError && (
+            <div role="alert" className="panel mb-4" style={{ borderColor: 'var(--serious)' }}>
+              kestrel&rsquo;s server didn&rsquo;t answer. Is <code>kestrel serve</code> running?
+            </div>
+          )}
+          <Outlet />
+        </main>
+      </div>
+      <TabBar />
+    </div>
+  )
+}
