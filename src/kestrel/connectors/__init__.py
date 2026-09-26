@@ -3,18 +3,27 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from ..contract import Snapshot, Source, merge
 from ..profile import Profile, SourceCfg
-from .base import Connector, ConnectorUnavailable
+from .base import Connector, ConnectorError, ConnectorUnavailable
 from .demo import DemoConnector
+from .fdc import FdcConnector
 
-__all__ = ["Connector", "ConnectorUnavailable", "build", "collect"]
+__all__ = ["Connector", "ConnectorError", "ConnectorUnavailable", "build", "collect"]
 
 
 def build(cfg: SourceCfg, profile: Profile) -> Connector:
     if cfg.kind == "demo":
         return DemoConnector(cfg.id, tz=profile.tz, seed=int(getattr(cfg, "seed", 340)))
+    if cfg.kind == "fdc":
+        path = getattr(cfg, "path", None)
+        if not isinstance(path, str) or not path:
+            raise ConnectorError("an fdc source needs a path to the warehouse, "
+                                 'e.g. path = "../financial-data-collector/data/warehouse.db"')
+        return FdcConnector(cfg.id, cfg.label or cfg.id, Path(path), categories=getattr(cfg, "categories", None),
+                            benchmark=profile.benchmark)
     raise ConnectorUnavailable(f"connector kind {cfg.kind!r} is not available in this version of kestrel")
 
 

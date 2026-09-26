@@ -1,4 +1,5 @@
-"""financial-data-collector's SQLite warehouse, read-only: accounts, their values and where the data came from.
+"""financial-data-collector's SQLite warehouse, read-only: accounts, what they hold, their daily history with the
+money moved in and out, and the benchmark's prices.
 
 The warehouse is opened read-only twice over (mode=ro, then query_only) and closed after every snapshot. Nothing
 here ever writes to it.
@@ -9,6 +10,8 @@ from __future__ import annotations
 import re
 import sqlite3
 import unicodedata
+from bisect import bisect_left
+from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date, datetime, time, timezone
@@ -16,7 +19,8 @@ from pathlib import Path
 from typing import cast
 from zoneinfo import ZoneInfo
 
-from ..contract import Account, Category, Snapshot, Source
+from ..contract import Account, Benchmark, Category, Holding, Series, Snapshot, Source, ValuePoint
+from ..profile import BenchmarkCfg
 from .base import ConnectorError
 
 TIMEOUT = 5.0  # seconds to wait for a warehouse another process is writing
@@ -33,6 +37,22 @@ TYPES = {"roth_ira": "Roth IRA", "traditional_ira": "Traditional IRA", "brokerag
 LONG_TERM = {"roth_ira", "traditional_ira", "ira", "rollover_ira", "sep_ira", "simple_ira", "401k", "403b", "457b",
              "hsa", "pension", "brokerage"}
 CASH = {"checking", "savings", "cash", "money_market"}
+
+# each account's value per day: its holdings plus its cash, the join portfolio_daily_full uses, kept per account
+HISTORY = """
+WITH h AS (SELECT as_of_date, account_id, SUM(market_value) AS holdings FROM holdings_daily GROUP BY 1, 2),
+     c AS (SELECT as_of_date, account_id, amount AS cash FROM cash_daily),
+     d AS (SELECT as_of_date, account_id FROM h UNION SELECT as_of_date, account_id FROM c)
+SELECT d.account_id, d.as_of_date, COALESCE(h.holdings, 0), COALESCE(c.cash, 0)
+FROM d
+LEFT JOIN h ON h.as_of_date = d.as_of_date AND h.account_id = d.account_id
+LEFT JOIN c ON c.as_of_date = d.as_of_date AND c.account_id = d.account_id
+ORDER BY d.account_id, d.as_of_date
+"""
+FLOWS = """
+SELECT account_id, trade_date, type, amount FROM transactions
+WHERE type IN ('contribution', 'withdrawal', 'transfer') AND amount IS NOT NULL
+"""
 
 
 def slug(label: str) -> str:
@@ -86,6 +106,22 @@ def _utc(text: str | None) -> datetime | None:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
+def _flow(kind: str, amount: float) -> float:
+    """A withdrawal is money out whatever its sign; a contribution or a transfer keeps its own (a negative
+    contribution is a reversal)."""
+    return -abs(amount) if kind == "withdrawal" else amount
+
+
+def _plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def _day(text: str) -> str:
+    """An ISO day as "24 Sep"."""
+    day = date.fromisoformat(text)
+    return f"{day.day} {day:%b}"
+
+
 @contextmanager
 def connect(path: Path, timeout: float = TIMEOUT) -> Iterator[sqlite3.Connection]:
     """The warehouse, read-only: opened with mode=ro, then query_only on top. Always closed."""
@@ -119,48 +155,135 @@ def last_success(conn: sqlite3.Connection) -> datetime | None:
     return _utc(derived or conn.execute(query).fetchone()[0])
 
 
+def history(conn: sqlite3.Connection) -> dict[int, list[tuple[str, float, float]]]:
+    """Per account (the warehouse's own id): (day, value, cash), days ascending."""
+    out: dict[int, list[tuple[str, float, float]]] = defaultdict(list)
+    for account, day, holdings, cash in conn.execute(HISTORY):
+        out[account].append((day, holdings + cash, cash))
+    return out
+
+
+def flows(conn: sqlite3.Connection, days: dict[int, list[str]]) -> dict[int, dict[str, float]]:
+    """Per account, the money moved in or out, filed under a history day: a flow on a day without a point goes to
+    the next one (a Saturday deposit is Monday's), and one after the last point is dropped."""
+    out: dict[int, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    for account, when, kind, amount in conn.execute(FLOWS):
+        known = days.get(account, [])
+        i = bisect_left(known, when[:10])
+        if i < len(known):
+            out[account][known[i]] += _flow(kind, amount)
+    return out
+
+
 class FdcConnector:
-    """Reads one warehouse. `categories` maps an account id or exact label to a category."""
+    """Reads one warehouse. `categories` maps an account id or exact label to a category; `benchmark` is looked up
+    in the warehouse's prices."""
 
     def __init__(self, source_id: str, label: str, path: Path, categories: dict[str, str] | None = None,
-                 timeout: float = TIMEOUT) -> None:
+                 benchmark: BenchmarkCfg | None = None, timeout: float = TIMEOUT) -> None:
         self.source_id = source_id
         self.label = label
         self.path = path
         self.categories = dict(categories or {})
+        self.benchmark = benchmark
         self.timeout = timeout
 
     def snapshot(self, now: datetime) -> Snapshot:
         try:
             with connect(self.path, self.timeout) as conn:
                 check_schema(conn, self.path)
-                accounts = self._accounts(conn, now)
-                synced = last_success(conn)
+                return self._read(conn, now)
         except sqlite3.Error as exc:
             raise ConnectorError(f"the warehouse couldn't be read: {exc}") from None
-        notes = [f"{len(accounts)} account{'' if len(accounts) == 1 else 's'}"]
-        unmatched = sorted(set(self.categories) - {a.id for a in accounts} - {a.name for a in accounts})
-        if unmatched:
-            notes.append(f"no account matches categories {', '.join(repr(k) for k in unmatched)}")
-        source = Source(id=self.source_id, label=self.label, kind="fdc", last_success=synced,
-                        status="ok" if synced else "stale", detail=" · ".join(notes))
-        return Snapshot(generated_at=now, sources=[source], accounts=accounts)
 
     def _category(self, account_id: str, label: str, account_type: str) -> Category:
         chosen = self.categories.get(account_id) or self.categories.get(label)
         return cast(Category, chosen) if chosen else category_of(account_type)
 
-    def _accounts(self, conn: sqlite3.Connection, now: datetime) -> list[Account]:
-        rows = conn.execute("SELECT label, institution, account_type FROM accounts ORDER BY id").fetchall()
+    def _read(self, conn: sqlite3.Connection, now: datetime) -> Snapshot:
+        rows = conn.execute("SELECT id, label, institution, account_type FROM accounts ORDER BY id").fetchall()
+        ids = dict(zip((r[0] for r in rows), account_ids([r[1] for r in rows])))
+        by_label = {r[1]: ids[r[0]] for r in rows}
         # the latest daily value of each account; SQLite takes the bare columns from the row MAX() picked
         latest = {label: (day, total, cash) for label, day, total, cash in conn.execute(
             "SELECT account, MAX(as_of_date), total, cash FROM account_values_daily GROUP BY account")}
-        accounts = []
-        for account_id, (label, institution, kind) in zip(account_ids([r[0] for r in rows]), rows):
-            day, total, cash = latest.get(label, (None, 0.0, 0.0))
+        days = history(conn)
+        moved = flows(conn, {account: [day for day, _, _ in points] for account, points in days.items()})
+
+        accounts: list[Account] = []
+        series: list[Series] = []
+        for warehouse_id, label, institution, kind in rows:
+            points = days.get(warehouse_id, [])
+            if points:
+                series.append(Series(id=ids[warehouse_id], points=[
+                    ValuePoint(date=date.fromisoformat(day), value=round(value, 2),
+                               net_flow=round(moved[warehouse_id].get(day, 0.0), 2))
+                    for day, value, _ in points]))
+            # the newer of the broker's last snapshot and the last replayed day; on the same day the snapshot wins
+            snapped = latest.get(label)
+            if snapped and (not points or snapped[0] >= points[-1][0]):
+                day, value, cash = snapped
+            elif points:
+                day, value, cash = points[-1]
+            else:
+                day, value, cash = None, 0.0, 0.0
             accounts.append(Account(
-                id=account_id, name=label, institution=institution_text(institution), account_type=type_text(kind),
-                category=self._category(account_id, label, kind), value=round(total, 2), cash=round(cash, 2),
-                as_of=_close(day) if day else now,
+                id=ids[warehouse_id], name=label, institution=institution_text(institution),
+                account_type=type_text(kind), category=self._category(ids[warehouse_id], label, kind),
+                value=round(value, 2), cash=round(cash, 2), as_of=_close(day) if day else now,
             ))
-        return accounts
+
+        holdings, left_out = self._holdings(conn, by_label)
+        first = min((s.points[0].date for s in series), default=None)
+        benchmark = self._benchmark(conn, first)
+        # each security's last price through the prices index: MAX(date) over the whole table is a full scan
+        priced = conn.execute("SELECT MAX((SELECT MAX(date) FROM prices WHERE symbol = s.symbol)) "
+                              "FROM securities s").fetchone()[0]
+        notes = [_plural(len(accounts), "account"), _plural(len(holdings), "holding"),
+                 f"prices to {_day(priced)}" if priced else "no prices yet"]
+        if left_out:
+            notes.append(f"{_plural(left_out, 'holding')} left out (no market value)")
+        if self.benchmark and benchmark is None:
+            notes.append(f"no {self.benchmark.symbol} prices in the warehouse")
+        unmatched = sorted(set(self.categories) - {a.id for a in accounts} - {a.name for a in accounts})
+        if unmatched:
+            notes.append(f"no account matches categories {', '.join(repr(k) for k in unmatched)}")
+        synced = last_success(conn)
+        source = Source(id=self.source_id, label=self.label, kind="fdc", last_success=synced,
+                        status="ok" if synced else "stale", detail=" · ".join(notes))
+        return Snapshot(generated_at=now, sources=[source], accounts=accounts, holdings=holdings,
+                        account_history=series, benchmark=benchmark)
+
+    def _holdings(self, conn: sqlite3.Connection, by_label: dict[str, str]) -> tuple[list[Holding], int]:
+        """The latest snapshot's positions, largest first in each account, and how many had no market value (they
+        are left out: there is nothing to add up)."""
+        holdings: list[Holding] = []
+        left_out = 0
+        for label, symbol, name, quantity, price, value, cost in conn.execute(
+                "SELECT account, symbol, description, quantity, price, market_value, cost_basis_total "
+                "FROM positions_latest"):
+            if value is None:
+                left_out += 1
+                continue
+            if price is None:
+                price = value / quantity if quantity else 0.0
+            holdings.append(Holding(account_id=by_label[label], symbol=symbol, name=name or "", quantity=quantity,
+                                    price=price, value=round(value, 2),
+                                    cost_basis=round(cost, 2) if cost is not None else None))
+        rank = {account_id: i for i, account_id in enumerate(by_label.values())}
+        holdings.sort(key=lambda h: (rank[h.account_id], -h.value))
+        return holdings, left_out
+
+    def _benchmark(self, conn: sqlite3.Connection, first: date | None) -> Benchmark | None:
+        """The profile's benchmark from the warehouse's prices (adjusted, so dividends count, as they do in the
+        accounts), from the last close on or before the first day of account history."""
+        if self.benchmark is None:
+            return None
+        rows = conn.execute("SELECT date, adj_close FROM prices WHERE symbol = ? ORDER BY date",
+                            (self.benchmark.symbol,)).fetchall()
+        if first is not None:
+            rows = rows[max((i for i, (day, _) in enumerate(rows) if day <= first.isoformat()), default=0):]
+        if not rows:
+            return None
+        return Benchmark(symbol=self.benchmark.symbol, label=self.benchmark.label,
+                         points=[ValuePoint(date=date.fromisoformat(day), value=value) for day, value in rows])
