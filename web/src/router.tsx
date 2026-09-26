@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, type RouterHistory, useNavigate } from '@tanstack/react-router'
 import type { Money } from './lib/api'
+import { Account } from './pages/account/Account'
 import { Accounts } from './pages/accounts/Accounts'
 import { Home } from './pages/home/Home'
 import { Soon } from './pages/Soon'
@@ -18,6 +19,17 @@ const later = (path: string, title: string, text: string) =>
 /** `?book=real|paper` picks the money the page focuses on; anything else is dropped (the page defaults to real). */
 function bookSearch(search: Record<string, unknown>): { book?: Money } {
   return search.book === 'real' || search.book === 'paper' ? { book: search.book } : {}
+}
+
+const accountRoute = createRoute({
+  getParentRoute: () => root,
+  path: '/accounts/$accountId',
+  component: AccountRoute,
+})
+
+function AccountRoute() {
+  const { accountId } = accountRoute.useParams()
+  return <Account key={accountId} id={accountId} /> // another account starts on its own default window
 }
 
 const strategyRoute = createRoute({
@@ -40,6 +52,7 @@ function StrategyRoute() {
 const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/', component: Home }),
   createRoute({ getParentRoute: () => root, path: '/accounts', component: Accounts }),
+  accountRoute,
   later('/books', 'Books', 'Each book, real or paper: equity against its benchmark, drawdown, trades — Phase 3.'),
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
   strategyRoute,
