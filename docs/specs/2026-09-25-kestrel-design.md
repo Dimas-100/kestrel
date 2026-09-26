@@ -1,7 +1,7 @@
 # kestrel — design
 
 - **Date:** 2026-09-25
-- **Status:** design approved. Phase 0 (mockups) is done; Phase 1 (this repo, spec, design system, hygiene test) is the current commit.
+- **Status:** design approved. Phases 0 (mockups), 1 (this repo, spec, design system, hygiene test) and 2 (the skeleton) are done; Phase 3 is next.
 - **Look:** Graphite, variant A. The full token and component rules are in [`../design-system.md`](../design-system.md), and reference mockups are in [`../design/mockups/`](../design/mockups/).
 
 ## 1. Why
@@ -128,19 +128,24 @@ All values, and the validator results behind them, are in [`../design-system.md`
 
 ```
 kestrel/
-  pyproject.toml            python package `kestrel`; CLI `kestrel serve | check | demo`   (Phase 2)
+  pyproject.toml            python package `kestrel`; CLI `kestrel serve | check | demo | schema`
   profile.example.toml      demo profile (committed); profile.toml is gitignored
   src/kestrel/
     contract.py             pydantic v2 models: the versioned data contract (§7)
     profile.py              profile.toml → Profile; falls back to the demo profile
-    connectors/             base protocol · demo · fdc · rails · feed   (§8)
-    aggregate.py            connectors → view models (net worth, allocation, comparisons, attention list)
+    connectors/             base protocol · demo (Phase 2) · fdc · rails · feed (Phase 4)   (§8)
+    metrics.py              growth net of deposits, drawdown, expected band, waffle rounding
+    views/                  one Snapshot → a view model per page: home.py (net worth, allocation, comparison,
+                            attention list, books), shell.py (name, settings, sources, counts)
     server.py               FastAPI, GET routes only, binds 127.0.0.1, serves web/dist
+    cli.py                  serve · check · demo · schema
   web/                      React + TypeScript + Vite + Tailwind v4, TanStack Router + TanStack Query
-    src/design/             tokens.css (the design-system tokens), type, primitives
+    src/styles/             tokens.css (the design-system tokens)
+    src/shell/              the frame: sidebar (greeting, grouped nav, sources), top bar, phone drawer and tab bar
     src/charts/             in-house SVG chart kit on d3-scale / d3-shape / d3-array
-    src/components/         Shell, Sidebar, Greeting, Panel, Stat, BookMark, Table, Chip, …
-    src/routes/             home · accounts · books.$id · strategies.$id · backtests · activity · settings
+    src/components/         shared pieces: Panel, Delta, BookMark, MoneyBadge, Seg, icons
+    src/pages/              one folder per page: home/ (Phase 2); accounts, books, strategies, … from Phase 3
+    src/router.tsx          routes: home · accounts · books · strategies · backtests · activity · settings
   docs/                     this spec, design-system.md, data-contract.md, connectors.md, mockups
   tests/                    pytest: contract, connectors, GET-only, import guard, hygiene
 ```
@@ -247,7 +252,7 @@ Each phase gets its own spec, plan and build.
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Graphite mockups; variant A chosen | done |
-| 1 | This repo: spec, design system, mockups, hygiene test | this commit |
+| 1 | This repo: spec, design system, mockups, hygiene test | done |
 | 2 | Skeleton: contract, profile, `demo` connector, server, shell (sidebar, greeting, routing, theming), Home | done |
 | 3 | Books + Strategies pages; the chart kit | next |
 | 4 | Accounts; `fdc`, `rails`, `feed` connectors | |

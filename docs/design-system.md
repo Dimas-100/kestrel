@@ -1,6 +1,6 @@
 # kestrel design system — Graphite
 
-This is the single source of truth for how kestrel looks. The web app's `src/design/tokens.css` implements these
+This is the single source of truth for how kestrel looks. The web app's `src/styles/tokens.css` implements these
 tokens. The mockups in [`design/mockups/`](design/mockups/) are drawn from them; open any of those files in a
 browser.
 
@@ -145,7 +145,7 @@ plus the word (REAL / PAPER), so it reads in greyscale and print too.
 | Component | Notes |
 |---|---|
 | **Sidebar** | Brand mark and name, collapse button, greeting (name, date and time), grouped nav (caps group labels, 36 px items, active item raised with an accent icon), Sources block pinned to the bottom |
-| **Top bar** | Breadcrumb · page controls · "Synced n min ago" · refresh · theme |
+| **Top bar** | Breadcrumb · page controls · "Updated HH:MM" (each source's own age is in the sidebar's Sources block) · refresh · theme |
 | **Segmented control** | 2 px inset track. The selected segment is raised (`--panel2` with an inset hairline) and uses `aria-pressed`. |
 | **Panel** | Title plus optional one-line subtitle, legend or controls on the right, and a Chart / Table toggle on every chart |
 | **Stat block** | Caps label, then the value (mono), then a muted second line (percent or context) |
