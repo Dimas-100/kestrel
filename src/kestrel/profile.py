@@ -44,7 +44,7 @@ class App(_Strict):
     theme: Literal["system", "dark", "light"] = "system"
     gain_loss: Literal["green-red", "blue-orange"] = "green-red"
     density: Literal["comfortable", "compact"] = "comfortable"
-    currency: str = "USD"
+    currency: str = Field(default="USD", pattern=r"^[A-Z]{3}$")  # an ISO 4217 code, e.g. USD, EUR
     timezone: str = "America/New_York"
 
     @field_validator("timezone")
@@ -118,9 +118,15 @@ def load_profile(path: Path | None = None) -> tuple[Profile, str]:
         if not path.exists():
             return DEMO_PROFILE, "built-in demo profile"
     try:
-        raw = tomllib.loads(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8-sig")  # -sig: Windows editors often save a byte-order mark
     except FileNotFoundError:
         raise ProfileError(f"{path}: file not found") from None
+    except UnicodeDecodeError:
+        raise ProfileError(f"{path}: is not UTF-8 text (save it as UTF-8 and try again)") from None
+    except OSError as exc:
+        raise ProfileError(f"{path}: could not read the file ({exc.strerror or exc})") from None
+    try:
+        raw = tomllib.loads(text)
     except tomllib.TOMLDecodeError as exc:
         raise ProfileError(f"{path}: {exc}") from None
     try:

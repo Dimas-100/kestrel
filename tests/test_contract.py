@@ -12,6 +12,18 @@ def minimal(**extra):
     return {"contract_version": "1", "generated_at": NOW.isoformat(), **extra}
 
 
+@pytest.mark.parametrize("link", ["https://evil.example", "//evil.example", "/\\evil.example", "javascript:x"])
+def test_an_alert_link_must_stay_inside_the_app(link):
+    with pytest.raises(ValidationError):
+        Snapshot.model_validate(minimal(alerts=[{"level": "note", "title": "x", "link": link}]))
+
+
+@pytest.mark.parametrize("link", ["", "/", "/books", "/strategies/rsi2?tab=trades"])
+def test_an_internal_alert_link_is_kept(link):
+    snap = Snapshot.model_validate(minimal(alerts=[{"level": "note", "title": "x", "link": link}]))
+    assert snap.alerts[0].link == link
+
+
 def test_a_minimal_snapshot_loads_with_empty_lists():
     snap = Snapshot.model_validate(minimal())
     assert snap.contract_version == CONTRACT_VERSION

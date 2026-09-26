@@ -68,6 +68,33 @@ def test_an_unknown_time_zone_is_refused(tmp_path):
         load_profile(write(tmp_path, '[app]\ntimezone = "Mars/Olympus"\n'))
 
 
+def test_a_currency_must_be_a_three_letter_code(tmp_path):
+    with pytest.raises(ProfileError, match=r"app\.currency"):
+        load_profile(write(tmp_path, '[app]\ncurrency = "EURO"\n'))
+    profile, _ = load_profile(write(tmp_path, '[app]\ncurrency = "EUR"\n'))
+    assert profile.app.currency == "EUR"
+
+
+def test_a_profile_saved_with_a_byte_order_mark_loads(tmp_path):
+    path = tmp_path / "profile.toml"
+    path.write_bytes('﻿[you]\nname = "Sam"\n'.encode("utf-8"))
+    assert load_profile(path)[0].you.name == "Sam"
+
+
+def test_a_profile_that_is_not_utf8_is_reported_plainly(tmp_path):
+    path = tmp_path / "profile.toml"
+    path.write_text('[you]\nname = "Sam"\n', encoding="utf-16")
+    with pytest.raises(ProfileError, match="is not UTF-8 text"):
+        load_profile(path)
+
+
+def test_an_unreadable_profile_is_reported_plainly(tmp_path):
+    folder = tmp_path / "profile.toml"
+    folder.mkdir()  # reading a folder is an OSError on every platform
+    with pytest.raises(ProfileError, match="could not read"):
+        load_profile(folder)
+
+
 def test_duplicate_source_ids_are_refused(tmp_path):
     text = '[[sources]]\nid = "a"\nkind = "demo"\n[[sources]]\nid = "a"\nkind = "demo"\n'
     with pytest.raises(ProfileError, match="duplicate source id"):

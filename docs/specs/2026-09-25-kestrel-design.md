@@ -169,7 +169,7 @@ Every connector returns these entities. All money is in the profile currency; al
 | `Trade` | `book_id`, `symbol`, `opened`, `closed`, `entry_price`, `exit_price`, `quantity`, `pnl`, `return_pct`, `r_multiple?`, `exit_reason` |
 | `Strategy` | `id`, `name`, `summary`, `steps[]` (label, text, params), `sizing`, `expected` (win_rate, avg_trade_pct, avg_win_pct, avg_loss_pct, trades_per_month, sd_trade_pct, distribution[], source, window), `review_at_trades` |
 | `Run` | `time`, `label`, `book_id?`, `status` (done · due · late · failed · paused), `detail` |
-| `Alert` | `level` (serious · warning · note), `title`, `detail`, `link` |
+| `Alert` | `level` (serious · warning · note), `title`, `detail`, `link` (a page inside kestrel, e.g. `/books`, or empty) |
 
 **Versioning:**
 - Every feed declares `contract_version` (`"1"`).

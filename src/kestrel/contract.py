@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
 CONTRACT_VERSION = "1"
 
@@ -140,7 +140,9 @@ class Alert(Model):
     level: Literal["serious", "warning", "note"]
     title: str
     detail: str = ""
-    link: str = ""
+    # a page inside kestrel ("/books"), or empty: never another site, including "//host" and "/\host",
+    # which browsers read as a link to another host
+    link: str = Field(default="", pattern=r"^(/([^/\\\s].*)?)?$")
 
 
 class Benchmark(Model):

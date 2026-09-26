@@ -18,4 +18,6 @@ system's code entering this repo.
   performance is measured net of money moving in and out.
 - `status` on a source is `ok`, `stale` or `error`; kestrel also marks a source stale once its `last_success` is older
   than the profile's `stale_after` for it.
+- An alert's `link` is a page inside kestrel (`/books`) or empty. A link to another site (`https://…`, `//host`) fails
+  validation, so the payload is dropped and the source shows as `error`.
 - A connector only reads. Nothing in the contract asks a source to change anything.
