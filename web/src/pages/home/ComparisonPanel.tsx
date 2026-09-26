@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type ChartSeries, LineChart, LineKey } from '../../charts/LineChart'
-import { Panel, Seg } from '../../components/bits'
+import { Delta, Panel, Seg } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import type { Comparison, Line } from '../../lib/api'
 import { monthLabel, pct, shortDate } from '../../lib/format'
@@ -51,7 +51,7 @@ export function ComparisonPanel({ c }: { c: Comparison }) {
                 <thead><tr><th>Line</th><th className="r">Return</th><th className="r">Worst drop</th></tr></thead>
                 <tbody>
                   {c.lines.map((l) => (
-                    <tr key={l.key}><td>{l.label}</td><td className="r num">{pct(l.return_pct)}</td>
+                    <tr key={l.key}><td>{l.label}</td><td className="r"><Delta value={l.return_pct}>{pct(l.return_pct)}</Delta></td>
                       <td className="r num">{pct(l.max_drop_pct)}</td></tr>
                   ))}
                 </tbody>
@@ -64,7 +64,7 @@ export function ComparisonPanel({ c }: { c: Comparison }) {
                 <div className="flex items-center gap-2 text-xs text-ink2">
                   <LineKey {...STYLE[l.key]} />{l.label}
                 </div>
-                <div className="num text-xl font-medium mt-1">{pct(l.return_pct)}</div>
+                <div className="num text-xl font-medium mt-1"><Delta value={l.return_pct}>{pct(l.return_pct)}</Delta></div>
                 <div className="num text-[11px] text-ink3">max drop {pct(l.max_drop_pct)}</div>
               </div>
             ))}

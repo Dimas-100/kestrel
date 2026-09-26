@@ -77,8 +77,9 @@ export function BooksPanel({ books, tz, now }: { books: BookRow[]; tz: string; n
                     {b.verdict === 'below' && <Icon name="alert" size={12} style={{ color: 'var(--warn)' }} />}
                     {VERDICT[b.verdict]}
                     {b.verdict === 'early' && ` · ${b.trades} trades`}
-                    {b.per_trade_pct != null && b.verdict !== 'early' && b.verdict !== 'none' &&
-                      <span className="num"> · {pct(b.per_trade_pct, 2)}</span>}
+                    {b.per_trade_pct != null && b.verdict !== 'early' && b.verdict !== 'none' && (
+                      <> · <Delta value={b.per_trade_pct}>{pct(b.per_trade_pct, 2)}</Delta></>
+                    )}
                   </div>
                 </td>
                 <td>

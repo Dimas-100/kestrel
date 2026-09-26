@@ -78,9 +78,9 @@ function Sidebar({ shell }: { shell?: ShellView }) {
         <span className="text-base font-semibold tracking-tight">{shell?.app.name ?? 'kestrel'}</span>
       </div>
       <div className="px-2 pt-6 pb-2">
-        <div className="text-[13px] text-ink3">{now ? `${greeting(now, tz)},` : ' '}</div>
-        <div className="text-[26px] font-semibold tracking-[-0.03em] mt-0.5">{shell?.name ?? ' '}</div>
-        <div className="num text-[11px] text-ink3 mt-1.5">{now ? clockLine(now, tz) : ' '}</div>
+        <div className="text-[13px] text-ink3">{now ? `${greeting(now, tz)},` : ' '}</div>
+        <div className="text-[26px] font-semibold tracking-[-0.03em] mt-0.5">{shell?.name ?? ' '}</div>
+        <div className="num text-[11px] text-ink3 mt-1.5">{now ? clockLine(now, tz) : ' '}</div>
       </div>
       <nav aria-label="Main" className="flex flex-col gap-0.5">
         {NAV.map(({ group, items }) => (

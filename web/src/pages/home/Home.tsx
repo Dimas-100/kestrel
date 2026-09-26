@@ -14,7 +14,7 @@ export function summaryParts(h: HomeView): { trading: string | null; needs: stri
   const period = h.comparison.window === 'ytd' ? 'this year' : 'over the past 12 months'
   const trading = gap == null ? null : Math.abs(gap) < 0.05
     ? `Trading is level with your index money ${period}.`
-    : `Trading is ${gap > 0 ? 'ahead' : 'behind'} your index money by ${Math.abs(gap).toFixed(1)} pts ${period}.`
+    : `Trading is ${gap > 0 ? 'ahead of' : 'behind'} your index money by ${Math.abs(gap).toFixed(1)} pts ${period}.`
   const n = h.summary.needs_you
   const needs = n === 0 ? 'Nothing needs you.' : n === 1 ? 'One item needs you.' : `${n} items need you.`
   return { trading, needs }

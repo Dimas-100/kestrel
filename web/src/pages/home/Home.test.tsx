@@ -70,12 +70,19 @@ describe('Home', () => {
     expect(screen.getByText('No open positions.')).toBeTruthy()
     expect(screen.getByText(/No history yet/)).toBeTruthy()
   })
+
+  it('marks returns as gains or losses, never by colour alone', async () => {
+    renderApp('/')
+    const cmp = await screen.findByRole('region', { name: 'Trading vs your index money' })
+    expect(within(cmp).getAllByText('up')).toHaveLength(3)
+  })
 })
 
 describe('words from the data', () => {
   it('writes the summary sentence', () => {
     const base = homeFixture
     expect(summaryParts(base).needs).toBe('2 items need you.')
+    expect(summaryParts(base).trading).toBe('Trading is ahead of your index money by 2.9 pts this year.')
     const behind = { ...base, summary: { ...base.summary, gap_pts: -1.26, needs_you: 1 } }
     expect(summaryParts(behind)).toEqual({
       trading: 'Trading is behind your index money by 1.3 pts this year.', needs: 'One item needs you.',
