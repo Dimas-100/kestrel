@@ -7672,4 +7672,5 @@ On the owner's machine, spec §6: copy `profile.example.toml` to `kestrel/profil
 - **M1** The empty Accounts page also points at `kestrel check` for a source that isn't reading.
 - **M2** The Accounts table's "Today" column is "Last day" (the history's last day, not the calendar's).
 - **M3** A profile source `path` may start with `~` (expanded before the relative-path check).
+- **M3 follow-up:** a `~` that can't be expanded (an unknown user, no home folder) is a profile problem with the source's index, not a crash.
 - **M4** The account header's "as of" date carries its year when it isn't this year (`flowDay`).

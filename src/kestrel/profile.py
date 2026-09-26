@@ -128,9 +128,12 @@ def _resolve_paths(raw: dict, folder: Path) -> None:
     """A `path` in a source may start with ~ (your home folder); a relative one is relative to the profile's own
     folder, not to wherever kestrel was started."""
     sources = raw.get("sources")
-    for source in sources if isinstance(sources, list) else []:
+    for i, source in enumerate(sources if isinstance(sources, list) else []):
         if isinstance(source, dict) and isinstance(source.get("path"), str):
-            path = Path(source["path"]).expanduser()
+            try:
+                path = Path(source["path"]).expanduser()
+            except RuntimeError:  # an unknown ~user, or no home folder to put in place of ~
+                raise ValueError(f"sources.{i}: can't expand ~ in {source['path']!r} (write the full path)") from None
             source["path"] = str(path if path.is_absolute() else (folder / path).resolve())
 
 
@@ -155,7 +158,10 @@ def load_profile(path: Path | None = None) -> tuple[Profile, str]:
         raw = tomllib.loads(text)
     except tomllib.TOMLDecodeError as exc:
         raise ProfileError(f"{path}: {exc}") from None
-    _resolve_paths(raw, path.parent)
+    try:
+        _resolve_paths(raw, path.parent)
+    except ValueError as exc:
+        raise ProfileError(f"{path}: {exc}") from None
     try:
         return Profile.model_validate(raw), str(path)
     except ValidationError as exc:

@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -145,3 +146,10 @@ def test_an_unknown_category_is_a_profile_error(tmp_path):
         load_profile(write(tmp_path, source + 'categories = "trading"\n'))
     profile, _ = load_profile(write(tmp_path, source + '[sources.categories]\n"brokerage-2" = "trading"\n'))
     assert getattr(profile.sources[0], "categories") == {"brokerage-2": "trading"}
+
+
+def test_a_tilde_that_cant_be_expanded_is_a_profile_problem(tmp_path, monkeypatch):
+    monkeypatch.setattr(os.path, "expanduser", lambda p: p)  # what an unknown ~user, or no home folder, looks like
+    path = write(tmp_path, '[[sources]]\nid = "portfolio"\nkind = "fdc"\npath = "~nosuchuser/warehouse.db"\n')
+    with pytest.raises(ProfileError, match=r"sources\.0: can't expand ~ in '~nosuchuser/warehouse\.db'"):
+        load_profile(path)
