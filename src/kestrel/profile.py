@@ -125,17 +125,19 @@ DEMO_PROFILE = Profile(you=You(name="Alex"))
 
 
 def _resolve_paths(raw: dict, folder: Path) -> None:
-    """A relative `path` in a source is relative to the profile's own folder, not to wherever kestrel was started."""
+    """A `path` in a source may start with ~ (your home folder); a relative one is relative to the profile's own
+    folder, not to wherever kestrel was started."""
     sources = raw.get("sources")
     for source in sources if isinstance(sources, list) else []:
-        if isinstance(source, dict) and isinstance(source.get("path"), str) and not Path(source["path"]).is_absolute():
-            source["path"] = str((folder / source["path"]).resolve())
+        if isinstance(source, dict) and isinstance(source.get("path"), str):
+            path = Path(source["path"]).expanduser()
+            source["path"] = str(path if path.is_absolute() else (folder / path).resolve())
 
 
 def load_profile(path: Path | None = None) -> tuple[Profile, str]:
     """Load a profile. With no path: ./profile.toml when it exists, else the built-in demo profile.
 
-    Returns the profile and where it came from (for `kestrel check`). Relative source paths come back absolute.
+    Returns the profile and where it came from (for `kestrel check`). Relative and ~ source paths come back absolute.
     """
     if path is None:
         path = Path("profile.toml")

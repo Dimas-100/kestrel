@@ -1,8 +1,10 @@
 import datetime as dt
 
 import pytest
+from fdc_fixture import household
 
 from kestrel.connectors import collect
+from kestrel.connectors.fdc import FdcConnector
 from kestrel.contract import Account, Holding, Series, Snapshot, ValuePoint
 from kestrel.profile import DEMO_PROFILE, Profile
 from kestrel.views.accounts import account_view, accounts_view, growth, window_start
@@ -132,3 +134,26 @@ def test_no_accounts_is_an_empty_page_and_an_unknown_account_is_none():
     assert (view.count, view.total, view.accounts, view.holdings) == (0, 0, [], [])
     assert view.growth == {"ytd": None, "1y": None, "all": None}
     assert account_view(Snapshot(generated_at=NOW), Profile(), NOW, "roth") is None
+
+
+def test_on_collector_data_the_total_the_growth_and_each_accounts_value_agree(tmp_path):
+    snap = FdcConnector("portfolio", "Portfolio", household(tmp_path)).snapshot(NOW)
+    view = accounts_view(snap, Profile(), NOW)
+    everything = [view.growth["all"], view.growth["ytd"]]
+    assert view.total == 14070.0 and [g.end if g else None for g in everything] == [14070.0, 14070.0]
+    for a in snap.accounts:
+        one = account_view(snap, Profile(), NOW, a.id)
+        assert one is not None and one.value == one.points[-1].value
+        assert {w: g.end for w, g in one.growth.items() if g} == {w: one.value for w, g in one.growth.items() if g}
+    brokerage = account_view(snap, Profile(), NOW, "alex-brokerage")
+    assert brokerage.growth["all"].end == brokerage.value == 4500.0  # the snapshot outranks the replayed 4,450
+
+
+def test_one_account_says_which_day_its_holdings_are_from(tmp_path, demo):
+    snap = FdcConnector("portfolio", "Portfolio", household(tmp_path)).snapshot(NOW)
+    days = {a.id: account_view(snap, Profile(), NOW, a.id) for a in snap.accounts}
+    assert {i: (v.as_of, v.holdings_as_of) for i, v in days.items()} == {
+        "alex-roth-ira": (d(2026, 9, 25), d(2026, 9, 24)),  # a newer replayed day than the broker's snapshot
+        "alex-brokerage": (d(2026, 9, 25), d(2026, 9, 25)), "alex-trading": (d(2026, 9, 25), d(2026, 9, 25)),
+        "alex-crypto": (d(2026, 9, 25), None), "alex-old-401k": (d(2026, 9, 21), None)}  # nothing held: no day
+    assert account_view(demo, DEMO_PROFILE, NOW, "roth").holdings_as_of is None  # the demo doesn't say

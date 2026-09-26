@@ -357,6 +357,19 @@
           ],
           "default": null,
           "title": "Cost Basis"
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "As Of"
         }
       },
       "required": [

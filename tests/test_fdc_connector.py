@@ -262,7 +262,8 @@ def test_the_newer_of_the_snapshot_and_the_history_sets_the_value_and_a_tie_goes
 
 def test_history_adds_holdings_and_cash_by_day_and_files_each_flow_under_a_history_day(warehouse):
     history = {s.id: s.points for s in connector(warehouse).snapshot(NOW).account_history}
-    assert list(history) == ["alex-roth-ira", "alex-brokerage", "alex-crypto"]  # a snapshot-only account has none
+    # every account with a snapshot or a history has one; a snapshot-only account's is its snapshot's single day
+    assert list(history) == ["alex-roth-ira", "alex-brokerage", "alex-trading", "alex-crypto", "alex-old-401k"]
     roth = history["alex-roth-ira"]
     assert [(p.date.day, p.value) for p in roth] == [
         (16, 7950.0), (17, 8000.0), (18, 8050.0), (21, 8600.0), (22, 8420.0), (23, 8330.0), (24, 8650.0), (25, 8700.0)]
@@ -270,6 +271,38 @@ def test_history_adds_holdings_and_cash_by_day_and_files_each_flow_under_a_histo
     # contribution counts against; a transfer keeps its sign; dividends are growth; Sat 26 is after the last point
     assert [p.net_flow for p in roth] == [100.0, 0.0, 0.0, 500.0, -200.0, -100.0, 300.0, -50.0]
     assert [p.value for p in history["alex-crypto"]] == [300.0, 310.0, 320.0]
+
+
+def test_every_accounts_value_is_the_last_point_of_its_history(warehouse):
+    snap = connector(warehouse).snapshot(NOW)
+    ends = {s.id: (s.points[-1].date, s.points[-1].value) for s in snap.account_history}
+    assert {a.id: (a.as_of.date(), a.value) for a in snap.accounts} == ends
+
+
+def test_the_snapshot_is_its_days_point_or_a_newer_one_that_carries_the_money_moved_since(tmp_path):
+    w = Warehouse(tmp_path / "w.db")
+    same, newer, only = w.account("Same Day"), w.account("Newer Snapshot"), w.account("Snapshot Only")
+    for account in (same, newer):
+        w.day(account, d(17), {"SPY": 1000.0}, cash=0.0)
+        w.day(account, d(18), {"SPY": 1010.0}, cash=0.0)
+    w.flow(same, d(18), "contribution", 40.0)
+    w.snapshot(same, d(18), [("SPY", "S&P 500 index fund", 2.0, 510.0, 1020.0, 900.0)], cash=5.0)
+    w.flow(newer, d(18), "contribution", 10.0)  # on the last replayed day: stays there
+    w.flow(newer, d(19), "contribution", 20.0)  # a Saturday after it: the snapshot's
+    w.flow(newer, d(21), "withdrawal", 5.0)
+    w.flow(newer, d(22), "transfer", 30.0)  # the snapshot's own day
+    w.flow(newer, d(23), "contribution", 99.0)  # after the snapshot: left for the next sync
+    w.snapshot(newer, d(22), [("SPY", "S&P 500 index fund", 2.0, 520.0, 1040.0, 900.0)], cash=15.0)
+    w.snapshot(only, d(25), [], cash=250.0)
+    snap = connector(w.close()).snapshot(NOW)
+    history = {s.id: [(p.date.day, p.value, p.net_flow) for p in s.points] for s in snap.account_history}
+    assert history == {
+        "same-day": [(17, 1000.0, 0.0), (18, 1025.0, 40.0)],  # the snapshot's total; the day's money moved is kept
+        "newer-snapshot": [(17, 1000.0, 0.0), (18, 1010.0, 10.0), (22, 1055.0, 45.0)],
+        "snapshot-only": [(25, 250.0, 0.0)],
+    }
+    assert {a.id: a.value for a in snap.accounts} == {"same-day": 1025.0, "newer-snapshot": 1055.0,
+                                                      "snapshot-only": 250.0}
 
 
 def test_holdings_come_from_each_accounts_latest_snapshot(warehouse):
@@ -281,6 +314,9 @@ def test_holdings_come_from_each_accounts_latest_snapshot(warehouse):
         ("alex-brokerage", "MSFT", "Microsoft", 2.0, 500.0, 1000.0, None),  # no price: its value over its quantity
         ("alex-trading", "AAPL", "Apple", 3.0, 250.0, 750.0, 700.0),
     ]  # and Walt Disney had no market value, so it is left out and counted
+    # each carries the day its account's snapshot is from, which can be older than the account's value
+    assert {h.account_id: h.as_of for h in snap.holdings} == {
+        "alex-roth-ira": d(24), "alex-brokerage": d(25), "alex-trading": d(25)}
 
 
 def test_the_benchmark_comes_from_the_warehouses_prices_over_the_accounts_history(warehouse):
@@ -299,7 +335,8 @@ def test_a_closed_account_at_zero_with_no_holdings_is_still_listed(warehouse):
     old = next(a for a in snap.accounts if a.id == "alex-old-401k")
     assert (old.value, old.cash, old.as_of.date()) == (0.0, 0.0, d(21))
     assert [h for h in snap.holdings if h.account_id == old.id] == []
-    assert old.id not in {s.id for s in snap.account_history}
+    history = {s.id: s.points for s in snap.account_history}
+    assert [(p.date, p.value) for p in history[old.id]] == [(d(21), 0.0)]  # its last snapshot, as one day
 
 
 def test_a_margin_debit_is_negative_cash_and_the_value_nets_it(warehouse):

@@ -64,6 +64,13 @@ def test_an_account_type_is_optional_and_round_trips():
     assert Snapshot.model_validate_json(snap.model_dump_json()) == snap
 
 
+def test_a_holdings_day_is_optional_and_round_trips():
+    base = {"account_id": "roth", "symbol": "SPY", "quantity": 2, "price": 600, "value": 1200}
+    snap = Snapshot.model_validate(minimal(holdings=[base, {**base, "symbol": "AGG", "as_of": "2026-09-24"}]))
+    assert [h.as_of for h in snap.holdings] == [None, dt.date(2026, 9, 24)]
+    assert Snapshot.model_validate_json(snap.model_dump_json()) == snap
+
+
 def test_an_unknown_category_is_refused():
     with pytest.raises(ValidationError):
         Snapshot.model_validate(minimal(accounts=[{"id": "x", "name": "X", "category": "crypto", "value": 1,

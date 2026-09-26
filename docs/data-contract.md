@@ -30,6 +30,8 @@ plain "not reported" state for that part and everything else still works.
 
 - `Account.account_type`: display text for the kind of account (`Roth IRA`, `Brokerage`), shown beside the
   institution on the Accounts pages. `holdings` and `Account.cash` fill an account's holdings table.
+- `Holding.as_of`: the day the holding was reported (`YYYY-MM-DD`). When an account's holdings are older than its
+  value, the account page says so under the holdings table.
 
 - `trade_charts`: daily bars around a closed trade (`date`, `open`, `high`, `low`, `close`). A chart matches its
   trade by `book_id`, `symbol` and `opened`. It may carry an `indicator` drawn in its own panel under the candles

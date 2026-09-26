@@ -1,8 +1,8 @@
 """financial-data-collector's SQLite warehouse, read-only: accounts, what they hold, their daily history with the
 money moved in and out, and the benchmark's prices.
 
-The warehouse is opened read-only twice over (mode=ro, then query_only) and closed after every snapshot. Nothing
-here ever writes to it.
+The warehouse is opened read-only twice over (mode=ro, then query_only) and closed straight after each read; reads
+are cached until the file changes (see `FdcConnector._load`). Nothing here ever writes to it.
 """
 
 from __future__ import annotations
@@ -166,6 +166,18 @@ def history(conn: sqlite3.Connection) -> dict[int, list[tuple[str, float, float]
     return out
 
 
+def _with_snapshot(points: list[tuple[str, float, float]],
+                   snapped: tuple[str, float, float] | None) -> list[tuple[str, float, float]]:
+    """The replayed history with the broker's latest snapshot laid over it, so an account's value and the last
+    point of its history are one number: on the same day the snapshot's total replaces the replayed one, a newer
+    snapshot is one more day, and an older one changes nothing."""
+    if snapped is None or (points and snapped[0] < points[-1][0]):
+        return points
+    if points and snapped[0] == points[-1][0]:
+        return [*points[:-1], snapped]
+    return [*points, snapped]
+
+
 def flows(conn: sqlite3.Connection, days: dict[int, list[str]]) -> dict[int, dict[str, float]]:
     """Per account, the money moved in or out, filed under a history day: a flow on a day without a point goes to
     the next one (a Saturday deposit is Monday's), and one after the last point is dropped."""
@@ -280,26 +292,24 @@ class FdcConnector:
         # the latest daily value of each account; SQLite takes the bare columns from the row MAX() picked
         latest = {label: (day, total, cash) for label, day, total, cash in conn.execute(
             "SELECT account, MAX(as_of_date), total, cash FROM account_values_daily GROUP BY account")}
-        days = history(conn)
-        moved = flows(conn, {account: [day for day, _, _ in points] for account, points in days.items()})
+        replayed = history(conn)
+        days = {warehouse_id: _with_snapshot(replayed.get(warehouse_id, []), latest.get(label))
+                for warehouse_id, label, _, _ in rows}
+        # money moved is filed under the replayed days and a newer snapshot's day; an account with no replayed
+        # history has no days to file it under
+        moved = flows(conn, {account: [day for day, _, _ in points] for account, points in days.items()
+                             if replayed.get(account)})
 
         accounts: list[_LoadedAccount] = []
         series: list[Series] = []
         for warehouse_id, label, institution, kind in rows:
-            points = days.get(warehouse_id, [])
+            points = days[warehouse_id]
             if points:
                 series.append(Series(id=ids[warehouse_id], points=[
                     ValuePoint(date=date.fromisoformat(day), value=round(value, 2),
                                net_flow=round(moved[warehouse_id].get(day, 0.0), 2))
                     for day, value, _ in points]))
-            # the newer of the broker's last snapshot and the last replayed day; on the same day the snapshot wins
-            snapped = latest.get(label)
-            if snapped and (not points or snapped[0] >= points[-1][0]):
-                day, value, cash = snapped
-            elif points:
-                day, value, cash = points[-1]
-            else:
-                day, value, cash = None, 0.0, 0.0
+            day, value, cash = points[-1] if points else (None, 0.0, 0.0)
             accounts.append(_LoadedAccount(
                 id=ids[warehouse_id], label=label, institution=institution_text(institution),
                 type_code=kind, type_display=type_text(kind), value=round(value, 2), cash=round(cash, 2), day=day,
@@ -341,12 +351,12 @@ class FdcConnector:
                         account_history=data.series, benchmark=benchmark)
 
     def _holdings(self, conn: sqlite3.Connection, by_label: dict[str, str]) -> tuple[list[Holding], int]:
-        """The latest snapshot's positions, largest first in each account, and how many had no market value (they
-        are left out: there is nothing to add up)."""
+        """The latest snapshot's positions, largest first in each account, each with its snapshot's day, and how
+        many had no market value (they are left out: there is nothing to add up)."""
         holdings: list[Holding] = []
         left_out = 0
-        for label, symbol, name, quantity, price, value, cost in conn.execute(
-                "SELECT account, symbol, description, quantity, price, market_value, cost_basis_total "
+        for day, label, symbol, name, quantity, price, value, cost in conn.execute(
+                "SELECT as_of_date, account, symbol, description, quantity, price, market_value, cost_basis_total "
                 "FROM positions_latest"):
             if value is None:
                 left_out += 1
@@ -355,7 +365,8 @@ class FdcConnector:
                 price = value / quantity if quantity else 0.0
             holdings.append(Holding(account_id=by_label[label], symbol=symbol, name=name or "", quantity=quantity,
                                     price=price, value=round(value, 2),
-                                    cost_basis=round(cost, 2) if cost is not None else None))
+                                    cost_basis=round(cost, 2) if cost is not None else None,
+                                    as_of=date.fromisoformat(day)))
         rank = {account_id: i for i, account_id in enumerate(by_label.values())}
         holdings.sort(key=lambda h: (rank[h.account_id], -h.value))
         return holdings, left_out

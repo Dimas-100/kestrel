@@ -128,6 +128,15 @@ def test_a_relative_source_path_is_relative_to_the_profile_not_the_working_direc
     assert not hasattr(DEMO_PROFILE.sources[0], "path")
 
 
+def test_a_source_path_may_start_from_the_home_folder(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))  # where ~ points on macOS and Linux
+    monkeypatch.setenv("USERPROFILE", str(home))  # and on Windows
+    path = write(tmp_path, '[[sources]]\nid = "portfolio"\nkind = "fdc"\npath = "~/collector/warehouse.db"\n')
+    profile, _ = load_profile(path)
+    assert Path(getattr(profile.sources[0], "path")) == home / "collector" / "warehouse.db"
+
+
 def test_an_unknown_category_is_a_profile_error(tmp_path):
     source = '[[sources]]\nid = "portfolio"\nkind = "fdc"\npath = "w.db"\n'
     with pytest.raises(ProfileError, match=r"unknown category 'trade' for 'Brokerage' \(use long_term, trading"):

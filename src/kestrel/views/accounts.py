@@ -92,6 +92,7 @@ class AccountView(View):
     growth: dict[Window, Growth | None]
     flows: list[Flow]  # the last eight days money moved, newest first
     holdings: list[HoldingRow]  # largest first
+    holdings_as_of: dt.date | None  # the latest day the holdings were reported; None when the source doesn't say
     cash: float
     cash_weight: float | None
     totals: Totals
@@ -198,7 +199,8 @@ def account_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, account
         category=account.category, value=account.value, as_of=account.as_of.date(), points=points,
         growth=growths(points, today),
         flows=[Flow(date=p.date, amount=p.net_flow) for p in reversed(points) if round(p.net_flow, 2) != 0][:FLOWS],
-        holdings=[_row(h, whole) for h in held], cash=account.cash, cash_weight=_share(account.cash, whole),
+        holdings=[_row(h, whole) for h in held], holdings_as_of=max((h.as_of for h in held if h.as_of), default=None),
+        cash=account.cash, cash_weight=_share(account.cash, whole),
         totals=Totals(value=round(whole, 2), cost_basis=round(cost, 2) if cost is not None else None,
                       gain=round(gain, 2) if gain is not None else None,
                       gain_pct=round(gain / cost * 100, 2) if cost and gain is not None else None,

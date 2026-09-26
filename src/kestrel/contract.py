@@ -49,6 +49,7 @@ class Holding(Model):
     price: float
     value: float
     cost_basis: float | None = None
+    as_of: dt.date | None = None  # the day the holding was reported, which can be older than its account's value
 
 
 class ValuePoint(Model):
