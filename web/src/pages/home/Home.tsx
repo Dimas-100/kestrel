@@ -1,6 +1,6 @@
 import { Delta } from '../../components/bits'
 import { type HomeView, useHome, useShell } from '../../lib/api'
-import { signedMoney } from '../../lib/format'
+import { signedMoney, timeHM } from '../../lib/format'
 import { AllocationPanel } from './AllocationPanel'
 import { AttentionPanel } from './AttentionPanel'
 import { BooksPanel } from './BooksPanel'
@@ -26,18 +26,27 @@ export function Home() {
   if (home.isPending) {
     return <p className="text-ink3" role="status">Loading your money…</p>
   }
-  if (home.isError) {
+  if (!home.data) {
+    // only when nothing has loaded yet: a failed refresh keeps the page it already has (below)
     return <div role="alert" className="panel">Home couldn&rsquo;t load: {home.error.message}</div>
   }
   const h = home.data
   const tz = shell.data?.app.timezone ?? 'UTC'
   const { trading, needs } = summaryParts(h)
+  const day = h.summary.day_change
   return (
     <>
+      {home.isError && (
+        <div role="alert" className="panel mb-4 text-[13px]" style={{ borderColor: 'var(--warn)' }}>
+          Couldn&rsquo;t refresh: {home.error.message}. Showing what loaded at {timeHM(h.as_of, tz)}.
+        </div>
+      )}
       <header className="mb-5">
         <h1 className="text-[28px] font-semibold tracking-[-0.025em]">Home</h1>
         <p className="text-ink2 mt-1.5">
-          All your money is <Delta value={h.summary.day_change}>{signedMoney(h.summary.day_change)}</Delta> today.{' '}
+          {Math.abs(day) < 0.005
+            ? <>All your money is unchanged today.{' '}</>
+            : <>All your money is <Delta value={day}>{signedMoney(day)}</Delta> today.{' '}</>}
           {trading && <>{trading} </>}{needs}
         </p>
       </header>

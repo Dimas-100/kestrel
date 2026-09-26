@@ -48,7 +48,10 @@ function useWidth<T extends HTMLElement>(fallback: number) {
 export function LineChart(props: Props) {
   const { dates, series, height, compact = false } = props
   const [wrapRef, width] = useWidth<HTMLDivElement>(640)
-  const [hover, setHover] = useState<number | null>(null)
+  const [hovered, setHover] = useState<number | null>(null)
+  // a hover index counts only while it names a real day: an empty chart has none, and a refresh can shorten the dates
+  const inRange = (i: number | null) => (i != null && i >= 0 && i < dates.length ? i : null)
+  const hover = inRange(hovered)
   const axisW = compact ? 0 : 56
   const bottom = compact ? 4 : 24
   const plotW = Math.max(40, width - axisW)
@@ -77,7 +80,7 @@ export function LineChart(props: Props) {
 
   const onPointer = (event: PointerEvent<SVGSVGElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
-    setHover(nearestIndex(xs, event.clientX - box.left))
+    setHover(inRange(nearestIndex(xs, event.clientX - box.left)))
   }
   const onKey = (event: KeyboardEvent<SVGSVGElement>) => {
     const last = dates.length - 1
@@ -89,11 +92,13 @@ export function LineChart(props: Props) {
     }
     if (event.key in moves) {
       event.preventDefault()
-      setHover(moves[event.key])
+      setHover(inRange(moves[event.key]))
     } else if (event.key === 'Escape') setHover(null)
   }
 
-  const tipLeft = hover == null ? 0 : xs[hover] + 12 + 190 > plotW ? xs[hover] - 202 : xs[hover] + 12
+  // beside the crosshair, flipped left near the right edge, and never outside the chart (phones are narrow)
+  const tipSide = hover == null ? 0 : xs[hover] + 12 + 190 > plotW ? xs[hover] - 202 : xs[hover] + 12
+  const tipLeft = Math.min(Math.max(0, tipSide), Math.max(0, width - 190))
 
   return (
     <div ref={wrapRef} style={{ position: 'relative', width: '100%' }}>

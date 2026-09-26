@@ -35,9 +35,11 @@ export function verdict(c: Comparison): { headline: string; caveat: string } | n
   const trading = c.lines.find((l) => l.key === 'trading')
   const longTerm = c.lines.find((l) => l.key === 'long_term')
   const drops = trading && longTerm ? ` (${pct(trading.max_drop_pct)} vs ${pct(longTerm.max_drop_pct)})` : ''
+  const equalDrop = trading && longTerm && Math.abs(trading.max_drop_pct - longTerm.max_drop_pct) < 0.05
+  const drop = equalDrop ? 'an equal' : c.shallower ? 'a shallower' : 'a deeper'
   const headline = Math.abs(c.gap_pts) < 0.05
     ? `Trading is level with your index money ${phrase}.`
-    : `Trading is ${c.gap_pts > 0 ? 'ahead' : 'behind'} by ${gap} pts ${phrase}, with a ${c.shallower ? 'shallower' : 'deeper'} worst drop${drops}.`
+    : `Trading is ${c.gap_pts > 0 ? 'ahead' : 'behind'} by ${gap} pts ${phrase}, with ${drop} worst drop${drops}.`
   const early = c.review_at != null && c.real_trades < c.review_at
   const caveat = early
     ? `${c.real_trades} real trades so far — early evidence. The strategy is reviewed at ${c.review_at}.`
@@ -68,7 +70,7 @@ export function ComparisonPanel({ c }: { c: Comparison }) {
                 <thead><tr><th>Line</th><th className="r">Return</th><th className="r">Worst drop</th></tr></thead>
                 <tbody>
                   {c.lines.map((l) => (
-                    <tr key={l.key}><td>{l.label}</td><td className="r"><Delta value={l.return_pct}>{pct(l.return_pct)}</Delta></td>
+                    <tr key={l.key}><td>{l.label}</td><td className="r"><Delta value={l.return_pct} digits={1}>{pct(l.return_pct)}</Delta></td>
                       <td className="r num">{pct(l.max_drop_pct)}</td></tr>
                   ))}
                 </tbody>
@@ -81,7 +83,7 @@ export function ComparisonPanel({ c }: { c: Comparison }) {
                 <div className="flex items-center gap-2 text-xs text-ink2">
                   <LineKey {...STYLE[l.key]} />{l.label}
                 </div>
-                <div className="num text-xl font-medium mt-1"><Delta value={l.return_pct}>{pct(l.return_pct)}</Delta></div>
+                <div className="num text-xl font-medium mt-1"><Delta value={l.return_pct} digits={1}>{pct(l.return_pct)}</Delta></div>
                 <div className="num text-[11px] text-ink3">max drop {pct(l.max_drop_pct)}</div>
               </div>
             ))}

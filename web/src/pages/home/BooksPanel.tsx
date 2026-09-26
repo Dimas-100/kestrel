@@ -67,7 +67,7 @@ export function BooksPanel({ books, tz, now }: { books: BookRow[]; tz: string; n
                 <td><MoneyBadge money={b.money} /></td>
                 <td className="r num">{money(b.value)}</td>
                 <td className="r">{b.day_change == null ? <Missing /> : <Delta value={b.day_change}>{signedMoney(b.day_change)}</Delta>}</td>
-                <td className="r">{b.since_pct == null ? <Missing /> : <Delta value={b.since_pct}>{pct(b.since_pct)}</Delta>}</td>
+                <td className="r">{b.since_pct == null ? <Missing /> : <Delta value={b.since_pct} digits={1}>{pct(b.since_pct)}</Delta>}</td>
                 <td style={{ paddingLeft: 28 }}>
                   {b.band_lo != null && b.band_hi != null && b.per_trade_pct != null && (
                     <BandBar lo={b.band_lo} hi={b.band_hi} actual={b.per_trade_pct} />

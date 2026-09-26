@@ -72,8 +72,8 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                 <th className="r">Stop</th><th style={{ paddingLeft: 16 }}>Room to stop</th><th className="r">P/L</th></tr>
             </thead>
             <tbody>
-              {positions.slice(0, SHOWN).map((p) => (
-                <tr key={`${p.book_id}-${p.symbol}`}>
+              {positions.slice(0, SHOWN).map((p, i) => (
+                <tr key={`${p.book_id}-${p.symbol}-${i}`}>
                   <td>
                     <div className="flex items-center gap-2.5">
                       <BookMark kind={p.money} />
@@ -91,11 +91,11 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                         <span className="relative w-14 h-1.5 rounded-full overflow-hidden bg-panel2"
                           style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>
                           <span className="absolute inset-y-0 left-0" style={{
-                            width: `${Math.min(100, (p.room_pct / 12) * 100)}%`,
+                            width: `${Math.max(0, Math.min(100, (p.room_pct / 12) * 100))}%`, // below the stop: empty
                             background: p.room_pct < 8 ? 'var(--warn)' : 'var(--ink3)',
                           }} />
                         </span>
-                        <span className="num text-xs">{p.room_pct.toFixed(1)}%</span>
+                        <span className="num text-xs">{num(p.room_pct, 1)}%</span>
                       </div>
                     ) : p.money === 'real' ? (
                       <span className="flex items-center gap-1.5 text-xs">

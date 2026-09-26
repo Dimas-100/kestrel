@@ -1,5 +1,9 @@
-// Types mirror src/kestrel/views/*.py. The fixtures in src/test/fixtures are generated from the Python code and a
-// Python test fails when they drift, so a renamed field shows up as a failing front-end test here.
+// Types mirror src/kestrel/views/*.py, by hand. What keeps them honest:
+// - the fixtures in src/test/fixtures are generated from the Python code, and a Python test fails when they drift;
+// - src/test/renderApp.tsx checks the fixtures `satisfies` these types, so `tsc` fails when a field here is renamed,
+//   missing from Python's output, or of another JSON type.
+// Not checked: a field Python adds that is not declared here, and the members of string-literal unions (both sides
+// are plain strings in JSON).
 import { useQuery } from '@tanstack/react-query'
 
 export type Money = 'real' | 'paper'

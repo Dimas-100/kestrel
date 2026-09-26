@@ -12,6 +12,12 @@ describe('chart geometry', () => {
     expect(windowPoints([p('2026-09-25', 4)], '1M')).toHaveLength(1)
     expect(windowPoints([], '1Y')).toEqual([])
   })
+  it('counts months back from the end of a month without skipping the shorter month', () => {
+    const march = [p('2026-02-27', 1), p('2026-02-28', 2), p('2026-03-02', 3), p('2026-03-31', 4)]
+    expect(windowPoints(march, '1M').map((x) => x.date)).toEqual(['2026-02-28', '2026-03-02', '2026-03-31'])
+    const leap = [p('2027-02-26', 1), p('2027-02-28', 2), p('2027-03-01', 3), p('2028-02-29', 4)]
+    expect(windowPoints(leap, '1Y').map((x) => x.date)).toEqual(['2027-02-28', '2027-03-01', '2028-02-29'])
+  })
   it('never returns fewer than two points when it has them', () => {
     const pts = [p('2026-01-02', 1), p('2026-09-24', 2), p('2026-09-25', 3)]
     expect(windowPoints(pts, '1M')).toHaveLength(2)

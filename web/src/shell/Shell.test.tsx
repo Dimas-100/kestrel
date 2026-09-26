@@ -38,6 +38,23 @@ describe('shell', () => {
     window.localStorage.clear()
   })
 
+  it('opens and closes the phone drawer, keeping keyboard focus in step', async () => {
+    const { container } = renderApp('/')
+    const menu = await screen.findByRole('button', { name: 'Open menu' })
+    const frame = container.querySelector('.shell') as HTMLElement
+    const sidebar = screen.getByRole('complementary', { name: 'Sidebar' })
+    expect(menu.getAttribute('aria-controls')).toBe(sidebar.id)
+    expect(menu.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(menu)
+    expect(menu.getAttribute('aria-expanded')).toBe('true')
+    expect(frame.dataset.drawer).toBe('open')
+    expect(sidebar.contains(document.activeElement)).toBe(true) // focus moved into the drawer
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
+    expect(menu.getAttribute('aria-expanded')).toBe('false')
+    expect(frame.dataset.drawer).toBe('closed')
+    expect(document.activeElement).toBe(menu)
+  })
+
   it('shows an unknown path as not found inside the shell', async () => {
     renderApp('/nowhere')
     expect(await screen.findByRole('heading', { name: 'Not found' })).toBeTruthy()

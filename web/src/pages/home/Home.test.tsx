@@ -1,11 +1,19 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { HomeView } from '../../lib/api'
-import { homeFixture, renderApp } from '../../test/renderApp'
+import { setCurrency } from '../../lib/format'
+import { homeFixture, renderApp, shellFixture } from '../../test/renderApp'
 import { verdict } from './ComparisonPanel'
 import { summaryParts } from './Home'
 
 const panel = (name: string) => screen.getByRole('region', { name })
+
+const empty: HomeView = {
+  ...homeFixture, allocation: [], accounts: [], attention: [], books: [], today: [], positions: [],
+  comparison: { ...homeFixture.comparison, lines: [], dates: [], gap_pts: null, shallower: null },
+  net_worth: { ...homeFixture.net_worth, total: 0, points: [] },
+  summary: { day_change: 0, gap_pts: null, needs_you: 0 },
+}
 
 describe('Home', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -59,16 +67,50 @@ describe('Home', () => {
   })
 
   it('handles a person with no data yet', async () => {
-    const empty: HomeView = {
-      ...homeFixture, allocation: [], accounts: [], attention: [], books: [], today: [], positions: [],
-      comparison: { ...homeFixture.comparison, lines: [], dates: [], gap_pts: null, shallower: null },
-      net_worth: { ...homeFixture.net_worth, total: 0, points: [] },
-      summary: { day_change: 0, gap_pts: null, needs_you: 0 },
-    }
     renderApp('/', { home: empty })
     expect(await screen.findByText('Nothing needs you right now.')).toBeTruthy()
     expect(screen.getByText('No open positions.')).toBeTruthy()
-    expect(screen.getByText(/No history yet/)).toBeTruthy()
+    expect(within(panel('Trading vs your index money')).getByText(/No history yet/)).toBeTruthy()
+    expect(within(panel('Net worth')).getByText(/No history yet/)).toBeTruthy()
+  })
+
+  it('survives a pointer or key on an empty chart', async () => {
+    renderApp('/', { home: empty })
+    const nw = await screen.findByRole('region', { name: 'Net worth' })
+    const chart = within(nw).queryByRole('img') ?? nw
+    fireEvent.pointerMove(chart, { clientX: 40 })
+    fireEvent.keyDown(chart, { key: 'ArrowRight' })
+    expect(screen.getByRole('region', { name: 'Net worth' })).toBeTruthy()
+    expect(screen.queryByText(/Something went wrong/)).toBeNull()
+  })
+
+  it('keeps what it showed when a refresh fails', async () => {
+    const { client } = renderApp('/')
+    await screen.findByRole('region', { name: 'Net worth' })
+    act(() => client.getQueryCache().find({ queryKey: ['home'] })?.setState({
+      status: 'error', error: new Error('/api/home answered 502'), fetchStatus: 'idle',
+    }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/refresh.*502/)
+    expect(screen.getByRole('region', { name: 'Net worth' })).toBeTruthy()
+  })
+
+  it('prints a stop above the last price with a true minus sign', async () => {
+    const positions = homeFixture.positions.map((p, i) => (i === 1 ? { ...p, room_pct: -2.5 } : p))
+    renderApp('/', { home: { ...homeFixture, positions } })
+    const table = await screen.findByRole('region', { name: 'Open positions' })
+    expect(within(table).getByText('−2.5%')).toBeTruthy()
+  })
+
+  describe('in another currency', () => {
+    afterEach(() => setCurrency('USD'))
+
+    it('shows every amount in the profile currency from the first render', async () => {
+      renderApp('/', { shell: { ...shellFixture, app: { ...shellFixture.app, currency: 'EUR' } } })
+      const nw = await screen.findByRole('region', { name: 'Net worth' })
+      const [whole] = homeFixture.net_worth.total.toFixed(2).split('.')
+      expect(within(nw).getByText(`€${Number(whole).toLocaleString('en-US')}`)).toBeTruthy()
+      expect(nw.textContent).not.toContain('$')
+    })
   })
 
   it('marks returns as gains or losses, never by colour alone', async () => {
@@ -79,7 +121,7 @@ describe('Home', () => {
 })
 
 describe('words from the data', () => {
-  it('writes the summary sentence', () => {
+  it('writes the summary sentence', async () => {
     const base = homeFixture
     expect(summaryParts(base).needs).toBe('2 items need you.')
     expect(summaryParts(base).trading).toBe('Trading is ahead of your index money by 2.9 pts this year.')
@@ -89,6 +131,9 @@ describe('words from the data', () => {
     })
     expect(summaryParts({ ...base, summary: { ...base.summary, gap_pts: null, needs_you: 0 } }))
       .toEqual({ trading: null, needs: 'Nothing needs you.' })
+    // a weekend or a flat day: no "$0.00", no arrow
+    renderApp('/', { home: { ...base, summary: { ...base.summary, day_change: 0.004 } } })
+    expect(await screen.findByText(/^All your money is unchanged today\. Trading is ahead/)).toBeTruthy()
   })
 
   it('writes the verdict with its sample-size caveat', () => {
@@ -96,6 +141,10 @@ describe('words from the data', () => {
     expect(v?.headline).toMatch(/^Trading is ahead by 2\.9 pts this year, with a shallower worst drop/)
     expect(v?.caveat).toBe('34 real trades so far — early evidence. The strategy is reviewed at 50.')
     expect(verdict({ ...homeFixture.comparison, gap_pts: null })).toBeNull()
+    const lt = homeFixture.comparison.lines.find((l) => l.key === 'long_term')!
+    const level = homeFixture.comparison.lines.map((l) => (l.key === 'trading'
+      ? { ...l, max_drop_pct: lt.max_drop_pct + 0.04 } : l))
+    expect(verdict({ ...homeFixture.comparison, lines: level })?.headline).toMatch(/, with an equal worst drop \(/)
   })
 
   it('names the shared start when a line begins later in the year', async () => {

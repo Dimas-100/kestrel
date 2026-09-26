@@ -3,6 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <!-- the Graphite background before any script runs, so the first paint is never a white flash -->
+    <style>
+      html { background: #0b0c0e; }
+      @media (prefers-color-scheme: light) { html { background: #f2f3f5; } }
+    </style>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>kestrel</title>
   </head>

@@ -8,19 +8,26 @@ export function setCurrency(code: string): void {
   currency = code
 }
 
-function currencyFormat(cents: boolean): Intl.NumberFormat {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: cents ? 2 : 0,
-    maximumFractionDigits: cents ? 2 : 0,
-  })
+/** A non-negative amount in the profile currency; "EURO 1,234.50" when Intl doesn't know the code (a RangeError). */
+function currencyText(abs: number, options: Intl.NumberFormatOptions): string {
+  try {
+    return new Intl.NumberFormat('en-US', { ...options, style: 'currency', currency }).format(abs)
+  } catch (error) {
+    if (!(error instanceof RangeError)) throw error
+    return `${currency} ${new Intl.NumberFormat('en-US', options).format(abs)}`
+  }
+}
+
+/** A true minus sign in front, except on what shows as zero. */
+function signedCurrency(value: number, options: Intl.NumberFormatOptions): string {
+  const text = currencyText(Math.abs(value), options)
+  return value < 0 && text !== currencyText(0, options) ? MINUS + text : text
 }
 
 /** $1,234.56 · −$12.30 (a true minus sign) */
 export function money(value: number, cents = true): string {
-  const text = currencyFormat(cents).format(Math.abs(value))
-  return value < 0 && text !== currencyFormat(cents).format(0) ? MINUS + text : text
+  const digits = cents ? 2 : 0
+  return signedCurrency(value, { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
 /** +$412.30 · −$32.50 · $0.00 (zero carries no sign) */
@@ -37,19 +44,15 @@ export function pct(value: number, digits = 1): string {
   return `${value > 0 ? '+' : MINUS}${text}%`
 }
 
-/** $118.2k · $1.2M — chart labels only */
+/** $118.2K · €1.3M · −$950 — chart labels only, in the profile currency */
 export function compactMoney(value: number): string {
-  const abs = Math.abs(value)
-  const sign = value < 0 ? MINUS : ''
-  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`
-  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}k`
-  return `${sign}$${abs.toFixed(0)}`
+  return signedCurrency(value, { notation: 'compact', minimumFractionDigits: 0, maximumFractionDigits: 1 })
 }
 
 /** 508.20 — prices and quantities */
 export function num(value: number, digits = 2): string {
   const text = Math.abs(value).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
-  return value < 0 ? MINUS + text : text
+  return value < 0 && /[1-9]/.test(text) ? MINUS + text : text // no sign on what shows as zero
 }
 
 /** ["$148,392", "18"] — the hero figure dims its cents */
@@ -90,7 +93,7 @@ export function timeHM(iso: string, timeZone: string): string {
     .format(new Date(iso))
 }
 
-/** "2 min ago" · "26 h ago" · "3 d ago" */
+/** How long ago, as a short age: "2m" · "26h" · "3d" ("never" without a time) */
 export function ago(iso: string | null, now: Date): string {
   if (!iso) return 'never'
   const minutes = Math.max(0, Math.floor((now.getTime() - new Date(iso).getTime()) / 60000))

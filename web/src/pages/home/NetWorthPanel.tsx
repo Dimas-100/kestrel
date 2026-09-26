@@ -35,7 +35,7 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
         <Seg label="View" options={['Chart', 'Table'] as const} value={view} onChange={setView} />
       </>}>
       <div className="flex flex-wrap items-end gap-x-9 gap-y-3 mt-3.5">
-        <div className="text-5xl font-semibold tracking-[-0.035em] leading-none">
+        <div className="text-[38px] sm:text-5xl font-semibold tracking-[-0.035em] leading-none">
           {whole}<span className="text-ink3">.{cents}</span>
         </div>
         <div className="flex flex-wrap gap-x-7 gap-y-3 pb-1">
@@ -49,12 +49,14 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
             <Delta value={nw.year.amount}>{signedMoney(nw.year.amount)}</Delta>
           </Stat>
           <Stat label="Market" sub={`over ${range}`}>
-            <Delta value={growth}>{signedMoney(growth, false)}</Delta>
+            <Delta value={growth} digits={0}>{signedMoney(growth, false)}</Delta>
           </Stat>
         </div>
       </div>
       <div className="mt-auto pt-3">
-        {view === 'Chart' ? (
+        {points.length === 0 ? (
+          <p className="text-ink3">No history yet. The chart appears once your accounts have a few days of data.</p>
+        ) : view === 'Chart' ? (
           <LineChart dates={points.map((p) => p.date)} height={196}
             ariaLabel="Net worth against your starting value plus deposits"
             series={[

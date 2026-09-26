@@ -25,6 +25,14 @@ describe('money', () => {
       expect(money(1234.5)).toBe('€1,234.50')
       expect(signedMoney(-2)).toBe('−€2.00')
       expect(splitCents(1234.5)).toEqual(['€1,234', '50'])
+      expect(compactMoney(118200)).toBe('€118.2K')
+      expect(compactMoney(-950)).toBe('−€950')
+    })
+    it('falls back to the code itself when Intl does not know it', () => {
+      setCurrency('EURO')
+      expect(money(1234.5)).toBe('EURO 1,234.50')
+      expect(signedMoney(-2)).toBe('−EURO 2.00')
+      expect(compactMoney(118200)).toBe('EURO 118.2K')
     })
   })
 })
@@ -37,13 +45,16 @@ describe('numbers', () => {
     expect(pct(0.279, 2)).toBe('+0.28%')
   })
   it('compacts chart labels', () => {
-    expect(compactMoney(118200)).toBe('$118.2k')
+    expect(compactMoney(118200)).toBe('$118.2K')
     expect(compactMoney(1_250_000)).toBe('$1.3M')
     expect(compactMoney(-950)).toBe('−$950')
+    expect(compactMoney(-0.04)).toBe('$0') // no sign on what shows as zero
   })
   it('formats prices', () => {
     expect(num(508.2)).toBe('508.20')
     expect(num(-3)).toBe('−3.00')
+    expect(num(-2.46, 1)).toBe('−2.5')
+    expect(num(-0.004)).toBe('0.00') // no sign on what shows as zero
   })
 })
 

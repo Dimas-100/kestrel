@@ -124,8 +124,9 @@
   .panel { height: auto; }
 }
 @media (max-width: 900px) {
-  .sidebar { position: fixed; left: 0; top: 0; z-index: 30; transform: translateX(-100%); }
-  .shell[data-drawer="open"] .sidebar { transform: none; }
+  /* closed: off screen AND hidden, so its links leave the tab order and screen readers skip it */
+  .sidebar { position: fixed; left: 0; top: 0; z-index: 30; transform: translateX(-100%); visibility: hidden; }
+  .shell[data-drawer="open"] .sidebar { transform: none; visibility: visible; }
   .shell[data-drawer="open"] .scrim { display: block; position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / 0.45); }
   .menu-btn { display: inline-flex; }
   .topbar { padding: 0 16px; }
@@ -136,4 +137,6 @@
   .tabbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0;
     bottom: 0; z-index: 25; height: 72px; padding: 6px 4px 14px; background: var(--side); border-top: 1px solid var(--line); }
   .content { padding-bottom: 96px; }
+  .icon-btn { width: 44px; height: 44px; } /* touch targets */
+  .seg button { min-height: 36px; }
 }

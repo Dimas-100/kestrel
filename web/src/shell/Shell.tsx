@@ -1,7 +1,7 @@
 // The frame around every page: sidebar (greeting, navigation, sources), top bar, phone tab bar.
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { type Ref, useEffect, useRef, useState } from 'react'
 import { Icon, type IconName, Mark } from '../components/Icon'
 import { type ShellView, type Source, useShell } from '../lib/api'
 import { ago, setCurrency, timeHM } from '../lib/format'
@@ -30,6 +30,8 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     ],
   },
 ]
+
+const SIDEBAR_ID = 'sidebar'
 
 const TABS: NavItem[] = [
   { to: '/', label: 'Home', icon: 'home' },
@@ -68,11 +70,11 @@ function SourceRow({ source, now }: { source: Source; now: Date }) {
   )
 }
 
-function Sidebar({ shell }: { shell?: ShellView }) {
+function Sidebar({ shell, ref }: { shell?: ShellView; ref: Ref<HTMLElement> }) {
   const now = shell ? new Date(shell.now) : null
   const tz = shell?.app.timezone ?? 'UTC'
   return (
-    <aside className="sidebar" aria-label="Sidebar">
+    <aside className="sidebar" id={SIDEBAR_ID} aria-label="Sidebar" ref={ref}>
       <div className="flex items-center gap-2.5 px-1.5 h-9">
         <Mark />
         <span className="text-base font-semibold tracking-tight">{shell?.app.name ?? 'kestrel'}</span>
@@ -105,14 +107,16 @@ function Sidebar({ shell }: { shell?: ShellView }) {
   )
 }
 
-function TopBar({ pathname, shell, theme, onToggleTheme, onMenu }: {
+function TopBar({ pathname, shell, theme, onToggleTheme, onMenu, menuOpen, menuRef }: {
   pathname: string; shell?: ShellView; theme: 'dark' | 'light'; onToggleTheme: () => void; onMenu: () => void
+  menuOpen: boolean; menuRef: Ref<HTMLButtonElement>
 }) {
   const client = useQueryClient()
   const [group, page] = crumbs(pathname)
   return (
     <header className="topbar">
-      <button type="button" className="icon-btn menu-btn" aria-label="Open menu" onClick={onMenu}>
+      <button type="button" className="icon-btn menu-btn" aria-label="Open menu" onClick={onMenu} ref={menuRef}
+        aria-expanded={menuOpen} aria-controls={SIDEBAR_ID}>
         <Icon name="menu" size={18} />
       </button>
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px]">
@@ -156,12 +160,30 @@ export function Shell() {
   const [theme, toggleTheme] = useTheme(app?.theme ?? 'system')
   const [drawer, setDrawer] = useState(false)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const menuRef = useRef<HTMLButtonElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const drawerWasOpen = useRef(false)
+
+  // during render, not in an effect: the page below renders after this line and must format in this currency
+  // from its first paint (setCurrency is idempotent)
+  if (app) setCurrency(app.currency)
 
   useEffect(() => setDrawer(false), [pathname]) // navigating closes the phone drawer
   useEffect(() => {
-    if (app) setCurrency(app.currency)
     document.title = app?.name ?? 'kestrel'
   }, [app])
+  useEffect(() => {
+    // opening the drawer moves focus into it; closing hands focus back to the menu button; Escape closes it
+    if (drawer) sidebarRef.current?.querySelector<HTMLElement>('nav a')?.focus()
+    else if (drawerWasOpen.current) menuRef.current?.focus()
+    drawerWasOpen.current = drawer
+    if (!drawer) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawer(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawer])
   useEffect(() => {
     // theme the whole document so overscroll and scrollbars match
     const root = document.documentElement
@@ -174,18 +196,19 @@ export function Shell() {
 
   return (
     <div className="shell" data-drawer={drawer ? 'open' : 'closed'}>
-      <Sidebar shell={shell.data} />
+      <Sidebar shell={shell.data} ref={sidebarRef} />
       <div className="scrim" aria-hidden="true" onClick={() => setDrawer(false)} />
       <div className="main">
         <TopBar pathname={pathname} shell={shell.data} theme={theme} onToggleTheme={toggleTheme}
-          onMenu={() => setDrawer(true)} />
+          onMenu={() => setDrawer(true)} menuOpen={drawer} menuRef={menuRef} />
         <main className="content" id="main">
           {shell.isError && (
             <div role="alert" className="panel mb-4" style={{ borderColor: 'var(--serious)' }}>
               kestrel&rsquo;s server didn&rsquo;t answer. Is <code>kestrel serve</code> running?
             </div>
           )}
-          <Outlet />
+          {/* pages wait for the profile's settings (currency, time zone) so they never paint with the defaults */}
+          {shell.data || shell.isError ? <Outlet /> : <p className="text-ink3" role="status">Loading…</p>}
         </main>
       </div>
       <TabBar />

@@ -14,9 +14,12 @@ export function MoneyBadge({ money }: { money: Money }) {
   return <span className="badge"><BookMark kind={money} size={9} />{money === 'real' ? 'REAL' : 'PAPER'}</span>
 }
 
-/** A signed value with ▲/▼ so a gain or loss never rests on colour alone. */
-export function Delta({ value, children }: { value: number; children: ReactNode }) {
-  if (Math.abs(value) < 0.005) return <span className="num" style={{ color: 'var(--ink3)' }}>{children}</span>
+/** A signed value with ▲/▼ so a gain or loss never rests on colour alone. `digits` is the precision the value is
+ *  shown at (pct() shows 1, money 2): what rounds to zero there is no change — muted, no arrow. */
+export function Delta({ value, digits = 2, children }: { value: number; digits?: number; children: ReactNode }) {
+  if (Math.abs(value) < 0.5 * 10 ** -digits) {
+    return <span className="num" style={{ color: 'var(--ink3)' }}>{children}</span>
+  }
   const up = value > 0
   return (
     <span className={`num ${up ? 'up' : 'down'}`}>
