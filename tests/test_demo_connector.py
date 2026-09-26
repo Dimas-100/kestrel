@@ -72,3 +72,63 @@ def test_collect_marks_a_source_stale_after_its_threshold():
 
 def test_the_demo_profile_greets_alex():
     assert DEMO_PROFILE.you.name == "Alex"
+
+
+def _trade_for(snap, chart):
+    matches = [t for t in snap.trades
+               if (t.book_id, t.symbol, t.opened) == (chart.book_id, chart.symbol, chart.opened)]
+    assert len(matches) == 1, (chart.book_id, chart.symbol, chart.opened)
+    return matches[0]
+
+
+def test_every_chart_matches_one_trade_and_its_prices_sit_inside_their_bars():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    assert snap.trade_charts
+    for chart in snap.trade_charts:
+        trade = _trade_for(snap, chart)
+        dates = [b.date for b in chart.bars]
+        assert dates == sorted(dates) and trade.opened in dates and trade.closed in dates
+        assert all(b.low <= min(b.open, b.close) <= max(b.open, b.close) <= b.high for b in chart.bars)
+        entry = chart.bars[dates.index(trade.opened)]
+        leave = chart.bars[dates.index(trade.closed)]
+        assert entry.open == trade.entry_price
+        # bought at an open and sold at a later open; a same-day trade sells at that day's close
+        assert (leave.open if trade.closed > trade.opened else leave.close) == trade.exit_price
+        assert entry.low <= trade.entry_price <= entry.high and leave.low <= trade.exit_price <= leave.high
+
+
+def test_each_book_charts_its_eight_most_recent_trades_with_about_thirty_sessions():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    for book in snap.books:
+        trades = sorted((t for t in snap.trades if t.book_id == book.id), key=lambda t: (t.closed, t.opened, t.symbol))
+        charts = [c for c in snap.trade_charts if c.book_id == book.id]
+        assert {(c.symbol, c.opened) for c in charts} == {(t.symbol, t.opened) for t in trades[-8:]}
+        assert all(len(c.bars) == 30 for c in charts)
+
+
+def test_mean_reversion_charts_carry_rsi2_and_an_8_percent_stop():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    strategy_of = {b.id: b.strategy_id for b in snap.books}
+    rsi2_charts = 0
+    for chart in snap.trade_charts:
+        trade = _trade_for(snap, chart)
+        if strategy_of[chart.book_id] != "rsi2":
+            assert chart.indicator is None and chart.stop is None
+            continue
+        rsi2_charts += 1
+        assert chart.indicator is not None and chart.indicator.label == "RSI(2)"
+        assert len(chart.indicator.values) == len(chart.bars) and chart.indicator.values[:2] == [None, None]
+        assert all(0 <= v <= 100 for v in chart.indicator.values[2:])
+        assert [(line.value, line.label) for line in chart.indicator.lines] == [
+            (10, "buy under 10"), (70, "sell over 70")]
+        assert chart.stop == round(trade.entry_price * 0.92, 2)
+    assert rsi2_charts == 16  # the real and the paper book, 8 each
+
+
+def test_mean_reversion_has_backtest_figures_and_a_watch_list():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    rsi2 = next(s for s in snap.strategies if s.id == "rsi2")
+    assert rsi2.expected is not None and (rsi2.expected.cagr_pct, rsi2.expected.max_drawdown_pct) == (23.4, -11.7)
+    assert [(w.symbol, w.label) for w in rsi2.watch] == [("KO", "RSI(2)"), ("ABT", "RSI(2)"), ("UNP", "RSI(2)")]
+    assert all(w.value is not None and w.value < 20 for w in rsi2.watch)
+    assert all(s.watch == [] for s in snap.strategies if s.id != "rsi2")

@@ -12,9 +12,12 @@ from zoneinfo import ZoneInfo
 
 from ..contract import (
     Account,
+    Bar,
     Benchmark,
     Book,
     Expected,
+    Indicator,
+    IndicatorLine,
     Position,
     Run,
     Series,
@@ -23,8 +26,11 @@ from ..contract import (
     Step,
     Strategy,
     Trade,
+    TradeChart,
     ValuePoint,
+    WatchItem,
 )
+from ..metrics import rsi
 
 DAYS = 262  # about a year of weekdays
 MARKET_DRIFT, MARKET_VOL = 0.00022, 0.0085  # a daily market factor every account leans on
@@ -34,6 +40,9 @@ FUNDS = ["XLE", "XLK", "XLV", "XLI", "XLP", "XLU", "XLY", "XLB", "SPY"]
 RSI2_DISTRIBUTION = [
     0.2, 3.1, 1.2, 0.3, 0.6, 1.1, 2.0, 4.9, 9.2, 10.9, 11.8, 14.6, 17.3, 12.1, 6.4, 2.6, 1.0, 0.4, 0.2, 0.1,
 ]
+CHARTED = 8  # each book's most recent closed trades that get a chart
+CHART_BARS = 30  # sessions of daily bars per chart
+RSI2_LINES = [IndicatorLine(value=10, label="buy under 10"), IndicatorLine(value=70, label="sell over 70")]
 
 
 def weekdays_ending(end: date, count: int) -> list[date]:
@@ -96,6 +105,52 @@ def _trades(rng: random.Random, book_id: str, days: list[date], count: int, *, w
     return trades
 
 
+def _chart(trade: Trade, days: list[date], seed: str, rsi2: bool) -> TradeChart:
+    """About 30 sessions of bars around a trade: the entry bar opens at the entry price and the exit bar at the exit
+    price (a same-day trade closes at it). Mean reversion adds RSI(2) and its 8% stop."""
+    rng = random.Random(seed)
+    e, x = days.index(trade.opened), days.index(trade.closed)
+    end = min(len(days) - 1, x + 5)
+    start = max(0, end - CHART_BARS + 1)
+    opens: dict[int, float] = {e: trade.entry_price}
+    gaps = {i: rng.gauss(0.0, 0.002) for i in range(start, end + 1)}  # each close to the next open
+    if x > e:
+        opens[x] = trade.exit_price
+        for i in range(e + 1, x):
+            t = (i - e) / (x - e)
+            wobble = rng.gauss(0.0, 0.012) * (t * (1 - t)) ** 0.5
+            opens[i] = trade.entry_price + (trade.exit_price - trade.entry_price) * t + trade.entry_price * wobble
+    else:
+        opens[e + 1] = trade.exit_price  # sold at the close: the entry bar closes at the exit price
+        gaps[e] = 0.0
+    for i in range(e - 1, start - 1, -1):  # back from the entry: a slide into the signal, an uptrend before it
+        move = -0.008 - rng.random() * 0.012 if i >= e - 2 else rng.gauss(0.002, 0.012)
+        opens[i] = opens[i + 1] / (1 + move)
+    for i in range(max(opens) + 1, end + 1):
+        opens[i] = opens[i - 1] * (1 + rng.gauss(0.001, 0.012))
+    bars: list[Bar] = []
+    for i in range(start, end + 1):
+        o = round(opens[i], 2)
+        c = round(opens[i + 1] * (1 + gaps[i]) if i < end else o * (1 + rng.gauss(0.0, 0.01)), 2)
+        high = round(max(o, c) * (1 + abs(rng.gauss(0.0, 0.005))), 2)
+        low = round(min(o, c) * (1 - abs(rng.gauss(0.0, 0.005))), 2)
+        bars.append(Bar(date=days[i], open=o, high=high, low=low, close=c))
+    indicator = stop = None
+    if rsi2:
+        values = [None if v is None else round(v, 1) for v in rsi([b.close for b in bars])]
+        indicator = Indicator(label="RSI(2)", values=values, lines=RSI2_LINES)
+        stop = round(trade.entry_price * 0.92, 2)
+    return TradeChart(book_id=trade.book_id, symbol=trade.symbol, opened=trade.opened, bars=bars,
+                      indicator=indicator, stop=stop)
+
+
+def _charts(book: Book, trades: list[Trade], days: list[date], seed: int) -> list[TradeChart]:
+    own = [t for t in trades if t.book_id == book.id]
+    recent = sorted(range(len(own)), key=lambda k: (own[k].closed, own[k].opened, own[k].symbol))[-CHARTED:]
+    # seeded by the trade's place in its book, so a chart keeps its shape as the dates move
+    return [_chart(own[k], days, f"{seed}:{book.id}:{k}", book.strategy_id == "rsi2") for k in recent]
+
+
 STRATEGIES = [
     Strategy(
         id="rsi2", name="Mean reversion", summary="Buys large, liquid stocks after a sharp short-term drop inside an "
@@ -113,8 +168,11 @@ STRATEGIES = [
         ],
         sizing="Each position is the account value ÷ 6, at most 5 open.",
         expected=Expected(win_rate=66, avg_trade_pct=0.84, avg_win_pct=2.45, avg_loss_pct=-2.28, trades_per_month=3.1,
-                          sd_trade_pct=3.0, distribution=RSI2_DISTRIBUTION, source="backtest", window="2006–2020"),
+                          sd_trade_pct=3.0, distribution=RSI2_DISTRIBUTION, source="backtest", window="2006–2020",
+                          cagr_pct=23.4, max_drawdown_pct=-11.7),
         review_at_trades=50,
+        watch=[WatchItem(symbol="KO", label="RSI(2)", value=12.4), WatchItem(symbol="ABT", label="RSI(2)", value=16.8),
+               WatchItem(symbol="UNP", label="RSI(2)", value=19.1)],
     ),
     Strategy(
         id="ibs", name="ETF close strength",
@@ -254,7 +312,9 @@ class DemoConnector:
         ]
         return Snapshot(
             generated_at=now, sources=sources, accounts=accounts, account_history=account_history, books=books,
-            book_history=book_history, positions=positions, trades=trades, strategies=STRATEGIES,
+            book_history=book_history, positions=positions, trades=trades,
+            trade_charts=[chart for book in books for chart in _charts(book, trades, days, self.seed)],
+            strategies=STRATEGIES,
             runs=self._runs(local), benchmark=Benchmark(symbol="SPY", label="S&P 500", points=_points(days, spx, zero)),
         )
 

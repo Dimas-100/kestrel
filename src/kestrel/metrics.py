@@ -81,3 +81,25 @@ def sum_series(series: Sequence[Sequence[ValuePoint]]) -> list[ValuePoint]:
                 total += last[i]
         out.append(ValuePoint(date=day, value=round(total, 2), net_flow=round(flow, 2)))
     return out
+
+
+def rsi(closes: Sequence[float], period: int = 2) -> list[float | None]:
+    """Wilder's relative strength index, aligned with `closes`: None until `period` changes have been seen."""
+    out: list[float | None] = [None] * len(closes)
+    if len(closes) <= period:
+        return out
+    changes = [b - a for a, b in zip(closes, closes[1:])]
+    gain = sum(max(c, 0.0) for c in changes[:period]) / period
+    loss = sum(max(-c, 0.0) for c in changes[:period]) / period
+
+    def value() -> float:
+        if gain == 0 and loss == 0:
+            return 50.0
+        return 100.0 if loss == 0 else 100.0 - 100.0 / (1.0 + gain / loss)
+
+    out[period] = value()
+    for i in range(period, len(changes)):
+        gain = (gain * (period - 1) + max(changes[i], 0.0)) / period
+        loss = (loss * (period - 1) + max(-changes[i], 0.0)) / period
+        out[i + 1] = value()
+    return out

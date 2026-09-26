@@ -3,7 +3,7 @@ import datetime as dt
 import pytest
 
 from kestrel.contract import ValuePoint
-from kestrel.metrics import expected_band, growth_index, largest_remainder, max_drawdown_pct, sum_series
+from kestrel.metrics import expected_band, growth_index, largest_remainder, max_drawdown_pct, rsi, sum_series
 
 
 def vp(day, value, flow=0.0):
@@ -57,3 +57,11 @@ def test_sum_series_counts_a_late_account_as_a_deposit_not_growth():
     total = sum_series([a, late])
     assert total[1].value == 140 and total[1].net_flow == 40
     assert growth_index(total) == [1.0, 1.0]
+
+
+def test_rsi_is_wilders_and_aligned_with_the_closes():
+    assert rsi([10, 11, 10, 12]) == pytest.approx([None, None, 50.0, 83.333], abs=0.001)
+    assert rsi([1, 2, 3]) == [None, None, 100.0]  # no losses at all
+    assert rsi([3, 2, 1]) == [None, None, 0.0]
+    assert rsi([5, 5, 5]) == [None, None, 50.0]  # no movement is neither overbought nor oversold
+    assert rsi([1, 2]) == [None, None]
