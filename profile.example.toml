@@ -1,0 +1,44 @@
+# kestrel profile. Copy this file to profile.toml (gitignored) and make it yours.
+# Never put a key or password in here: a source names the environment variable that holds it.
+
+[you]
+name = "Alex"
+
+[app]
+name = "kestrel"
+accent = "rufous"          # rufous | slate | mono
+theme = "system"           # system | dark | light
+gain_loss = "green-red"    # green-red | blue-orange
+density = "comfortable"    # comfortable | compact
+currency = "USD"
+timezone = "America/New_York"
+
+[benchmark]
+symbol = "SPY"
+label = "S&P 500"
+
+# Where your data comes from. The demo source works out of the box.
+[[sources]]
+id = "demo"
+kind = "demo"
+label = "Demo data"
+
+# Coming in a later version (Phase 4):
+#
+# [[sources]]
+# id = "portfolio"
+# kind = "fdc"                       # financial-data-collector's SQLite warehouse, read-only
+# path = "../financial-data-collector/data/warehouse.db"
+# stale_after = "36h"
+#
+# [[sources]]
+# id = "paper"
+# kind = "rails"                     # a trading-rails install: paper state, run log, backtests
+# path = "../trading-rails/data"
+#
+# [[sources]]
+# id = "desk"
+# kind = "feed"                      # any system that serves the kestrel contract as JSON
+# url = "http://127.0.0.1:8000/api/feed"
+# token_env = "KESTREL_DESK_TOKEN"
+# stale_after = "15m"
