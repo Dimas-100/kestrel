@@ -21,3 +21,17 @@ system's code entering this repo.
 - An alert's `link` is a page inside kestrel (`/books`) or empty. A link to another site (`https://…`, `//host`) fails
   validation, so the payload is dropped and the source shows as `error`.
 - A connector only reads. Nothing in the contract asks a source to change anything.
+
+## Optional extras
+
+The Strategy page draws more when a source sends these. Each is optional; without it, the page shows a plain
+"not reported" state for that part and everything else still works.
+
+- `trade_charts`: daily bars around a closed trade (`date`, `open`, `high`, `low`, `close`). A chart matches its
+  trade by `book_id`, `symbol` and `opened`. It may carry an `indicator` drawn in its own panel under the candles
+  (`label`, `values` aligned with the bars, threshold `lines`) and the trade's `stop`. A chart whose bars don't
+  include the open date, or that matches no trade, is ignored.
+- `Expected.cagr_pct` and `Expected.max_drawdown_pct`: the backtest's yearly return and its worst drop (a negative
+  percent), plotted on "Is it worth it?".
+- `Strategy.watch`: names close to a signal (`symbol`, `label`, `value`, `note`), listed under "Where the money
+  works".

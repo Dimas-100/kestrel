@@ -84,6 +84,40 @@
       "title": "Alert",
       "type": "object"
     },
+    "Bar": {
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "open": {
+          "title": "Open",
+          "type": "number"
+        },
+        "high": {
+          "title": "High",
+          "type": "number"
+        },
+        "low": {
+          "title": "Low",
+          "type": "number"
+        },
+        "close": {
+          "title": "Close",
+          "type": "number"
+        }
+      },
+      "required": [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close"
+      ],
+      "title": "Bar",
+      "type": "object"
+    },
     "Benchmark": {
       "properties": {
         "symbol": {
@@ -243,6 +277,30 @@
           "default": "",
           "title": "Window",
           "type": "string"
+        },
+        "cagr_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cagr Pct"
+        },
+        "max_drawdown_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Drawdown Pct"
         }
       },
       "required": [
@@ -304,6 +362,60 @@
         "value"
       ],
       "title": "Holding",
+      "type": "object"
+    },
+    "Indicator": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Values",
+          "type": "array"
+        },
+        "lines": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/IndicatorLine"
+          },
+          "title": "Lines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label",
+        "values"
+      ],
+      "title": "Indicator",
+      "type": "object"
+    },
+    "IndicatorLine": {
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "title": "IndicatorLine",
       "type": "object"
     },
     "Position": {
@@ -563,6 +675,14 @@
           ],
           "default": null,
           "title": "Review At Trades"
+        },
+        "watch": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/WatchItem"
+          },
+          "title": "Watch",
+          "type": "array"
         }
       },
       "required": [
@@ -644,6 +764,62 @@
       "title": "Trade",
       "type": "object"
     },
+    "TradeChart": {
+      "description": "Daily bars around one closed trade. It matches a Trade by (book_id, symbol, opened); a chart whose bars\ndon't include the open date, or that matches no trade, is ignored.",
+      "properties": {
+        "book_id": {
+          "title": "Book Id",
+          "type": "string"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "opened": {
+          "format": "date",
+          "title": "Opened",
+          "type": "string"
+        },
+        "bars": {
+          "items": {
+            "$ref": "#/$defs/Bar"
+          },
+          "title": "Bars",
+          "type": "array"
+        },
+        "indicator": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Indicator"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "stop": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop"
+        }
+      },
+      "required": [
+        "book_id",
+        "symbol",
+        "opened",
+        "bars"
+      ],
+      "title": "TradeChart",
+      "type": "object"
+    },
     "ValuePoint": {
       "properties": {
         "date": {
@@ -666,6 +842,42 @@
         "value"
       ],
       "title": "ValuePoint",
+      "type": "object"
+    },
+    "WatchItem": {
+      "description": "A name close to a signal, for \"Where the money works\".",
+      "properties": {
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "symbol",
+        "label"
+      ],
+      "title": "WatchItem",
       "type": "object"
     }
   },
@@ -742,6 +954,14 @@
         "$ref": "#/$defs/Trade"
       },
       "title": "Trades",
+      "type": "array"
+    },
+    "trade_charts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/TradeChart"
+      },
+      "title": "Trade Charts",
       "type": "array"
     },
     "strategies": {

@@ -78,6 +78,17 @@ class Expected(Model):
     distribution: list[float] = []  # share of trades (%) in each 1-point bucket from -10% to +10%
     source: str = ""
     window: str = ""
+    cagr_pct: float | None = None  # the backtest's yearly return
+    max_drawdown_pct: float | None = None  # the backtest's worst drop, negative
+
+
+class WatchItem(Model):
+    """A name close to a signal, for "Where the money works"."""
+
+    symbol: str
+    label: str  # what is measured, e.g. "RSI(2)"
+    value: float | None = None
+    note: str = ""
 
 
 class Strategy(Model):
@@ -88,6 +99,7 @@ class Strategy(Model):
     sizing: str = ""
     expected: Expected | None = None
     review_at_trades: int | None = None
+    watch: list[WatchItem] = []
 
 
 class Book(Model):
@@ -128,6 +140,37 @@ class Trade(Model):
     exit_reason: str = ""
 
 
+class Bar(Model):
+    date: dt.date
+    open: float
+    high: float
+    low: float
+    close: float
+
+
+class IndicatorLine(Model):
+    value: float
+    label: str  # "buy under 10"
+
+
+class Indicator(Model):
+    label: str  # "RSI(2)"
+    values: list[float | None]  # aligned with the chart's bars; None where it isn't defined yet
+    lines: list[IndicatorLine] = []  # thresholds, drawn dotted
+
+
+class TradeChart(Model):
+    """Daily bars around one closed trade. It matches a Trade by (book_id, symbol, opened); a chart whose bars
+    don't include the open date, or that matches no trade, is ignored."""
+
+    book_id: str
+    symbol: str
+    opened: dt.date
+    bars: list[Bar]
+    indicator: Indicator | None = None
+    stop: float | None = None
+
+
 class Run(Model):
     time: AwareDatetime
     label: str
@@ -162,6 +205,7 @@ class Snapshot(Model):
     book_history: list[Series] = []
     positions: list[Position] = []
     trades: list[Trade] = []
+    trade_charts: list[TradeChart] = []
     strategies: list[Strategy] = []
     runs: list[Run] = []
     alerts: list[Alert] = []
@@ -179,7 +223,7 @@ class Snapshot(Model):
 
 _LIST_FIELDS = (
     "sources", "accounts", "holdings", "account_history", "books", "book_history",
-    "positions", "trades", "strategies", "runs", "alerts",
+    "positions", "trades", "trade_charts", "strategies", "runs", "alerts",
 )
 
 
