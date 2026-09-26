@@ -30,4 +30,22 @@ describe('LineChart', () => {
       expect(left).toBeLessThanOrEqual(200 - 190)
     }
   })
+
+  it('draws an expected band and reads it out in the tooltip', () => {
+    render(<LineChart {...props(['1', '2', '3'], [1, 2, 3])}
+      band={{ lo: [null, 0, 0.5], hi: [null, 2, 1.5], label: 'Expected range' }} />)
+    const chart = screen.getByRole('img', { name: 'Test chart' })
+    expect(chart.querySelector('[data-band="wash"]')).not.toBeNull()
+    fireEvent.keyDown(chart, { key: 'End' })
+    expect(screen.getByRole('status').textContent).toContain('Expected range0.5 to 1.5')
+    fireEvent.keyDown(chart, { key: 'Home' })
+    expect(screen.getByRole('status').textContent).toContain('Expected range—') // no band before trade 3
+  })
+
+  it('labels the end of a series that asks for it, where that series ends', () => {
+    const series = [{ key: 'a', label: 'A', values: [1, 2, null], color: 'var(--s2)', style: 'solid' as const,
+      endLabel: 'Real +2%' }]
+    render(<LineChart {...props(['1', '2', '3'], [1, 2, 3])} series={series} />)
+    expect(screen.getByText('Real +2%')).toBeTruthy()
+  })
 })
