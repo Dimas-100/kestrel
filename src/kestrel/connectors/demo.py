@@ -6,6 +6,7 @@ Nothing here is anyone's real account; the tickers are ordinary large caps and s
 
 from __future__ import annotations
 
+import math
 import random
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -16,6 +17,7 @@ from ..contract import (
     Benchmark,
     Book,
     Expected,
+    Holding,
     Indicator,
     IndicatorLine,
     Position,
@@ -43,6 +45,19 @@ RSI2_DISTRIBUTION = [
 CHARTED = 8  # each book's most recent closed trades that get a chart
 CHART_BARS = 30  # sessions of daily bars per chart
 RSI2_LINES = [IndicatorLine(value=10, label="buy under 10"), IndicatorLine(value=70, label="sell over 70")]
+# what the long-term accounts hold: (symbol, name, share of the account, cost as a share of today's value, or None
+# when the broker never reported it); what is left over is cash
+LONG_TERM_HOLDINGS = {
+    "roth": [("SPY", "S&P 500 index fund", 0.62, 0.78), ("XLV", "Health care sector fund", 0.21, 0.93),
+             ("XLP", "Consumer staples sector fund", 0.16, 1.04)],
+    "brokerage": [("SPY", "S&P 500 index fund", 0.38, 0.81), ("XLK", "Technology sector fund", 0.22, 0.74),
+                  ("COST", "Costco", 0.12, 0.66), ("HD", "Home Depot", 0.10, 0.97),
+                  ("XLE", "Energy sector fund", 0.08, 1.12), ("KO", "Coca-Cola", 0.05, None),
+                  ("XLI", "Industrials sector fund", 0.04, 0.90)],
+}
+PRICES = {"SPY": 661.20, "XLV": 142.35, "XLP": 79.10, "XLK": 281.40, "COST": 912.55, "HD": 404.66, "XLE": 88.25,
+          "KO": 69.90, "XLI": 151.30}
+NAMES = {"MSFT": "Microsoft", "CAT": "Caterpillar", "PG": "Procter & Gamble", "JPM": "JPMorgan Chase"}
 
 
 def weekdays_ending(end: date, count: int) -> list[date]:
@@ -78,6 +93,22 @@ def _walk(rng: random.Random, start: float, market: list[float], beta: float, dr
 
 def _points(days: list[date], values: list[float], flows: list[float]) -> list[ValuePoint]:
     return [ValuePoint(date=d, value=v, net_flow=f) for d, v, f in zip(days, values, flows)]
+
+
+def _holdings(account_id: str, value: float) -> list[Holding]:
+    """Whole thousandths of a share, so the cash left over is never negative."""
+    out = []
+    for symbol, name, share, cost in LONG_TERM_HOLDINGS[account_id]:
+        price = PRICES[symbol]
+        quantity = math.floor(value * share / price * 1000) / 1000
+        worth = round(quantity * price, 2)
+        out.append(Holding(account_id=account_id, symbol=symbol, name=name, quantity=quantity, price=price,
+                           value=worth, cost_basis=round(worth * cost, 2) if cost is not None else None))
+    return out
+
+
+def _cash(holdings: list[Holding], account_id: str, value: float) -> float:
+    return round(value - sum(h.value for h in holdings if h.account_id == account_id), 2)
 
 
 def _trades(rng: random.Random, book_id: str, days: list[date], count: int, *, win_p: float, win_mu: float,
@@ -231,16 +262,46 @@ class DemoConnector:
         ibs = _walk(rng, 3200.0, market[-12:], 0.4, 0.0012, 0.004, zero[:12])
         leader = _walk(rng, 25000.0, market[-10:], 0.2, -0.0015, 0.003, zero[:10])
 
+        positions = [
+            Position(book_id="rsi2-real", symbol="MSFT", quantity=6, entry_price=508.20, last_price=512.40,
+                     opened=days[-1]),
+            Position(book_id="rsi2-real", symbol="CAT", quantity=6, entry_price=468.30, last_price=474.95,
+                     stop_price=430.84, opened=days[-3]),
+            Position(book_id="rsi2-real", symbol="PG", quantity=20, entry_price=152.40, last_price=155.08,
+                     stop_price=140.21, opened=days[-4]),
+            Position(book_id="rsi2-real", symbol="JPM", quantity=10, entry_price=301.10, last_price=297.85,
+                     stop_price=277.01, opened=days[-2]),
+            Position(book_id="rsi2-paper", symbol="HD", quantity=45, entry_price=398.10, last_price=404.66,
+                     stop_price=366.25, opened=days[-3]),
+            Position(book_id="rsi2-paper", symbol="TXN", quantity=95, entry_price=190.20, last_price=188.70,
+                     stop_price=174.98, opened=days[-2]),
+            Position(book_id="rsi2-paper", symbol="KO", quantity=260, entry_price=69.05, last_price=69.90,
+                     stop_price=63.53, opened=days[-5]),
+            Position(book_id="rsi2-paper", symbol="ABT", quantity=140, entry_price=128.40, last_price=130.02,
+                     stop_price=118.13, opened=days[-4]),
+            Position(book_id="rsi2-paper", symbol="UNP", quantity=75, entry_price=238.55, last_price=241.10,
+                     stop_price=219.47, opened=days[-1]),
+            Position(book_id="ibs-paper", symbol="XLF", quantity=17, entry_price=51.20, last_price=51.62,
+                     opened=days[-1], note="Exits on strength"),
+        ]
+        holdings = _holdings("roth", roth[-1]) + _holdings("brokerage", brokerage[-1]) + [
+            # the trading account holds what the real book has open
+            Holding(account_id="trading", symbol=p.symbol, name=NAMES[p.symbol], quantity=p.quantity,
+                    price=p.last_price, value=round(p.quantity * p.last_price, 2),
+                    cost_basis=round(p.quantity * p.entry_price, 2))
+            for p in positions if p.book_id == "rsi2-real"
+        ]
         as_of = datetime.combine(days[-1], time(16, 0), tzinfo=self.tz)
         accounts = [
-            Account(id="roth", name="Roth IRA", institution="Brokerage A", category="long_term", value=roth[-1],
+            Account(id="roth", name="Roth IRA", institution="Brokerage A", account_type="Roth IRA",
+                    category="long_term", value=roth[-1], cash=_cash(holdings, "roth", roth[-1]), as_of=as_of),
+            Account(id="brokerage", name="Brokerage", institution="Brokerage A", account_type="Brokerage",
+                    category="long_term", value=brokerage[-1], cash=_cash(holdings, "brokerage", brokerage[-1]),
                     as_of=as_of),
-            Account(id="brokerage", name="Brokerage", institution="Brokerage A", category="long_term",
-                    value=brokerage[-1], as_of=as_of),
-            Account(id="trading", name="Trading account", institution="Brokerage B", category="trading",
-                    value=trading[-1], as_of=as_of),
-            Account(id="savings", name="High-yield savings", institution="Bank C", category="cash", value=savings[-1],
-                    as_of=as_of),
+            Account(id="trading", name="Trading account", institution="Brokerage B", account_type="Individual",
+                    category="trading", value=trading[-1], cash=_cash(holdings, "trading", trading[-1]), as_of=as_of),
+            Account(id="savings", name="High-yield savings", institution="Bank C", account_type="Savings",
+                    category="cash", value=savings[-1], cash=savings[-1], as_of=as_of),
         ]
         account_history = [
             Series(id="roth", points=_points(days, roth, roth_flows)),
@@ -279,28 +340,6 @@ class DemoConnector:
                       lot=24000.0)
             + _trades(rng, "verticals-paper", days[:paused_at], 13, win_p=0.35, win_mu=30.0, loss_mu=-35.0, lot=600.0)
         )
-        positions = [
-            Position(book_id="rsi2-real", symbol="MSFT", quantity=6, entry_price=508.20, last_price=512.40,
-                     opened=days[-1]),
-            Position(book_id="rsi2-real", symbol="CAT", quantity=6, entry_price=468.30, last_price=474.95,
-                     stop_price=430.84, opened=days[-3]),
-            Position(book_id="rsi2-real", symbol="PG", quantity=20, entry_price=152.40, last_price=155.08,
-                     stop_price=140.21, opened=days[-4]),
-            Position(book_id="rsi2-real", symbol="JPM", quantity=10, entry_price=301.10, last_price=297.85,
-                     stop_price=277.01, opened=days[-2]),
-            Position(book_id="rsi2-paper", symbol="HD", quantity=45, entry_price=398.10, last_price=404.66,
-                     stop_price=366.25, opened=days[-3]),
-            Position(book_id="rsi2-paper", symbol="TXN", quantity=95, entry_price=190.20, last_price=188.70,
-                     stop_price=174.98, opened=days[-2]),
-            Position(book_id="rsi2-paper", symbol="KO", quantity=260, entry_price=69.05, last_price=69.90,
-                     stop_price=63.53, opened=days[-5]),
-            Position(book_id="rsi2-paper", symbol="ABT", quantity=140, entry_price=128.40, last_price=130.02,
-                     stop_price=118.13, opened=days[-4]),
-            Position(book_id="rsi2-paper", symbol="UNP", quantity=75, entry_price=238.55, last_price=241.10,
-                     stop_price=219.47, opened=days[-1]),
-            Position(book_id="ibs-paper", symbol="XLF", quantity=17, entry_price=51.20, last_price=51.62,
-                     opened=days[-1], note="Exits on strength"),
-        ]
         sid = self.source_id
         sources = [
             Source(id=f"{sid}-portfolio", label="Portfolio", kind="data collector",
@@ -311,8 +350,8 @@ class DemoConnector:
                    status="stale"),
         ]
         return Snapshot(
-            generated_at=now, sources=sources, accounts=accounts, account_history=account_history, books=books,
-            book_history=book_history, positions=positions, trades=trades,
+            generated_at=now, sources=sources, accounts=accounts, holdings=holdings, account_history=account_history,
+            books=books, book_history=book_history, positions=positions, trades=trades,
             trade_charts=[chart for book in books for chart in _charts(book, trades, days, self.seed)],
             strategies=STRATEGIES,
             runs=self._runs(local), benchmark=Benchmark(symbol="SPY", label="S&P 500", points=_points(days, spx, zero)),

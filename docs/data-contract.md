@@ -25,8 +25,11 @@ system's code entering this repo.
 
 ## Optional extras
 
-The Strategy page draws more when a source sends these. Each is optional; without it, the page shows a plain
-"not reported" state for that part and everything else still works.
+The Strategy and Accounts pages draw more when a source sends these. Each is optional; without it, the page shows a
+plain "not reported" state for that part and everything else still works.
+
+- `Account.account_type`: display text for the kind of account (`Roth IRA`, `Brokerage`), shown beside the
+  institution on the Accounts pages. `holdings` and `Account.cash` fill an account's holdings table.
 
 - `trade_charts`: daily bars around a closed trade (`date`, `open`, `high`, `low`, `close`). A chart matches its
   trade by `book_id`, `symbol` and `opened`. It may carry an `indicator` drawn in its own panel under the candles

@@ -57,6 +57,13 @@ def test_a_full_account_and_series_round_trip_through_json():
     assert again.account_history[0].points[1] == ValuePoint(date=dt.date(2026, 9, 25), value=100.0, net_flow=0.5)
 
 
+def test_an_account_type_is_optional_and_round_trips():
+    base = {"id": "roth", "name": "Roth IRA", "category": "long_term", "value": 100.0, "as_of": NOW.isoformat()}
+    snap = Snapshot.model_validate(minimal(accounts=[base, {**base, "id": "ira", "account_type": "Roth IRA"}]))
+    assert [a.account_type for a in snap.accounts] == ["", "Roth IRA"]
+    assert Snapshot.model_validate_json(snap.model_dump_json()) == snap
+
+
 def test_an_unknown_category_is_refused():
     with pytest.raises(ValidationError):
         Snapshot.model_validate(minimal(accounts=[{"id": "x", "name": "X", "category": "crypto", "value": 1,

@@ -15,6 +15,11 @@
           "title": "Institution",
           "type": "string"
         },
+        "account_type": {
+          "default": "",
+          "title": "Account Type",
+          "type": "string"
+        },
         "category": {
           "enum": [
             "long_term",

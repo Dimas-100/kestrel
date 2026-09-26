@@ -34,6 +34,7 @@ class Account(Model):
     id: str
     name: str
     institution: str = ""
+    account_type: str = ""  # display text for the kind of account: "Roth IRA", "Brokerage"
     category: Category
     value: float
     cash: float = 0.0

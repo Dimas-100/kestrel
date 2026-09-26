@@ -132,3 +132,23 @@ def test_mean_reversion_has_backtest_figures_and_a_watch_list():
     assert [(w.symbol, w.label) for w in rsi2.watch] == [("KO", "RSI(2)"), ("ABT", "RSI(2)"), ("UNP", "RSI(2)")]
     assert all(w.value is not None and w.value < 20 for w in rsi2.watch)
     assert all(s.watch == [] for s in snap.strategies if s.id != "rsi2")
+
+
+def test_every_account_has_a_type_and_its_holdings_and_cash_add_up_to_its_value():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    assert [(a.id, a.account_type) for a in snap.accounts] == [
+        ("roth", "Roth IRA"), ("brokerage", "Brokerage"), ("trading", "Individual"), ("savings", "Savings")]
+    for account in snap.accounts:
+        held = sum(h.value for h in snap.holdings if h.account_id == account.id)
+        assert round(held + account.cash, 2) == account.value
+        assert 0 <= account.cash <= account.value
+    assert {h.account_id for h in snap.holdings} == {"roth", "brokerage", "trading"}  # savings holds only cash
+
+
+def test_holdings_are_priced_consistently_and_the_trading_account_holds_the_real_books_positions():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    assert all(h.value == round(h.quantity * h.price, 2) and h.name for h in snap.holdings)
+    trading = {h.symbol: h.quantity for h in snap.holdings if h.account_id == "trading"}
+    assert trading == {p.symbol: p.quantity for p in snap.positions if p.book_id == "rsi2-real"}
+    assert [h.symbol for h in snap.holdings if h.cost_basis is None] == ["KO"]  # a cost the broker never reported
+    assert len({h.symbol for h in snap.holdings}) == 13
