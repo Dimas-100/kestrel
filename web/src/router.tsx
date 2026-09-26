@@ -1,7 +1,9 @@
-import { createRootRoute, createRoute, createRouter, type RouterHistory } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, type RouterHistory, useNavigate } from '@tanstack/react-router'
+import type { Money } from './lib/api'
 import { Home } from './pages/home/Home'
 import { Soon } from './pages/Soon'
 import { Strategies } from './pages/strategies/Strategies'
+import { Strategy } from './pages/strategy/Strategy'
 import { Shell } from './shell/Shell'
 
 const root = createRootRoute({
@@ -12,11 +14,34 @@ const root = createRootRoute({
 const later = (path: string, title: string, text: string) =>
   createRoute({ getParentRoute: () => root, path, component: () => <Soon title={title} text={text} /> })
 
+/** `?book=real|paper` picks the money the page focuses on; anything else is dropped (the page defaults to real). */
+function bookSearch(search: Record<string, unknown>): { book?: Money } {
+  return search.book === 'real' || search.book === 'paper' ? { book: search.book } : {}
+}
+
+const strategyRoute = createRoute({
+  getParentRoute: () => root,
+  path: '/strategies/$strategyId',
+  validateSearch: bookSearch,
+  component: StrategyRoute,
+})
+
+function StrategyRoute() {
+  const { strategyId } = strategyRoute.useParams()
+  const { book } = strategyRoute.useSearch()
+  const navigate = useNavigate()
+  return (
+    <Strategy id={strategyId} book={book ?? 'real'}
+      onBook={(next) => navigate({ to: '/strategies/$strategyId', params: { strategyId }, search: { book: next } })} />
+  )
+}
+
 const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/', component: Home }),
   later('/accounts', 'Accounts', 'Every account, what it holds, and how much of its growth was your deposits — Phase 4.'),
   later('/books', 'Books', 'Each book, real or paper: equity against its benchmark, drawdown, trades — Phase 3.'),
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
+  strategyRoute,
   later('/backtests', 'Backtests', 'What has been tested and what passed — Phase 5.'),
   later('/activity', 'Activity', 'What ran, what is due, what failed — Phase 5.'),
   later('/settings', 'Settings', 'Your profile and the status of every source — Phase 5.'),

@@ -1,0 +1,180 @@
+import { fireEvent, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { StrategyView } from '../../lib/api'
+import { renderApp, strategyFixture } from '../../test/renderApp'
+
+const panel = (name: string) => screen.getByRole('region', { name })
+const paper: StrategyView = { ...strategyFixture, book: 'paper', primary: 'rsi2-paper' }
+const withView = (view: StrategyView, book: 'real' | 'paper' = 'real') => ({ strategy: [{ id: view.id, book, view }] })
+
+describe('Strategy page', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('leads with the strategy, its books and its backtest', async () => {
+    renderApp('/strategies/rsi2')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mean reversion' })).toBeTruthy()
+    expect(screen.getByText('Strategy')).toBeTruthy()
+    expect(screen.getByText(strategyFixture.summary)).toBeTruthy()
+    expect(screen.getByText('Real · running · 4 open')).toBeTruthy()
+    expect(screen.getByText('Paper · running · 5 open')).toBeTruthy()
+    expect(screen.getByText('Backtest 2006–2020')).toBeTruthy()
+    const toggle = screen.getByRole('group', { name: 'Book' })
+    expect(within(toggle).getByRole('button', { name: 'Real' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('switches to the paper book and keeps the choice in the address', async () => {
+    const { router } = renderApp('/strategies/rsi2', {
+      strategy: [{ id: 'rsi2', book: 'real', view: strategyFixture }, { id: 'rsi2', book: 'paper', view: paper }],
+    })
+    await screen.findByText('Real book against the backtest')
+    fireEvent.click(within(screen.getByRole('group', { name: 'Book' })).getByRole('button', { name: 'Paper' }))
+    expect(await screen.findByText('Paper book against the backtest')).toBeTruthy()
+    expect(router.state.location.search).toEqual({ book: 'paper' })
+  })
+
+  it('opens on the book the address names', async () => {
+    renderApp('/strategies/rsi2?book=paper', withView(paper, 'paper'))
+    expect(await screen.findByText('Paper book against the backtest')).toBeTruthy()
+  })
+
+  it('offers no toggle when the strategy has one kind of money', async () => {
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, toggle: false }))
+    await screen.findByRole('heading', { level: 1, name: 'Mean reversion' })
+    expect(screen.queryByRole('group', { name: 'Book' })).toBeNull()
+  })
+
+  it('shows an unknown strategy as not found, inside the shell', async () => {
+    const answer = () => Promise.resolve(new Response('{"detail":"no such strategy: nope"}', { status: 404 }))
+    renderApp('/strategies/nope', {}, answer)
+    expect(await screen.findByRole('heading', { name: 'Not found' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeTruthy()
+    const crumb = within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByRole('link', { name: 'Strategies' })
+    expect(crumb.getAttribute('href')).toBe('/strategies')
+  })
+
+  it('says it is loading, and says so plainly when the strategy could not load', async () => {
+    const { unmount } = renderApp('/strategies/rsi2', { strategy: [] }, () => new Promise<Response>(() => {}))
+    expect(await screen.findByText('Loading the strategy…')).toBeTruthy()
+    unmount()
+    renderApp('/strategies/rsi2', { strategy: [] })
+    expect((await screen.findByRole('alert')).textContent)
+      .toBe('This strategy couldn’t load: network is off in tests')
+  })
+
+  it('draws the rule as numbered steps with its parameters and the sizing', async () => {
+    renderApp('/strategies/rsi2')
+    const how = await screen.findByRole('region', { name: 'How it trades' })
+    expect(within(how).getByText('The whole rule, in four steps')).toBeTruthy()
+    const steps = within(how).getAllByRole('listitem')
+    expect(steps).toHaveLength(4)
+    expect(steps[0].textContent).toContain('01')
+    expect(steps[2].textContent).toContain('A stop rests at the broker')
+    expect(within(how).getByText('−8% stop')).toBeTruthy()
+    expect(how.textContent).toContain('SizingEach position is the account value ÷ 6, at most 5 open.')
+  })
+
+  it('says so when a strategy has not described its rules', async () => {
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, steps: [], sizing: '' }))
+    const how = await screen.findByRole('region', { name: 'How it trades' })
+    expect(within(how).getByText('This strategy hasn’t described its rules.')).toBeTruthy()
+  })
+
+  it('shows where trades landed, as a chart or a table', async () => {
+    renderApp('/strategies/rsi2')
+    const behaving = await screen.findByRole('region', { name: 'Is it behaving?' })
+    expect(within(behaving).getByText('Where each real trade landed, against the spread of outcomes in the backtest'))
+      .toBeTruthy()
+    expect(within(behaving).getByText('Real trades (34)')).toBeTruthy()
+    expect(within(behaving).getByText(
+      'Return per trade, in 1-point buckets. Bars show the share of trades in each bucket.')).toBeTruthy()
+    expect(within(behaving).getByRole('img', { name: 'Real trade returns against the backtest' })).toBeTruthy()
+    fireEvent.click(within(behaving).getByRole('button', { name: 'Table' }))
+    expect(within(behaving).getAllByRole('row')).toHaveLength(21)
+  })
+
+  it('scores the book against the backtest, in words as well as marks', async () => {
+    renderApp('/strategies/rsi2')
+    const card = await screen.findByRole('region', { name: 'Scorecard' })
+    const rows = within(card).getAllByRole('row').slice(1)
+    expect(rows.map((r) => r.textContent)).toEqual([
+      'Win rate64.7%66.0%as expected',
+      'Average per trade+0.79%+0.84%as expected',
+      'Average win+2.59%+2.45%as expected',
+      'Average loss−2.51%−2.28%as expected',
+      'Trades per month2.83.1as expected',
+    ])
+    expect(within(card).getByText('34 / 50 trades')).toBeTruthy()
+    expect(within(card).getByRole('progressbar', { name: 'Until the strategy review' })
+      .getAttribute('aria-valuenow')).toBe('34')
+    expect(card.textContent).toContain('Paper, same rules: 71 trades · +0.83% · 69.0% wins')
+  })
+
+  it('flags a measure off its band and waits for enough trades', async () => {
+    const scorecard = strategyFixture.behaving.scorecard.map((r, i) => ({
+      ...r, status: (['above', 'below', 'early', 'ok', 'ok'] as const)[i],
+    }))
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, behaving: { ...strategyFixture.behaving, scorecard } }))
+    const card = await screen.findByRole('region', { name: 'Scorecard' })
+    expect(within(card).getByText('higher than expected')).toBeTruthy()
+    expect(within(card).getByText('lower than expected')).toBeTruthy()
+    expect(within(card).getByText('too early')).toBeTruthy()
+  })
+
+  it('shows the figures alone when there is no backtest', async () => {
+    const scorecard = strategyFixture.behaving.scorecard.map((r) => ({ ...r, expected: null, status: 'none' as const }))
+    renderApp('/strategies/rsi2', withView({
+      ...strategyFixture, expected: null, behaving: { ...strategyFixture.behaving, scorecard },
+      funnel: { ...strategyFixture.funnel, expected: null },
+    }))
+    const card = await screen.findByRole('region', { name: 'Scorecard' })
+    expect(within(card).getByText('No backtest to compare with.')).toBeTruthy()
+    expect(within(panel('Average per trade, as trades add up')).getByText('The running average of every closed trade'))
+      .toBeTruthy()
+    expect(within(card).getByText('Real book')).toBeTruthy()
+    expect(screen.queryByText('Backtest 2006–2020')).toBeNull()
+  })
+
+  it('draws the running average of both books inside the expected range', async () => {
+    renderApp('/strategies/rsi2')
+    const funnel = await screen.findByRole('region', { name: 'Average per trade, as trades add up' })
+    expect(within(funnel).getByText('If the edge is real, the line settles inside the funnel')).toBeTruthy()
+    expect(within(funnel).getByText('Expected range (95%)')).toBeTruthy()
+    expect(within(funnel).getByText('Real +0.79%')).toBeTruthy()
+    expect(within(funnel).getByText('Paper +0.83%')).toBeTruthy()
+    expect(within(funnel).getByText('trade number')).toBeTruthy()
+    fireEvent.click(within(funnel).getByRole('button', { name: 'Table' }))
+    expect(within(funnel).getAllByRole('row')).toHaveLength(72) // a header and 71 trades
+  })
+
+  it('shows the slots in use, the money working and the names close to a signal', async () => {
+    renderApp('/strategies/rsi2')
+    const slots = await screen.findByRole('region', { name: 'Where the money works' })
+    expect(within(slots).getByText('Real book · slots in use, last 40 sessions · 5 slots')).toBeTruthy()
+    expect(slots.textContent).toContain('Average in use0.8 of 5')
+    expect(slots.textContent).toContain('Money working17%')
+    expect(slots.textContent).toContain('Idle sessions12 of 40')
+    expect(slots.textContent).toContain('Close to a signalKORSI(2) 12.4ABTRSI(2) 16.8UNPRSI(2) 19.1')
+  })
+
+  it('says so when a book does not report slots, and hides an empty watch list', async () => {
+    const slots = { ...strategyFixture.slots, total: null, days: [], used: [], watch: [] }
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, slots }))
+    const panel = await screen.findByRole('region', { name: 'Where the money works' })
+    expect(within(panel).getByText('This book doesn’t report slots.')).toBeTruthy()
+    expect(within(panel).queryByText('Close to a signal')).toBeNull()
+  })
+
+  it('handles a strategy with no books yet', async () => {
+    const empty: StrategyView = {
+      ...strategyFixture, books: [], book: null, primary: null, toggle: false,
+      behaving: { ...strategyFixture.behaving, trades: 0, other: null,
+        buckets: strategyFixture.behaving.buckets.map((b) => ({ ...b, count: 0, share: 0 })) },
+      funnel: { ...strategyFixture.funnel, lines: [], lo: [], hi: [] },
+      slots: { ...strategyFixture.slots, book_id: null, total: null, days: [], used: [] },
+    }
+    renderApp('/strategies/rsi2', withView(empty))
+    await screen.findByRole('heading', { level: 1, name: 'Mean reversion' })
+    expect(within(panel('Average per trade, as trades add up')).getByText('No closed trades yet.')).toBeTruthy()
+    expect(within(panel('Where the money works')).getByText('No book trades this strategy yet.')).toBeTruthy()
+  })
+})

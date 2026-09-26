@@ -127,14 +127,14 @@
   border-bottom: 1px solid var(--line); }
 .content { padding: 28px 32px 32px; }
 .grid12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-content: start; }
-.span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; } .span-7 { grid-column: span 7; }
-.span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
+.span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; } .span-6 { grid-column: span 6; }
+.span-7 { grid-column: span 7; } .span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
 .menu-btn, .tabbar, .scrim { display: none; }
 /* position: relative keeps absolutely positioned children (sr-only labels) inside the scroll box */
 .table-scroll { position: relative; overflow-x: auto; }
 
 @media (max-width: 1180px) {
-  .span-4, .span-5, .span-7, .span-8 { grid-column: span 12; }
+  .span-4, .span-5, .span-6, .span-7, .span-8 { grid-column: span 12; }
   .panel { height: auto; }
 }
 @media (max-width: 900px) {

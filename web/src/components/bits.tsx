@@ -31,7 +31,7 @@ export function Delta({ value, digits = 2, children }: { value: number; digits?:
 }
 
 export function Panel({ id, title, subtitle, actions, span, height, children }: {
-  id: string; title: string; subtitle?: string; actions?: ReactNode; span: 4 | 5 | 7 | 8 | 12; height?: number
+  id: string; title: string; subtitle?: string; actions?: ReactNode; span: 4 | 5 | 6 | 7 | 8 | 12; height?: number
   children: ReactNode
 }) {
   return (
