@@ -31,7 +31,7 @@ function Slots({ used, total, money: kind }: { used: number; total: number; mone
   )
 }
 
-const VERDICT: Record<BookRow['verdict'], string> = {
+export const VERDICT: Record<BookRow['verdict'], string> = {
   in_band: 'In band', below: 'Below band', above: 'Above band', early: 'Too early', none: '—',
 }
 

@@ -2,10 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
-import type { HomeView, ShellView } from '../lib/api'
+import type { HomeView, Money, ShellView, StrategiesView, StrategyView } from '../lib/api'
 import { createAppRouter } from '../router'
 import homeJson from './fixtures/home.json'
 import shellJson from './fixtures/shell.json'
+import strategiesJson from './fixtures/strategies.json'
+import strategyJson from './fixtures/strategy-rsi2.json'
 
 /** The API types with every string-literal union widened to `string`, the way TypeScript types a JSON import. */
 type Widen<T> = T extends string ? string
@@ -17,13 +19,27 @@ type Widen<T> = T extends string ? string
 // `satisfies` makes `tsc` fail when a field in lib/api.ts is renamed or missing from what Python emits.
 export const homeFixture = (homeJson satisfies Widen<HomeView>) as unknown as HomeView
 export const shellFixture = (shellJson satisfies Widen<ShellView>) as unknown as ShellView
+export const strategiesFixture = (strategiesJson satisfies Widen<StrategiesView>) as unknown as StrategiesView
+export const strategyFixture = (strategyJson satisfies Widen<StrategyView>) as unknown as StrategyView
 
-/** The whole app at `path`, with the API answered from fixtures. Any real network call fails the test. */
-export function renderApp(path = '/', data: { home?: HomeView; shell?: ShellView } = {}) {
-  vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('network is off in tests'))))
+interface Data {
+  home?: HomeView
+  shell?: ShellView
+  strategies?: StrategiesView | null // null: leave it unanswered, so the page fetches (and the fetch fails)
+  strategy?: { id: string; book: Money; view: StrategyView }[] // answers for GET /api/strategies/{id}?book=
+}
+
+/** The whole app at `path`, with the API answered from fixtures. Any other network call goes to `fetchImpl`, which
+ *  fails by default. */
+export function renderApp(path = '/', data: Data = {}, fetchImpl?: (url: string) => Promise<Response>) {
+  vi.stubGlobal('fetch', vi.fn(fetchImpl ?? (() => Promise.reject(new Error('network is off in tests')))))
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
   client.setQueryData(['home'], data.home ?? homeFixture)
   client.setQueryData(['shell'], data.shell ?? shellFixture)
+  if (data.strategies !== null) client.setQueryData(['strategies'], data.strategies ?? strategiesFixture)
+  for (const { id, book, view } of data.strategy ?? [{ id: 'rsi2', book: 'real', view: strategyFixture }]) {
+    client.setQueryData(['strategy', id, book], view)
+  }
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
   const view = render(
     <QueryClientProvider client={client}>

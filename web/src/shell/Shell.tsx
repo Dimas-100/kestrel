@@ -41,12 +41,14 @@ const TABS: NavItem[] = [
   { to: '/settings', label: 'More', icon: 'more' },
 ]
 
-function crumbs(pathname: string): [string, string] {
+/** The breadcrumb for a path: its section and page. A page inside a section (/strategies/rsi2) keeps the section's
+ *  crumb, as a link back to the section (`parent`). */
+export function crumbs(pathname: string): { group: string; page: string; parent: string | null } {
   for (const { group, items } of NAV) {
-    const item = items.find((i) => i.to === pathname)
-    if (item) return [group, item.label]
+    const item = items.find((i) => i.to === pathname || (i.to !== '/' && pathname.startsWith(`${i.to}/`)))
+    if (item) return { group, page: item.label, parent: item.to === pathname ? null : item.to }
   }
-  return ['kestrel', 'Not found']
+  return { group: 'kestrel', page: 'Not found', parent: null }
 }
 
 const STATUS_ICON: Record<Source['status'], { name: IconName; color: string; text: string }> = {
@@ -112,7 +114,7 @@ function TopBar({ pathname, shell, theme, onToggleTheme, onMenu, menuOpen, menuR
   menuOpen: boolean; menuRef: Ref<HTMLButtonElement>
 }) {
   const client = useQueryClient()
-  const [group, page] = crumbs(pathname)
+  const { group, page, parent } = crumbs(pathname)
   return (
     <header className="topbar">
       <button type="button" className="icon-btn menu-btn" aria-label="Open menu" onClick={onMenu} ref={menuRef}
@@ -122,7 +124,7 @@ function TopBar({ pathname, shell, theme, onToggleTheme, onMenu, menuOpen, menuR
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px]">
         <span className="text-ink3 hide-narrow">{group}</span>
         <Icon name="chevron" size={14} style={{ color: 'var(--ink3)' }} />
-        <span className="font-medium">{page}</span>
+        {parent ? <Link to={parent} className="font-medium">{page}</Link> : <span className="font-medium">{page}</span>}
       </nav>
       <div className="ml-auto flex items-center gap-3">
         {shell && (

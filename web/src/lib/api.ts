@@ -153,9 +153,232 @@ export interface HomeView {
   positions: PositionRow[]
 }
 
+// --- the Strategy pages (src/kestrel/views/strategy.py) ---------------------------------------------------------
+
+export type Verdict = BookRow['verdict']
+
+export interface BookChip {
+  id: string
+  name: string
+  money: Money
+  status: string
+  open: number
+  trades: number
+}
+
+export interface StrategyCard {
+  id: string
+  name: string
+  summary: string
+  books: BookChip[]
+  book: Money | null
+  trades: number
+  per_trade_pct: number | null
+  band_lo: number | null
+  band_hi: number | null
+  verdict: Verdict
+}
+
+export interface StrategiesView {
+  strategies: StrategyCard[]
+}
+
+export interface Step {
+  label: string
+  title: string
+  text: string
+  params: string[]
+}
+
+export interface Expected {
+  win_rate: number
+  avg_trade_pct: number
+  avg_win_pct: number
+  avg_loss_pct: number
+  trades_per_month: number
+  sd_trade_pct: number
+  distribution: number[]
+  source: string
+  window: string
+  cagr_pct: number | null
+  max_drawdown_pct: number | null
+}
+
+export interface Bucket {
+  low: number
+  count: number
+  share: number
+  expected: number | null
+}
+
+export interface ScoreRow {
+  key: 'win_rate' | 'avg_trade' | 'avg_win' | 'avg_loss' | 'per_month'
+  label: string
+  actual: number | null
+  expected: number | null
+  status: 'ok' | 'above' | 'below' | 'early' | 'none'
+}
+
+export interface OtherBook {
+  id: string
+  money: Money
+  trades: number
+  per_trade_pct: number | null
+  win_rate: number | null
+}
+
+export interface Behaving {
+  trades: number
+  buckets: Bucket[]
+  scorecard: ScoreRow[]
+  review_at: number | null
+  other: OtherBook | null
+}
+
+export interface FunnelLine {
+  book_id: string
+  money: Money
+  values: number[]
+}
+
+export interface Funnel {
+  expected: number | null
+  lines: FunnelLine[]
+  lo: (number | null)[]
+  hi: (number | null)[]
+}
+
+export interface WatchItem {
+  symbol: string
+  label: string
+  value: number | null
+  note: string
+}
+
+export interface Slots {
+  book_id: string | null
+  total: number | null
+  days: string[]
+  used: number[]
+  avg_used: number | null
+  working_pct: number | null
+  idle: number
+  watch: WatchItem[]
+}
+
+export interface RecentTrade {
+  key: string
+  symbol: string
+  money: Money
+  opened: string
+  closed: string
+  return_pct: number
+  r_multiple: number | null
+  exit_reason: string
+  sessions: number
+  chart: boolean
+}
+
+export interface Bar {
+  date: string
+  open: number
+  high: number
+  low: number
+  close: number
+}
+
+export interface Indicator {
+  label: string
+  values: (number | null)[]
+  lines: { value: number; label: string }[]
+}
+
+export interface AnatomyChart {
+  key: string
+  bars: Bar[]
+  indicator: Indicator | null
+  stop: number | null
+  entry: number
+  exit: number
+  entry_price: number
+  exit_price: number
+}
+
+export interface Anatomy {
+  recent: RecentTrade[]
+  charts: AnatomyChart[]
+  selected: string | null
+}
+
+export interface WorthPoint {
+  key: 'backtest' | 'book' | 'long_term' | 'benchmark'
+  label: string
+  period: string
+  early: boolean
+  return_pct: number
+  drop_pct: number
+}
+
+export interface Month {
+  month: string
+  book: number | null
+  long_term: number | null
+  ahead: boolean | null
+}
+
+export interface Monthly {
+  months: Month[]
+  ahead: number
+  compared: number
+  best: { month: string; value: number } | null
+  worst: { month: string; value: number } | null
+}
+
+export interface TradeRow {
+  symbol: string
+  money: Money
+  opened: string
+  closed: string
+  days_held: number
+  return_pct: number
+  r_multiple: number | null
+  pnl: number
+  exit_reason: string
+}
+
+export interface StrategyView {
+  id: string
+  name: string
+  summary: string
+  books: BookChip[]
+  book: Money | null
+  primary: string | null
+  toggle: boolean
+  expected: Expected | null
+  steps: Step[]
+  sizing: string
+  behaving: Behaving
+  funnel: Funnel
+  slots: Slots
+  anatomy: Anatomy
+  worth: { points: WorthPoint[] }
+  monthly: Monthly
+  trades: TradeRow[]
+}
+
+/** A non-2xx answer, with its status, so a page can tell "not found" from "the server is down". */
+export class HttpError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
 export async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path, { headers: { Accept: 'application/json' } })
-  if (!response.ok) throw new Error(`${path} answered ${response.status}`)
+  if (!response.ok) throw new HttpError(response.status, `${path} answered ${response.status}`)
   return (await response.json()) as T
 }
 
@@ -167,4 +390,20 @@ export function useShell() {
 
 export function useHome() {
   return useQuery({ queryKey: ['home'], queryFn: () => getJson<HomeView>('/api/home'), refetchInterval: MINUTE })
+}
+
+export function useStrategies() {
+  return useQuery({
+    queryKey: ['strategies'], queryFn: () => getJson<StrategiesView>('/api/strategies'), refetchInterval: MINUTE,
+  })
+}
+
+export function useStrategy(id: string, book: Money) {
+  return useQuery({
+    queryKey: ['strategy', id, book],
+    queryFn: () => getJson<StrategyView>(`/api/strategies/${encodeURIComponent(id)}?book=${book}`),
+    refetchInterval: MINUTE,
+    // switching Real | Paper keeps the page up until the other book arrives; another strategy starts clean
+    placeholderData: (previous, query) => (query?.queryKey[1] === id ? previous : undefined),
+  })
 }

@@ -1,6 +1,7 @@
 import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderApp, shellFixture } from '../test/renderApp'
+import { crumbs } from './Shell'
 
 describe('shell', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -24,7 +25,7 @@ describe('shell', () => {
     const nav = await screen.findByRole('navigation', { name: 'Main' })
     expect(within(nav).getByRole('link', { name: /Home/ }).getAttribute('aria-current')).toBe('page')
     fireEvent.click(within(nav).getByRole('link', { name: /Strategies/ }))
-    expect(await screen.findByText(/Phase 3/)).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Strategies' })).toBeTruthy()
     expect(within(nav).getByRole('link', { name: /Strategies/ }).getAttribute('aria-current')).toBe('page')
   })
 
@@ -53,6 +54,12 @@ describe('shell', () => {
     expect(menu.getAttribute('aria-expanded')).toBe('false')
     expect(frame.dataset.drawer).toBe('closed')
     expect(document.activeElement).toBe(menu)
+  })
+
+  it('keeps the section in the breadcrumb on a page inside it', () => {
+    expect(crumbs('/strategies')).toEqual({ group: 'Trading', page: 'Strategies', parent: null })
+    expect(crumbs('/strategies/rsi2')).toEqual({ group: 'Trading', page: 'Strategies', parent: '/strategies' })
+    expect(crumbs('/nowhere')).toEqual({ group: 'kestrel', page: 'Not found', parent: null })
   })
 
   it('shows an unknown path as not found inside the shell', async () => {
