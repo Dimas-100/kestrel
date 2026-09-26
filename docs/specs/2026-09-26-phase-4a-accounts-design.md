@@ -72,7 +72,7 @@ The connector returns only accounts, holdings, account history, the benchmark an
 
 ### 2.4 Performance
 
-The server collects once per request. On a household warehouse (a handful of accounts, a few years of days, a few dozen holdings) the connector's queries should take a few milliseconds; the plan measures it. If a snapshot ever takes over 100 ms, a cache keyed by the file's `(mtime, size)` goes in, not before.
+The server collects once per request. Measured: 50–90 ms per snapshot on a household warehouse, and more as its history grows, so the connector caches its reads: the key is the warehouse's and its `-wal` file's modification time and size, so a sync is seen at once and an unchanged warehouse is not re-read.
 
 ## 3. Contract (additive; `contract_version` stays `"1"`)
 
@@ -142,7 +142,7 @@ After the build, on the owner's machine:
 
 ## 7. Safety and privacy
 
-- Read-only: `mode=ro` plus `query_only`. A test proves an `INSERT` through the connector's connection fails and the fixture file's bytes are unchanged after a snapshot.
+- Read-only: `mode=ro` plus `query_only`. A test proves an `INSERT` through the connector's connection fails and the fixture file's bytes are unchanged after a snapshot. Reading a warehouse in WAL mode (the collector's mode) lets SQLite create its standard `-wal` and `-shm` coordination files beside it when they are missing; kestrel never changes the warehouse's data, and a test pins that the database file's bytes are unchanged.
 - The test warehouse is built in `tests/` from a subset of the collector's schema (its view definitions copied, with the source noted), filled with fictional accounts ("Alex …") and made-up numbers. Never a copy of real data; `data/` stays gitignored.
 - Source details and errors can include the local path; they are served only on 127.0.0.1, like everything else.
 - The hygiene test keeps machine paths and personal emails out of tracked files; the owner's `profile.toml` is gitignored.

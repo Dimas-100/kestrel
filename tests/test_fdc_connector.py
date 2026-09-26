@@ -1,11 +1,13 @@
 import datetime as dt
 import os
 import sqlite3
+from contextlib import contextmanager
 from zoneinfo import ZoneInfo
 
 import pytest
-from fdc_fixture import Warehouse, d, household
+from fdc_fixture import SCHEMA, Warehouse, d, household
 
+import kestrel.connectors.fdc as fdc
 from kestrel.connectors import collect
 from kestrel.connectors.base import ConnectorError
 from kestrel.connectors.fdc import FdcConnector, category_of, connect, institution_text, slug, type_text
@@ -90,6 +92,77 @@ def test_a_sync_in_progress_on_a_wal_warehouse_reads_the_last_committed_data(tmp
     finally:
         writer.rollback()
         writer.close()
+
+
+def test_two_snapshots_of_an_unchanged_warehouse_open_it_once(tmp_path, monkeypatch):
+    path = household(tmp_path)
+    calls = []
+    real_connect = fdc.connect
+
+    @contextmanager
+    def counting(*args, **kwargs):
+        calls.append(1)
+        with real_connect(*args, **kwargs) as conn:
+            yield conn
+
+    monkeypatch.setattr(fdc, "connect", counting)
+    first = connector(path).snapshot(NOW)
+    later = NOW + dt.timedelta(hours=1)
+    second = connector(path).snapshot(later)  # a fresh FdcConnector, as collect() builds one per request
+    assert len(calls) == 1
+    assert (first.generated_at, second.generated_at) == (NOW, later)
+
+
+def test_a_wal_change_is_seen_by_the_next_snapshot(tmp_path):
+    path = household(tmp_path, wal=True)  # the collector's own journal mode
+    before = {a.id: a for a in connector(path).snapshot(NOW).accounts}
+    assert before["alex-crypto"].value == 320.0
+    writer = sqlite3.connect(path)
+    crypto = writer.execute("SELECT id FROM accounts WHERE label = 'Alex Crypto'").fetchone()[0]
+    writer.execute("INSERT INTO cash_daily VALUES ('2026-09-26', ?, 999.0, 'reconstructed')", (crypto,))
+    writer.commit()  # the writer stays open: no checkpoint moves this into the main file
+    try:
+        after = {a.id: a for a in connector(path).snapshot(NOW).accounts}
+        assert after["alex-crypto"].value == 999.0
+    finally:
+        writer.close()
+
+
+def test_a_failed_load_is_not_cached_and_the_next_good_read_is_fresh(tmp_path):
+    path = household(tmp_path)
+    assert len(connector(path).snapshot(NOW).accounts) == 5  # a good load, cached
+    writer = sqlite3.connect(path)
+    writer.execute("DROP VIEW positions_latest")
+    # padding so the file's size changes too: DROP VIEW alone can reuse the same page and leave the file's bytes
+    # unchanged on this filesystem, which would (correctly) keep serving the still-valid cached good load
+    writer.executemany("INSERT INTO sync_runs (run_id, step, started_at, finished_at, status) VALUES "
+                       "('pad', 'pad', '2026-01-01', '2026-01-01', 'ok')", [() for _ in range(500)])
+    writer.commit()
+    writer.close()
+    with pytest.raises(ConnectorError, match="missing positions_latest"):
+        connector(path).snapshot(NOW)  # a fresh load (the file changed): fails, and the failure isn't cached
+    writer = sqlite3.connect(path)
+    writer.execute(SCHEMA["positions_latest"])
+    writer.commit()
+    writer.close()
+    assert len(connector(path).snapshot(NOW).accounts) == 5  # fresh again, not the earlier failure
+
+
+def test_reading_a_wal_warehouse_creates_only_the_wal_and_shm_files(tmp_path):
+    path = household(tmp_path, wal=True)
+    assert os.listdir(path.parent) == ["warehouse.db"]  # the fixture leaves no side files behind
+    before = path.read_bytes()
+    connector(path).snapshot(NOW)
+    assert path.read_bytes() == before
+    assert sorted(os.listdir(path.parent)) == ["warehouse.db", "warehouse.db-shm", "warehouse.db-wal"]
+    assert (path.parent / "warehouse.db-wal").stat().st_size == 0
+
+
+def test_the_benchmark_symbol_ignores_case(warehouse):
+    snap = connector(warehouse, benchmark=BenchmarkCfg(symbol="spy", label="S&P 500")).snapshot(NOW)
+    assert snap.benchmark is not None
+    assert [(p.date.day, p.value) for p in snap.benchmark.points][:2] == [(16, 595.0), (17, 597.0)]
+    assert snap.benchmark.points[-1].value == 603.0
 
 
 def test_a_folder_with_spaces_a_hash_and_a_percent_in_its_name_still_opens(tmp_path):

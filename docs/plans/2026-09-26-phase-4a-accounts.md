@@ -2458,11 +2458,13 @@ git commit -m "feat(fdc): open the collector's warehouse read-only, check its sc
 import datetime as dt
 import os
 import sqlite3
+from contextlib import contextmanager
 from zoneinfo import ZoneInfo
 
 import pytest
-from fdc_fixture import Warehouse, d, household
+from fdc_fixture import SCHEMA, Warehouse, d, household
 
+import kestrel.connectors.fdc as fdc
 from kestrel.connectors import collect
 from kestrel.connectors.base import ConnectorError
 from kestrel.connectors.fdc import FdcConnector, category_of, connect, institution_text, slug, type_text
@@ -2547,6 +2549,77 @@ def test_a_sync_in_progress_on_a_wal_warehouse_reads_the_last_committed_data(tmp
     finally:
         writer.rollback()
         writer.close()
+
+
+def test_two_snapshots_of_an_unchanged_warehouse_open_it_once(tmp_path, monkeypatch):
+    path = household(tmp_path)
+    calls = []
+    real_connect = fdc.connect
+
+    @contextmanager
+    def counting(*args, **kwargs):
+        calls.append(1)
+        with real_connect(*args, **kwargs) as conn:
+            yield conn
+
+    monkeypatch.setattr(fdc, "connect", counting)
+    first = connector(path).snapshot(NOW)
+    later = NOW + dt.timedelta(hours=1)
+    second = connector(path).snapshot(later)  # a fresh FdcConnector, as collect() builds one per request
+    assert len(calls) == 1
+    assert (first.generated_at, second.generated_at) == (NOW, later)
+
+
+def test_a_wal_change_is_seen_by_the_next_snapshot(tmp_path):
+    path = household(tmp_path, wal=True)  # the collector's own journal mode
+    before = {a.id: a for a in connector(path).snapshot(NOW).accounts}
+    assert before["alex-crypto"].value == 320.0
+    writer = sqlite3.connect(path)
+    crypto = writer.execute("SELECT id FROM accounts WHERE label = 'Alex Crypto'").fetchone()[0]
+    writer.execute("INSERT INTO cash_daily VALUES ('2026-09-26', ?, 999.0, 'reconstructed')", (crypto,))
+    writer.commit()  # the writer stays open: no checkpoint moves this into the main file
+    try:
+        after = {a.id: a for a in connector(path).snapshot(NOW).accounts}
+        assert after["alex-crypto"].value == 999.0
+    finally:
+        writer.close()
+
+
+def test_a_failed_load_is_not_cached_and_the_next_good_read_is_fresh(tmp_path):
+    path = household(tmp_path)
+    assert len(connector(path).snapshot(NOW).accounts) == 5  # a good load, cached
+    writer = sqlite3.connect(path)
+    writer.execute("DROP VIEW positions_latest")
+    # padding so the file's size changes too: DROP VIEW alone can reuse the same page and leave the file's bytes
+    # unchanged on this filesystem, which would (correctly) keep serving the still-valid cached good load
+    writer.executemany("INSERT INTO sync_runs (run_id, step, started_at, finished_at, status) VALUES "
+                       "('pad', 'pad', '2026-01-01', '2026-01-01', 'ok')", [() for _ in range(500)])
+    writer.commit()
+    writer.close()
+    with pytest.raises(ConnectorError, match="missing positions_latest"):
+        connector(path).snapshot(NOW)  # a fresh load (the file changed): fails, and the failure isn't cached
+    writer = sqlite3.connect(path)
+    writer.execute(SCHEMA["positions_latest"])
+    writer.commit()
+    writer.close()
+    assert len(connector(path).snapshot(NOW).accounts) == 5  # fresh again, not the earlier failure
+
+
+def test_reading_a_wal_warehouse_creates_only_the_wal_and_shm_files(tmp_path):
+    path = household(tmp_path, wal=True)
+    assert os.listdir(path.parent) == ["warehouse.db"]  # the fixture leaves no side files behind
+    before = path.read_bytes()
+    connector(path).snapshot(NOW)
+    assert path.read_bytes() == before
+    assert sorted(os.listdir(path.parent)) == ["warehouse.db", "warehouse.db-shm", "warehouse.db-wal"]
+    assert (path.parent / "warehouse.db-wal").stat().st_size == 0
+
+
+def test_the_benchmark_symbol_ignores_case(warehouse):
+    snap = connector(warehouse, benchmark=BenchmarkCfg(symbol="spy", label="S&P 500")).snapshot(NOW)
+    assert snap.benchmark is not None
+    assert [(p.date.day, p.value) for p in snap.benchmark.points][:2] == [(16, 595.0), (17, 597.0)]
+    assert snap.benchmark.points[-1].value == 603.0
 
 
 def test_a_folder_with_spaces_a_hash_and_a_percent_in_its_name_still_opens(tmp_path):
@@ -2726,11 +2799,13 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import threading
 import unicodedata
 from bisect import bisect_left
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
 from pathlib import Path
 from typing import cast
@@ -2892,6 +2967,53 @@ def flows(conn: sqlite3.Connection, days: dict[int, list[str]]) -> dict[int, dic
     return out
 
 
+FileState = tuple[int, int] | None  # (st_mtime_ns, st_size); None when the file doesn't exist
+
+
+def _file_state(path: Path) -> FileState:
+    try:
+        info = path.stat()
+    except OSError:
+        return None
+    return (info.st_mtime_ns, info.st_size)
+
+
+def _wal_path(path: Path) -> Path:
+    return path.with_name(path.name + "-wal")
+
+
+@dataclass(frozen=True)
+class _LoadedAccount:
+    """One `accounts` row and its latest value, before `now` or a profile category is applied."""
+    id: str
+    label: str
+    institution: str
+    type_code: str
+    type_display: str
+    value: float
+    cash: float
+    day: str | None  # the value's as-of day; None only for an account with neither a snapshot nor a history point
+
+
+@dataclass(frozen=True)
+class _Loaded:
+    """Everything a snapshot needs from the warehouse: plain data, with no `now` and no profile category baked in,
+    so it is safe to cache and reuse across connector instances that share a warehouse."""
+    accounts: list[_LoadedAccount]
+    series: list[Series]
+    holdings: list[Holding]
+    left_out: int
+    prices_to: str | None
+    benchmark_rows: list[tuple[str, float]]
+    last_success: datetime | None
+
+
+_CACHE_LOCK = threading.Lock()
+# resolved warehouse path -> (the state it was loaded at, the data). One entry per path; the server serves requests
+# from a thread pool, so the dict itself is guarded, but a load's disk I/O runs outside the lock.
+_CACHE: dict[Path, tuple[tuple, _Loaded]] = {}
+
+
 class FdcConnector:
     """Reads one warehouse. `categories` maps an account id or exact label to a category; `benchmark` is looked up
     in the warehouse's prices."""
@@ -2906,18 +3028,37 @@ class FdcConnector:
         self.timeout = timeout
 
     def snapshot(self, now: datetime) -> Snapshot:
-        try:
-            with connect(self.path, self.timeout) as conn:
-                check_schema(conn, self.path)
-                return self._read(conn, now)
-        except sqlite3.Error as exc:
-            raise ConnectorError(f"the warehouse couldn't be read: {exc}") from None
+        return self._build(self._load(), now)
 
     def _category(self, account_id: str, label: str, account_type: str) -> Category:
         chosen = self.categories.get(account_id) or self.categories.get(label)
         return cast(Category, chosen) if chosen else category_of(account_type)
 
-    def _read(self, conn: sqlite3.Connection, now: datetime) -> Snapshot:
+    def _benchmark_symbol(self) -> str | None:
+        # the collector stores tickers upper-case; match its `symbol = ?` index however the profile wrote it
+        return self.benchmark.symbol.upper() if self.benchmark else None
+
+    def _load(self) -> _Loaded:
+        """The warehouse's data, from the cache when the file (and its WAL side file) haven't changed since the
+        cached load, else freshly read and cached. A load that raises is never cached; a missing file is still
+        "no warehouse at <path>", raised by `connect` before any of this."""
+        resolved = self.path.resolve()
+        key = (resolved, _file_state(resolved), _file_state(_wal_path(resolved)), self._benchmark_symbol())
+        with _CACHE_LOCK:
+            cached = _CACHE.get(resolved)
+            if cached is not None and cached[0] == key:
+                return cached[1]
+        try:
+            with connect(self.path, self.timeout) as conn:
+                check_schema(conn, self.path)
+                data = self._read(conn)
+        except sqlite3.Error as exc:
+            raise ConnectorError(f"the warehouse couldn't be read: {exc}") from None
+        with _CACHE_LOCK:
+            _CACHE[resolved] = (key, data)
+        return data
+
+    def _read(self, conn: sqlite3.Connection) -> _Loaded:
         rows = conn.execute("SELECT id, label, institution, account_type FROM accounts ORDER BY id").fetchall()
         ids = dict(zip((r[0] for r in rows), account_ids([r[1] for r in rows])))
         by_label = {r[1]: ids[r[0]] for r in rows}
@@ -2927,7 +3068,7 @@ class FdcConnector:
         days = history(conn)
         moved = flows(conn, {account: [day for day, _, _ in points] for account, points in days.items()})
 
-        accounts: list[Account] = []
+        accounts: list[_LoadedAccount] = []
         series: list[Series] = []
         for warehouse_id, label, institution, kind in rows:
             points = days.get(warehouse_id, [])
@@ -2944,32 +3085,45 @@ class FdcConnector:
                 day, value, cash = points[-1]
             else:
                 day, value, cash = None, 0.0, 0.0
-            accounts.append(Account(
-                id=ids[warehouse_id], name=label, institution=institution_text(institution),
-                account_type=type_text(kind), category=self._category(ids[warehouse_id], label, kind),
-                value=round(value, 2), cash=round(cash, 2), as_of=_close(day) if day else now,
+            accounts.append(_LoadedAccount(
+                id=ids[warehouse_id], label=label, institution=institution_text(institution),
+                type_code=kind, type_display=type_text(kind), value=round(value, 2), cash=round(cash, 2), day=day,
             ))
 
         holdings, left_out = self._holdings(conn, by_label)
         first = min((s.points[0].date for s in series), default=None)
-        benchmark = self._benchmark(conn, first)
+        benchmark_rows = self._benchmark_rows(conn, first)
         # each security's last price through the prices index: MAX(date) over the whole table is a full scan
         priced = conn.execute("SELECT MAX((SELECT MAX(date) FROM prices WHERE symbol = s.symbol)) "
                               "FROM securities s").fetchone()[0]
-        notes = [_plural(len(accounts), "account"), _plural(len(holdings), "holding"),
-                 f"prices to {_day(priced)}" if priced else "no prices yet"]
-        if left_out:
-            notes.append(f"{_plural(left_out, 'holding')} left out (no market value)")
-        if self.benchmark and benchmark is None:
-            notes.append(f"no {self.benchmark.symbol} prices in the warehouse")
+        return _Loaded(accounts=accounts, series=series, holdings=holdings, left_out=left_out, prices_to=priced,
+                       benchmark_rows=benchmark_rows, last_success=last_success(conn))
+
+    def _build(self, data: _Loaded, now: datetime) -> Snapshot:
+        accounts = [Account(
+            id=a.id, name=a.label, institution=a.institution, account_type=a.type_display,
+            category=self._category(a.id, a.label, a.type_code),
+            value=a.value, cash=a.cash, as_of=_close(a.day) if a.day else now,
+        ) for a in data.accounts]
+        notes = [_plural(len(accounts), "account"), _plural(len(data.holdings), "holding"),
+                 f"prices to {_day(data.prices_to)}" if data.prices_to else "no prices yet"]
+        if data.left_out:
+            notes.append(f"{_plural(data.left_out, 'holding')} left out (no market value)")
+        benchmark = None
+        if self.benchmark is not None:
+            if data.benchmark_rows:
+                benchmark = Benchmark(symbol=self.benchmark.symbol, label=self.benchmark.label,
+                                      points=[ValuePoint(date=date.fromisoformat(day), value=value)
+                                              for day, value in data.benchmark_rows])
+            else:
+                notes.append(f"no {self.benchmark.symbol} prices in the warehouse")
         unmatched = sorted(set(self.categories) - {a.id for a in accounts} - {a.name for a in accounts})
         if unmatched:
             notes.append(f"no account matches categories {', '.join(repr(k) for k in unmatched)}")
-        synced = last_success(conn)
-        source = Source(id=self.source_id, label=self.label, kind="fdc", last_success=synced,
-                        status="ok" if synced else "stale", detail=" · ".join(notes))
-        return Snapshot(generated_at=now, sources=[source], accounts=accounts, holdings=holdings,
-                        account_history=series, benchmark=benchmark)
+        source = Source(id=self.source_id, label=self.label, kind="fdc", last_success=data.last_success,
+                        status="ok" if data.last_success else "stale", detail=" · ".join(notes))
+        return Snapshot(generated_at=now, sources=[source], accounts=accounts, holdings=data.holdings,
+                        account_history=data.series, benchmark=benchmark)
 
     def _holdings(self, conn: sqlite3.Connection, by_label: dict[str, str]) -> tuple[list[Holding], int]:
         """The latest snapshot's positions, largest first in each account, and how many had no market value (they
@@ -2991,19 +3145,16 @@ class FdcConnector:
         holdings.sort(key=lambda h: (rank[h.account_id], -h.value))
         return holdings, left_out
 
-    def _benchmark(self, conn: sqlite3.Connection, first: date | None) -> Benchmark | None:
+    def _benchmark_rows(self, conn: sqlite3.Connection, first: date | None) -> list[tuple[str, float]]:
         """The profile's benchmark from the warehouse's prices (adjusted, so dividends count, as they do in the
         accounts), from the last close on or before the first day of account history."""
         if self.benchmark is None:
-            return None
+            return []
         rows = conn.execute("SELECT date, adj_close FROM prices WHERE symbol = ? ORDER BY date",
-                            (self.benchmark.symbol,)).fetchall()
+                            (self._benchmark_symbol(),)).fetchall()
         if first is not None:
             rows = rows[max((i for i, (day, _) in enumerate(rows) if day <= first.isoformat()), default=0):]
-        if not rows:
-            return None
-        return Benchmark(symbol=self.benchmark.symbol, label=self.benchmark.label,
-                         points=[ValuePoint(date=date.fromisoformat(day), value=value) for day, value in rows])
+        return rows
 ````
 
 
@@ -3067,7 +3218,7 @@ def collect(profile: Profile, now: datetime) -> Snapshot:
 - [ ] **Step 4: Run everything and watch it pass**
 
 Run: `.venv/Scripts/python -m pytest && .venv/Scripts/python -m ruff check .`
-Expected: `168 passed` (`test_fdc_connector.py` 23); `All checks passed!`.
+Expected: `173 passed` (`test_fdc_connector.py` 28); `All checks passed!`.
 
 - [ ] **Step 5: Commit**
 
