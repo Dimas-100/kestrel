@@ -2,6 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from kestrel.profile import DEMO_PROFILE, ProfileError, load_profile, parse_duration
 
@@ -25,6 +26,13 @@ def test_no_profile_file_means_the_demo_profile(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     profile, origin = load_profile()
     assert profile == DEMO_PROFILE and origin == "built-in demo profile"
+
+
+def test_the_demo_profile_cannot_be_changed_by_a_caller():
+    with pytest.raises(ValidationError):
+        DEMO_PROFILE.you.name = "Mallory"
+    with pytest.raises(ValidationError):
+        DEMO_PROFILE.sources[0].kind = "feed"
 
 
 def test_a_profile_in_the_working_directory_is_used(tmp_path, monkeypatch):

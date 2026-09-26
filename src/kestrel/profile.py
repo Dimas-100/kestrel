@@ -31,7 +31,7 @@ def parse_duration(text: str) -> timedelta:
 
 
 class _Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class You(_Strict):
@@ -64,7 +64,7 @@ class BenchmarkCfg(_Strict):
 
 class SourceCfg(BaseModel):
     # connector-specific keys (path, url, token_env, seed) are allowed and read by the connector
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", frozen=True)
 
     id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,31}$")
     kind: str
