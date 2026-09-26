@@ -62,7 +62,7 @@ A private trading system plugs in through the generic **feed** connector (§8). 
   - The app name and accent come from the profile.
   - "Good evening, {name}" and the current date/time.
   - A **Sources** block at the bottom: one row per connector with its last successful sync, amber when stale.
-- **Top bar:** a breadcrumb, the page's controls (time range, money scope), "Synced n min ago", refresh, and a theme toggle.
+- **Top bar:** a breadcrumb, the page's controls (time range, money scope), when the data was last loaded ("Updated 17:08"; each source's own "n min ago" is in the sidebar's Sources block), refresh, and a theme toggle.
 - **Phone:** the sidebar collapses behind a menu button, with a bottom tab bar for Home · Accounts · Books · Strategies · More.
 
 | Group | Page | The question it answers |
@@ -245,8 +245,8 @@ Each phase gets its own spec, plan and build.
 |---|---|---|
 | 0 | Graphite mockups; variant A chosen | done |
 | 1 | This repo: spec, design system, mockups, hygiene test | this commit |
-| 2 | Skeleton: contract, profile, `demo` connector, server, shell (sidebar, greeting, routing, theming), Home | next |
-| 3 | Books + Strategies pages; the chart kit | |
+| 2 | Skeleton: contract, profile, `demo` connector, server, shell (sidebar, greeting, routing, theming), Home | done |
+| 3 | Books + Strategies pages; the chart kit | next |
 | 4 | Accounts; `fdc`, `rails`, `feed` connectors | |
 | 5 | Backtests, Activity, Settings | |
 

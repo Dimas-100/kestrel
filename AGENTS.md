@@ -12,8 +12,7 @@ specific to one assistant.
 with pages that explain each strategy and whether it is behaving as expected. The design is in
 `docs/specs/2026-09-25-kestrel-design.md`, and the look is in `docs/design-system.md`.
 
-**Status:** Phase 1 of 5. This repo currently holds the design, the design system, the reference mockups and the
-hygiene test. The app arrives in Phase 2.
+**Status:** Phase 2 of 5 — the skeleton: contract, profile, demo connector, read-only server, shell and Home.
 
 ## Hard invariants
 
@@ -42,13 +41,11 @@ hygiene test. The app arrives in Phase 2.
 
 ## Run and test
 
-- **Phase 1:** `python -m pytest` (needs `pytest`). The mockups are static HTML; open
-  `docs/design/mockups/*.html` in a browser.
-- **Phase 2 onward:**
-  - Install with `pip install -e ".[dev]"`, then run `kestrel serve`.
-  - In `web/`, use `npm ci`, `npm test` and `npm run build`.
-  
-  This file is updated when those commands land.
+- **Python:** `pip install -e ".[dev]"` · `pytest` · `ruff check .` · `kestrel serve` (127.0.0.1:8030).
+- **Web (in `web/`):** `npm ci` · `npm test` · `npm run build` (served by `kestrel serve` from `web/dist`).
+  For live reload run `kestrel serve --no-open` and `npm run dev` side by side (Vite proxies `/api`).
+- **Generated files** — the contract schema and the web test fixtures — are rebuilt with the commands a failing
+  `tests/test_generated_files.py` prints.
 
 ## Where things are
 
@@ -57,7 +54,10 @@ hygiene test. The app arrives in Phase 2.
 | `docs/specs/` | One design spec per phase or feature. The first is the overall design. |
 | `docs/design-system.md` | Tokens, typography, layout, components, chart rules, copy rules |
 | `docs/design/mockups/` | Reference mockups (fictional demo data) |
-| `tests/test_hygiene.py` | The public-repo privacy check |
+| `src/kestrel/` | Contract, profile, connectors, views, the read-only server, the CLI |
+| `web/src/` | The app: `styles/tokens.css` (design tokens), `shell/`, `charts/`, `pages/` |
+| `docs/data-contract.md` | The Snapshot format any source speaks; schema in `docs/contract/` |
+| `tests/test_read_only_guard.py` · `tests/test_hygiene.py` | Never an order path · never private data in git |
 
 ## How work happens
 

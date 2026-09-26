@@ -4,8 +4,8 @@
 book appear side by side. Each strategy gets a page that shows how it trades and whether it's behaving the way its
 backtest said it would.
 
-> **Status: design phase (1 of 5).** The design, the design system and reference mockups are here; the app comes
-> next. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
+> **Status: Phase 2 of 5 — the skeleton runs.** Home works end to end on demo data; Accounts, Books, Strategies,
+> Backtests, Activity and Settings arrive in later phases. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
 
 ## What it shows
 
@@ -54,16 +54,20 @@ Reference mockups, drawn with fictional demo data; clone and open them in a brow
 | [trading-rails](https://github.com/Dimas-100/trading-rails) | trades safely: paper broker, safety gate, backtests |
 | **kestrel** | shows it all; reads the two above, or any source that speaks its data contract |
 
-## Setting it up (planned, Phase 2+)
+## Run it
+
+Needs Python 3.11+ and Node 24+.
 
 ```bash
 git clone <this repo> && cd kestrel
-pip install -e .
+python -m venv .venv && .venv/bin/pip install -e .      # Windows: .venv\Scripts\pip
 (cd web && npm ci && npm run build)
-kestrel serve                                # demo data out of the box
-cp profile.example.toml profile.toml         # your name, your sources
-# put any keys your sources need in .env, then: kestrel serve
+.venv/bin/kestrel serve                                  # opens http://127.0.0.1:8030 with demo data
 ```
+
+Make it yours: copy `profile.example.toml` to `profile.toml` (gitignored) and set your name, look and sources.
+`kestrel check` validates the profile and tries every source; `kestrel demo` prints the demo data as an example feed;
+`kestrel schema` prints the [data contract](docs/data-contract.md).
 
 ## License
 
