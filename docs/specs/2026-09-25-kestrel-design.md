@@ -234,6 +234,7 @@ stale_after = "15m"
   - An import guard (AST walk of `src/`) fails if any module imports or calls an order-placing API.
   - SQLite is opened with `mode=ro`.
 - **Local-only.** The server binds `127.0.0.1` and allows no CORS origins. There is no auth because nothing leaves the machine.
+  - A request whose `Host` is anything but `127.0.0.1` or `localhost` is refused with 400 (a DNS-rebinding guard).
 - **Untrusted input.** Feed text is rendered as text only (never `dangerouslySetInnerHTML`). A payload that fails schema validation is dropped and the source is shown as `error`.
 - **Nothing private in git.** `profile.toml`, `.env*`, `data/`, `dist/` and `node_modules/` are gitignored. The committed demo data is fictional. `tests/test_hygiene.py` fails the build on machine paths, private hosts or personal email addresses in any tracked file.
 

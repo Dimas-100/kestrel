@@ -1,5 +1,8 @@
 import json
 
+import pytest
+
+import kestrel.cli
 from kestrel.cli import main
 
 NOW = "2026-09-25T21:08:00+00:00"
@@ -37,6 +40,14 @@ def test_check_passes_on_the_demo_and_fails_on_a_bad_profile(capsysbinary, tmp_p
     bad.write_text('[app]\ntheme = "neon"\n', encoding="utf-8")
     code, _, err = run(capsysbinary, "check", "--profile", str(bad))
     assert code == 2 and "app.theme" in err
+
+
+def test_serve_only_ever_listens_on_this_computer(capsys):
+    assert kestrel.cli.HOST == "127.0.0.1"
+    with pytest.raises(SystemExit) as done:
+        main(["serve", "--help"])
+    out = capsys.readouterr().out
+    assert done.value.code == 0 and "--port" in out and "--host" not in out
 
 
 def test_check_fails_when_a_source_cannot_be_read(capsysbinary, tmp_path):

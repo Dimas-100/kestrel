@@ -1,4 +1,5 @@
 import datetime as dt
+import pathlib
 
 import pytest
 from fastapi.routing import APIRoute
@@ -8,6 +9,7 @@ from kestrel.profile import DEMO_PROFILE
 from kestrel.server import create_app
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
+BASE_URL = "http://127.0.0.1"  # the Host the server allows; TestClient's default "testserver" is refused
 
 
 @pytest.fixture
@@ -21,7 +23,7 @@ def dist(tmp_path):
 
 @pytest.fixture
 def client(dist):
-    return TestClient(create_app(DEMO_PROFILE, clock=lambda: NOW, web_dist=dist))
+    return TestClient(create_app(DEMO_PROFILE, clock=lambda: NOW, web_dist=dist), base_url=BASE_URL)
 
 
 def test_every_route_is_read_only(dist):
@@ -63,12 +65,48 @@ def test_pages_fall_back_to_the_app_and_files_are_served(client):
     assert client.get("/favicon.svg").text == "<svg></svg>"
 
 
-def test_a_path_outside_the_build_is_never_served(client):
-    response = client.get("/..%2F..%2Fpyproject.toml")
-    assert "[project]" not in response.text
+def test_a_path_outside_the_build_is_never_served(tmp_path):
+    base = tmp_path / "base"
+    dist = base / "web" / "dist"
+    dist.mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><title>kestrel</title>", encoding="utf-8")
+    (base / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+    client = TestClient(create_app(DEMO_PROFILE, clock=lambda: NOW, web_dist=dist), base_url=BASE_URL)
+    for path in ("/../../pyproject.toml", "/..%2F..%2Fpyproject.toml", "/assets/../../../pyproject.toml"):
+        response = client.get(path)
+        assert "[project]" not in response.text, path
+
+
+def test_a_windows_network_path_is_refused_before_touching_the_filesystem(client, monkeypatch):
+    touched: list[str] = []
+    real_resolve, real_is_file = pathlib.Path.resolve, pathlib.Path.is_file
+
+    def unc(path: pathlib.Path) -> bool:
+        return str(path).startswith(("\\\\", "//"))
+
+    # record, then delegate, except for a network path: even a regressed build must not reach the network here
+    def resolve(self, *args, **kwargs):
+        touched.append(str(self))
+        return self if unc(self) else real_resolve(self, *args, **kwargs)
+
+    def is_file(self, *args, **kwargs):
+        touched.append(str(self))
+        return False if unc(self) else real_is_file(self, *args, **kwargs)
+
+    monkeypatch.setattr(pathlib.Path, "resolve", resolve)
+    monkeypatch.setattr(pathlib.Path, "is_file", is_file)
+    response = client.get("/%5C%5Chost%5Cshare%5Cx.txt")
+    assert response.status_code == 200 and "<title>kestrel</title>" in response.text
+    assert not [t for t in touched if t.startswith(("\\\\", "//"))], touched
+
+
+def test_a_request_for_another_host_is_refused(client):
+    """DNS rebinding: a page on another site that resolves its name to 127.0.0.1 still sends its own Host."""
+    assert client.get("/api/health", headers={"Host": "evil.example"}).status_code == 400
+    assert client.get("/api/health", headers={"Host": "localhost:8030"}).status_code == 200
 
 
 def test_the_api_works_without_a_built_front_end():
-    client = TestClient(create_app(DEMO_PROFILE, clock=lambda: NOW, web_dist=None))
+    client = TestClient(create_app(DEMO_PROFILE, clock=lambda: NOW, web_dist=None), base_url=BASE_URL)
     assert client.get("/api/health").status_code == 200
     assert client.get("/").status_code == 404

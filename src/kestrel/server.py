@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
 from .connectors import collect
@@ -17,16 +18,31 @@ from .views.home import HomeView, home_view
 from .views.shell import ShellView, shell_view
 
 WEB_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
+LOCAL_HOSTS = ("127.0.0.1", "localhost")
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _plain_parts(rest: str) -> tuple[str, ...] | None:
+    """The path's parts when it is a plain relative path, else None.
+
+    Decided on the text alone, before any filesystem call: on Windows a backslash or a drive colon could turn the
+    path into a network (UNC) or absolute path, and merely resolving one of those reaches out over the network.
+    """
+    if not rest or "\\" in rest or ":" in rest or rest.startswith("/"):
+        return None
+    parts = PurePosixPath(rest).parts
+    return None if ".." in parts else parts
+
+
 def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
-               web_dist: Path | None = WEB_DIST) -> FastAPI:
+               web_dist: Path | None = WEB_DIST, allowed_hosts: Sequence[str] = LOCAL_HOSTS) -> FastAPI:
     app = FastAPI(title="kestrel", version=__version__, docs_url=None, redoc_url=None,
                   openapi_url="/api/openapi.json")
+    # DNS-rebinding guard: a page elsewhere whose name resolves to 127.0.0.1 still sends its own Host header
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts))
 
     @app.get("/api/health")
     def health() -> dict[str, object]:
@@ -53,9 +69,11 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
 
         @app.get("/{rest:path}", include_in_schema=False)
         def page(rest: str) -> FileResponse:
-            candidate = (root / rest).resolve()
-            if rest and candidate.is_file() and root in candidate.parents:
-                return FileResponse(candidate)
+            parts = _plain_parts(rest)
+            if parts:
+                candidate = root.joinpath(*parts).resolve()
+                if candidate.is_file() and root in candidate.parents:
+                    return FileResponse(candidate)
             return FileResponse(root / "index.html")  # the app's router handles every other path
 
     return app
