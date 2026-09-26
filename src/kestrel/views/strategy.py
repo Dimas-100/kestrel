@@ -355,8 +355,8 @@ def _sessions_held(opened: dt.date, closed: dt.date) -> int:
 
 def _anatomy_chart(chart: TradeChart, trade: Trade) -> AnatomyChart | None:
     dates = [b.date for b in chart.bars]
-    if trade.opened not in dates:
-        return None  # a chart that doesn't show the entry can't explain the trade
+    if trade.opened not in dates or trade.closed < trade.opened:
+        return None  # a chart that doesn't show the entry, or a trade that closes before it opens, can't be drawn
     entry = dates.index(trade.opened)
     exit_ = max(i for i, d in enumerate(dates) if d <= trade.closed)
     return AnatomyChart(key=_key(trade.book_id, trade.symbol, trade.opened), bars=list(chart.bars),
@@ -397,7 +397,7 @@ def yearly(points: list[ValuePoint]) -> tuple[float, float, int] | None:
     index = growth_index(points)
     if days < EARLY_DAYS or index[-1] <= 0:
         return None
-    return (index[-1] ** (365 / days) - 1) * 100, -max_drawdown_pct(index), days
+    return (index[-1] ** (365 / days) - 1) * 100, abs(max_drawdown_pct(index)), days
 
 
 def _long_term(snapshot: Snapshot) -> list[ValuePoint]:

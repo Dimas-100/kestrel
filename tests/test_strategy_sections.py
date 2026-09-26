@@ -100,18 +100,21 @@ def test_anatomy_lists_the_last_eight_trades_newest_first_and_selects_the_newest
     assert chart.indicator is not None and chart.stop == pytest.approx(chart.entry_price * 0.92, abs=0.01)
 
 
-def test_a_chart_that_matches_no_trade_or_misses_the_open_day_is_ignored():
+def test_a_chart_that_matches_no_trade_misses_the_open_day_or_has_a_backwards_trade_is_ignored():
     days = week(D(2026, 9, 14), 12)
     a = trade(days[1], days[3], symbol="HD")
     b = trade(days[4], days[6], symbol="LOW")
     c = trade(days[7], days[9], symbol="KO")
+    d = trade(days[11], days[10], symbol="PG")  # closes before it opens: a source's bug, not a crash
     charts = [
         TradeChart(book_id="a", symbol="HD", opened=days[1], bars=bars(days)),
         TradeChart(book_id="a", symbol="LOW", opened=days[4], bars=bars(days[5:])),  # the open day is missing
         TradeChart(book_id="a", symbol="MRK", opened=days[2], bars=bars(days)),  # no such trade
+        TradeChart(book_id="a", symbol="PG", opened=days[11], bars=bars(days[11:])),
     ]
-    anatomy = view(trades=[a, b, c], trade_charts=charts).anatomy
-    assert [(r.symbol, r.chart) for r in anatomy.recent] == [("KO", False), ("LOW", False), ("HD", True)]
+    anatomy = view(trades=[a, b, c, d], trade_charts=charts).anatomy
+    assert [(r.symbol, r.chart) for r in anatomy.recent] == [
+        ("PG", False), ("KO", False), ("LOW", False), ("HD", True)]
     assert [ch.key for ch in anatomy.charts] == [anatomy.selected] == ["a|HD|2026-09-15"]
 
 
@@ -135,7 +138,7 @@ def line(start, days, end_value, drop_at=None):
 def test_worth_annualizes_a_year_or_more_marks_a_shorter_history_early_and_skips_under_ninety_days():
     year = view(book_history=[Series(id="a", points=line(D(2025, 9, 25), 365, 110))]).worth.points
     assert [(p.key, p.label, p.early, p.period) for p in year] == [("book", "Real book", False, "12 months")]
-    assert year[0].return_pct == pytest.approx(10.0) and year[0].drop_pct == 0.0
+    assert year[0].return_pct == pytest.approx(10.0) and str(year[0].drop_pct) == "0.0"  # never "-0.0"
     half = view(book_history=[Series(id="a", points=line(D(2026, 3, 1), 200, 105, drop_at=50))]).worth.points
     assert half[0].early and half[0].period == "7 months"
     assert half[0].return_pct == pytest.approx((1.05 ** (365 / 200) - 1) * 100, abs=0.01)
