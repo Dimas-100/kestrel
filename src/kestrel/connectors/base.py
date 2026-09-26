@@ -18,3 +18,7 @@ class Connector(Protocol):
 
 class ConnectorUnavailable(Exception):
     """The profile names a connector kind this version of kestrel does not have."""
+
+
+class ConnectorError(Exception):
+    """A source that can't be read, worded so a person can fix it. It shows as that source's error."""
