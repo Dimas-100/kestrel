@@ -55,6 +55,7 @@ describe('numbers', () => {
     expect(num(-3)).toBe('−3.00')
     expect(num(-2.46, 1)).toBe('−2.5')
     expect(num(-0.004)).toBe('0.00') // no sign on what shows as zero
+    expect(num(-0.4, 0)).toBe('0')
   })
 })
 

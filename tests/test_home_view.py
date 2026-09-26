@@ -148,3 +148,24 @@ def test_a_book_without_history_or_trades_has_no_numbers_but_still_shows():
     assert row.day_change is None and row.since_pct is None
     assert row.verdict == "none"  # no expectation to compare with
     assert row.slots_used == 0 and row.slots_total == 3
+
+
+def test_a_real_book_on_its_first_day_does_not_empty_the_comparison():
+    """A book with a single point can't be drawn yet; it must not move the shared start or the window."""
+    d = dt.date
+    lt = [ValuePoint(date=d(2026, 1, 2) + dt.timedelta(days=i), value=100 + i) for i in range(260)]
+    spx = [ValuePoint(date=p.date, value=500 + p.value) for p in lt]
+    first_day = [ValuePoint(date=d(2026, 9, 25), value=2000)]
+    snapshot = Snapshot(
+        generated_at=NOW,
+        accounts=[Account(id="lt", name="Index fund", category="long_term", value=lt[-1].value, as_of=NOW)],
+        account_history=[Series(id="lt", points=lt)],
+        books=[Book(id="new", name="New", money="real", strategy_id="s", status="running", started=d(2026, 9, 25),
+                    value=2000)],
+        book_history=[Series(id="new", points=first_day)],
+        benchmark=Benchmark(symbol="SPY", label="S&P 500", points=spx),
+    )
+    c = home_view(snapshot, Profile(), NOW).comparison
+    assert c.window == "ytd" and c.start == d(2026, 1, 2) and len(c.dates) > 200
+    assert [line.key for line in c.lines] == ["long_term", "benchmark"]
+    assert c.gap_pts is None

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { HomeView } from '../../lib/api'
 import { setCurrency } from '../../lib/format'
 import { homeFixture, renderApp, shellFixture } from '../../test/renderApp'
-import { verdict } from './ComparisonPanel'
+import { period, verdict } from './ComparisonPanel'
 import { summaryParts } from './Home'
 
 const panel = (name: string) => screen.getByRole('region', { name })
@@ -145,6 +145,11 @@ describe('words from the data', () => {
     const level = homeFixture.comparison.lines.map((l) => (l.key === 'trading'
       ? { ...l, max_drop_pct: lt.max_drop_pct + 0.04 } : l))
     expect(verdict({ ...homeFixture.comparison, lines: level })?.headline).toMatch(/, with an equal worst drop \(/)
+  })
+
+  it('names no date when there is nothing to compare yet', () => {
+    const none = { ...homeFixture.comparison, window: '12m' as const, start: '2025-09-25', dates: [], lines: [] }
+    expect(period(none)).toEqual({ phrase: 'over the past 12 months', title: 'Past 12 months' })
   })
 
   it('names the shared start when a line begins later in the year', async () => {

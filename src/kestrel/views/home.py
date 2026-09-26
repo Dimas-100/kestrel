@@ -194,16 +194,18 @@ def _comparison(snapshot: Snapshot, profile: Profile, today: dt.date, real_books
     long_term = sum_series([history[a.id] for a in snapshot.accounts if a.category == "long_term" and a.id in history])
     bench = list(snapshot.benchmark.points) if snapshot.benchmark else []
     start, window = dt.date(today.year, 1, 1), "ytd"
-    if len(_window(trading or long_term, start)) < MIN_YTD_POINTS:
+    # a series needs two points to be a line: a real book on its first day must not move the window or the start
+    drawable = lambda points: len(points) >= 2  # noqa: E731
+    if len(_window(trading if drawable(trading) else long_term, start)) < MIN_YTD_POINTS:
         start, window = today - dt.timedelta(days=365), "12m"
     trading, long_term, bench = _window(trading, start), _window(long_term, start), _window(bench, start)
-    firsts = [s[0].date for s in (trading, long_term, bench) if s]
+    firsts = [s[0].date for s in (trading, long_term, bench) if drawable(s)]
     if firsts:
         # every line is measured from the same day: the latest first date, so a book opened in July is not
         # set against an index fund's whole year
         start = max(firsts)
         trading, long_term, bench = _from(trading, start), _from(long_term, start), _from(bench, start)
-    dates = sorted({p.date for p in (trading or long_term or bench)})
+    dates = sorted({p.date for p in next((s for s in (trading, long_term, bench) if drawable(s)), [])})
     lines = [
         line for line in (
             _line("trading", "Trading", trading, dates),

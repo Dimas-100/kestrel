@@ -15,11 +15,12 @@ const DAY_MS = 86_400_000
 const GRACE_DAYS = 7 // a year's first close can fall as late as 4 January (New Year's Day, then a weekend)
 
 /** The comparison's period in words. Every line starts on the same day; when that day is later than the window's
- *  own start (say a book opened in July), the words name it: "since 1 Jul". */
+ *  own start (say a book opened in July), the words name it: "since 1 Jul". With no dates yet, it names none. */
 export function period(c: Comparison): { phrase: string; title: string } {
-  const last = c.dates[c.dates.length - 1] ?? c.start
+  const last = c.dates[c.dates.length - 1]
   const opens = c.window === 'ytd' ? Date.parse(`${c.start.slice(0, 4)}-01-01`) : Date.parse(last) - 365 * DAY_MS
-  if (Date.parse(c.start) - opens > GRACE_DAYS * DAY_MS) {
+  // with no dates there is no shared start to name (the empty 12-month case): say the window alone
+  if (last != null && Date.parse(c.start) - opens > GRACE_DAYS * DAY_MS) {
     const day = monthLabel(c.start, true)
     return { phrase: `since ${day}`, title: `Since ${day}` }
   }

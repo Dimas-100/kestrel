@@ -110,3 +110,8 @@ def test_the_api_works_without_a_built_front_end():
     client = TestClient(create_app(DEMO_PROFILE, clock=lambda: NOW, web_dist=None), base_url=BASE_URL)
     assert client.get("/api/health").status_code == 200
     assert client.get("/").status_code == 404
+
+
+def test_a_nul_character_in_a_path_gets_the_app_not_an_error(client):
+    response = client.get("/strategies%00x")
+    assert response.status_code == 200 and "<title>kestrel</title>" in response.text

@@ -30,8 +30,9 @@ def _plain_parts(rest: str) -> tuple[str, ...] | None:
 
     Decided on the text alone, before any filesystem call: on Windows a backslash or a drive colon could turn the
     path into a network (UNC) or absolute path, and merely resolving one of those reaches out over the network.
+    A NUL character is refused too: the filesystem calls would raise on it.
     """
-    if not rest or "\\" in rest or ":" in rest or rest.startswith("/"):
+    if not rest or "\\" in rest or ":" in rest or chr(0) in rest or rest.startswith("/"):
         return None
     parts = PurePosixPath(rest).parts
     return None if ".." in parts else parts
