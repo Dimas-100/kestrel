@@ -242,15 +242,19 @@ def _within_half(expected: float) -> tuple[float, float]:
 
 
 def _row(key, label, actual: float | None, expected: float | None, band: tuple[float, float] | None,
-         n: int) -> ScoreRow:
+         n: int, compare: float | None = None) -> ScoreRow:
+    """`compare` is the unrounded value to test against the band, when it differs from the rounded `actual` shown
+    in the row — a value that rounds to the edge must not read as inside it (Home compares the same unrounded
+    mean, so the two pages never disagree at the edge)."""
+    value = actual if compare is None else compare
     if expected is None:
         status: Status = "none"
     elif n < MIN_TRADES_FOR_VERDICT:
         status = "early"
-    elif actual is None or band is None:
+    elif value is None or band is None:
         status = "none"
     else:
-        status = "below" if actual < band[0] else "above" if actual > band[1] else "ok"
+        status = "below" if value < band[0] else "above" if value > band[1] else "ok"
     return ScoreRow(key=key, label=label, actual=actual, expected=expected, status=status)
 
 
@@ -261,20 +265,22 @@ def _scorecard(trades: list[Trade], expected: Expected | None, book: Book | None
     losses = [r for r in returns if r <= 0]
     months = max(1.0, (today - book.started).days / MONTH_DAYS) if book else 1.0
     win_rate = round(len(wins) / n * 100, 1) if n else None
-    avg_trade = round(fmean(returns), 2) if n else None
+    avg_trade_raw = fmean(returns) if n else None
+    avg_trade = round(avg_trade_raw, 2) if avg_trade_raw is not None else None
     avg_win = round(fmean(wins), 2) if wins else None
     avg_loss = round(fmean(losses), 2) if losses else None
     per_month = round(n / months, 1) if n else None
     e = expected
     win_band = avg_band = None
     if e is not None and n:
-        p = e.win_rate / 100
+        p = min(1.0, max(0.0, e.win_rate / 100))  # a backtest's win_rate can arrive outside 0..100
         half = 1.96 * math.sqrt(p * (1 - p) / n) * 100
         win_band = (e.win_rate - half, e.win_rate + half)
         avg_band = expected_band(e.avg_trade_pct, e.sd_trade_pct, n)
     return [
         _row("win_rate", "Win rate", win_rate, e.win_rate if e else None, win_band, n),
-        _row("avg_trade", "Average per trade", avg_trade, e.avg_trade_pct if e else None, avg_band, n),
+        _row("avg_trade", "Average per trade", avg_trade, e.avg_trade_pct if e else None, avg_band, n,
+             compare=avg_trade_raw),
         _row("avg_win", "Average win", avg_win, e.avg_win_pct if e else None,
              _within_half(e.avg_win_pct) if e else None, n),
         _row("avg_loss", "Average loss", avg_loss, e.avg_loss_pct if e else None,

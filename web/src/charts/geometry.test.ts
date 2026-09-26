@@ -83,7 +83,7 @@ describe('chart geometry', () => {
     }
   })
   it('washes a month cell by the size of its move and leaves a small one neutral', () => {
-    expect([cellWash(1.2), cellWash(-0.8), cellWash(9)]).toEqual([22, 18, 60])
+    expect([cellWash(1.2), cellWash(-0.8), cellWash(9)]).toEqual([22, 18, 45])
     expect([cellWash(0.3), cellWash(null)]).toEqual([null, null])
   })
   it('picks enough decimals to tell neighbouring axis ticks apart', () => {

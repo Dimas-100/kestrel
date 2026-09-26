@@ -68,8 +68,8 @@ export function TradesPanel({ v }: { v: StrategyView }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t) => (
-                <tr key={`${t.symbol}-${t.opened}`}>
+              {sorted.map((t, i) => (
+                <tr key={`${t.symbol}-${t.opened}-${t.closed}-${i}`}>
                   <td>
                     <div className="flex items-center gap-2.5">
                       <BookMark kind={t.money} color="var(--s2)" />

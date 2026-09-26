@@ -1,4 +1,5 @@
 import datetime as dt
+import math
 from statistics import fmean
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from kestrel.connectors import collect
 from kestrel.contract import Book, Expected, Position, Snapshot, Step, Strategy, Trade
 from kestrel.profile import DEMO_PROFILE, Profile
+from kestrel.views.home import home_view
 from kestrel.views.strategy import buckets, strategies_view, strategy_view
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
@@ -111,6 +113,30 @@ def test_a_measure_outside_its_band_is_flagged_in_the_direction_it_is_off():
     assert rows["avg_win"].status == "below"  # +1.0% under half of +2.45%
     assert (rows["avg_loss"].actual, rows["avg_loss"].status) == (None, "none")  # no losses to average
     assert rows["per_month"].status == "above"  # 20 trades in two months against 3.1 a month
+
+
+def test_a_backtest_win_rate_outside_0_to_100_does_not_raise():
+    trades = [trade("a", 1.0, D(2026, 9, 1) + dt.timedelta(days=i)) for i in range(12)]
+    bad = Expected(win_rate=120, avg_trade_pct=0.84, avg_win_pct=2.45, avg_loss_pct=-2.28, trades_per_month=3.1,
+                   sd_trade_pct=3.0)
+    view = strategy_view(snap([book("a")], trades, expected=bad), Profile(), NOW, "s")
+    assert view.behaving.scorecard[0].key == "win_rate"
+
+
+def test_a_mean_just_outside_the_band_is_not_hidden_by_rounding():
+    """The scorecard rounds the mean to 2dp and Home's book row to 3dp; a mean that sits just past the band edge
+    must not round back inside it in either place (they'd then disagree with each other at the edge)."""
+    n = 10
+    sd = math.sqrt(n) / 1.96  # half = 1.96 * sd / sqrt(n) == 1.0, so with avg 0 the band is (-1.0, 1.0)
+    edge = Expected(win_rate=50, avg_trade_pct=0.0, avg_win_pct=1.0, avg_loss_pct=-1.0, trades_per_month=1.0,
+                    sd_trade_pct=sd)
+    trades = [trade("a", 1.0004, D(2026, 9, 1) + dt.timedelta(days=i)) for i in range(n)]
+    snapshot = snap([book("a")], trades, expected=edge)
+    scorecard = strategy_view(snapshot, Profile(), NOW, "s").behaving.scorecard
+    row = {r.key: r for r in scorecard}["avg_trade"]
+    assert row.status == "above"  # 1.0004 rounds to 1.00 at 2dp — must not read as "ok"
+    verdict = home_view(snapshot, Profile(), NOW).books[0].verdict
+    assert verdict == "above"  # 1.0004 rounds to 1.000 at 3dp — must not read as "in_band"
 
 
 def test_fewer_than_ten_closed_trades_is_too_early_to_judge():

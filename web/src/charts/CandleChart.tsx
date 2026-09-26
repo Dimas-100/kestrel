@@ -101,7 +101,7 @@ export function CandleChart(props: Props) {
           </g>
         )}
         {candles.map((c, i) => (
-          <g key={bars[i].date} data-candle="">
+          <g key={i} data-candle="">
             <line x1={c.x} x2={c.x} y1={c.wickTop} y2={c.wickBottom} stroke={c.up ? 'var(--ink2)' : 'var(--ink3)'} />
             <rect x={c.x - c.w / 2} y={c.bodyTop} width={c.w} height={c.bodyH} rx={1}
               fill={c.up ? 'var(--panel)' : 'var(--ink3)'} stroke={c.up ? 'var(--ink2)' : 'none'}

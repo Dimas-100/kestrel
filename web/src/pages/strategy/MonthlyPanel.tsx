@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MonthGrid, MonthTable } from '../../charts/MonthGrid'
+import { Empty } from '../../charts/marks'
 import { Delta, Missing, Panel, Seg } from '../../components/bits'
 import type { StrategyView } from '../../lib/api'
 import { monthLabel, pct } from '../../lib/format'
@@ -22,21 +23,28 @@ export function MonthlyPanel({ v }: { v: StrategyView }) {
   const money = v.book ?? 'real'
   const word = MONEY_WORD[money]
   return (
-    <Panel id="monthly" title="Month by month" subtitle={`${word} book against your long-term accounts`} span={5}
-      height={380} actions={<Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
-      <div className="mt-4">
-        {view === 'Chart'
-          ? <MonthGrid months={m.months} bookLabel={word} money={money} ariaLabel="Monthly returns, book against long-term" />
-          : <MonthTable months={m.months} bookLabel={word} />}
-      </div>
-      <div className="mt-auto border-t border-line pt-3.5 flex flex-col gap-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-ink2">Months ahead of long-term</span>
-          <span className="num">{m.compared ? `${m.ahead} of ${m.compared}` : '—'}</span>
-        </div>
-        <Figure label="Best month" figure={m.best} />
-        <Figure label="Worst month" figure={m.worst} />
-      </div>
+    <Panel id="monthly" title="Month by month"
+      subtitle={v.primary == null ? undefined : `${word} book against your long-term accounts`} span={5}
+      height={380} actions={v.primary != null && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
+      {v.primary == null ? (
+        <Empty>No book trades this strategy yet.</Empty>
+      ) : (
+        <>
+          <div className="mt-4">
+            {view === 'Chart'
+              ? <MonthGrid months={m.months} bookLabel={word} money={money} ariaLabel="Monthly returns, book against long-term" />
+              : <MonthTable months={m.months} bookLabel={word} />}
+          </div>
+          <div className="mt-auto border-t border-line pt-3.5 flex flex-col gap-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-ink2">Months ahead of long-term</span>
+              <span className="num">{m.compared ? `${m.ahead} of ${m.compared}` : '—'}</span>
+            </div>
+            <Figure label="Best month" figure={m.best} />
+            <Figure label="Worst month" figure={m.worst} />
+          </div>
+        </>
+      )}
     </Panel>
   )
 }

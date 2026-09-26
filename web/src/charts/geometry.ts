@@ -148,7 +148,7 @@ export function placeLabels(points: { x: number; y: number; w: number }[], width
 /** How strongly a month cell is washed in the gain or loss colour, in percent; null for a small or missing move. */
 export function cellWash(value: number | null): number | null {
   if (value == null || Math.abs(value) < 0.5) return null
-  return Math.min(60, Math.round(10 + Math.abs(value) * 10))
+  return Math.min(45, Math.round(10 + Math.abs(value) * 10))
 }
 
 /** Consecutive "YYYY-MM" months grouped under their year, for the label row above a month grid. */

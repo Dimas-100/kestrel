@@ -21,6 +21,7 @@ system's code entering this repo.
 - An alert's `link` is a page inside kestrel (`/books`) or empty. A link to another site (`https://…`, `//host`) fails
   validation, so the payload is dropped and the source shows as `error`.
 - A connector only reads. Nothing in the contract asks a source to change anything.
+- A strategy, book or account `id` appears directly in a URL path (`/strategies/{id}`); an id must not contain `/`.
 
 ## Optional extras
 

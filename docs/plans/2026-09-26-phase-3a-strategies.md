@@ -9481,3 +9481,22 @@ Expected: all three CI jobs green (`python` 3.11 and 3.12, `python-windows`, `we
   - The Real | Paper switch sits under the page header; the mockup's top-bar placement belonged to its tabs, which the spec leaves out.
 - **Placeholders:** none; every step has its file blocks or its exact command and output.
 - **Names and types:** the Python view models (Tasks 4–5) and `web/src/lib/api.ts` (Task 10) share field names, pinned by the generated fixtures and `satisfies Widen<…>`; chart props (Tasks 7–9) are consumed with the same names in Tasks 11–12.
+
+## After the final review
+
+The whole-branch review (base 6b1fd4a, head ebd5d3e) asked for one fix wave before merge, landed after Task 13 —
+so the file blocks above still show the code as first built. In order:
+
+- **I1** — `.panel` grows with `min-height` instead of a fixed `height`, so a panel taller than its row no longer overflows at 1181–1365 px; the SlotsPanel watch chips wrap a long note instead of widening the chip.
+- **I2** — `geometry.ts` gained `tickDecimals`, so the price axis and the funnel's percent axis pick enough decimals to tell neighbouring ticks apart instead of printing duplicate labels.
+- **I3** — the strategy-page tests use a cheap `.panel-title` lookup instead of a whole-app role query, and their top `describe` sets a 15s Vitest timeout, so the first test in each file no longer times out under parallel load.
+- **M1** — `_scorecard` clamps a backtest's `win_rate` into 0–100 before the win-rate band's math, so an out-of-range value no longer raises.
+- **M2** — the scorecard and Home's book row both compare the unrounded mean against the band, so a mean at the rounding edge can no longer read "ok" in one place and "outside" in the other.
+- **M3** — `Anatomy.tsx` falls back to the view's own pick (`selectedChartKey`) when a refetch drops the selected trade's chart, instead of showing "No chart for these trades."
+- **M4** — TradesPanel rows, SlotsPanel watch chips, HowItTrades params and CandleChart candles all key on their index (or a fuller compound key) instead of a value that can repeat.
+- **M5** — Behaving, Scorecard and Month by month show the SlotsPanel's empty-state copy when the strategy has no books, instead of "Real book…" with dashes.
+- **M6** — HowItTrades' subtitle reads "The first four of its n steps" once a strategy has more than four.
+- **M7** — `cellWash`'s cap dropped from 60 to 45 so the month grid's wash stays AA in dark mode.
+- **M8** — a recent trade's button `aria-label` now carries its exit reason and return, not just its symbol and date; its BookMark gets an sr-only money word like TradesPanel's.
+- **M9** — the funnel's expected-band edges use the design system's dotted dasharray (`1.5 3.5`) instead of a slightly different one.
+- **M10** — `docs/data-contract.md` notes that ids appear in URL paths and must not contain `/`; AGENTS.md's screenshot-pass invariant now names 1440, 1280 and 390 px.

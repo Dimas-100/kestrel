@@ -238,7 +238,8 @@ def _book_rows(snapshot: Snapshot) -> list[BookRow]:
         returns = [t.return_pct for t in snapshot.trades if t.book_id == book.id]
         strategy = strategies.get(book.strategy_id)
         expected = strategy.expected if strategy else None
-        per_trade = round(fmean(returns), 3) if returns else None
+        per_trade_raw = fmean(returns) if returns else None
+        per_trade = round(per_trade_raw, 3) if per_trade_raw is not None else None
         lo = hi = None
         if not returns or expected is None:
             verdict = "none"
@@ -246,7 +247,9 @@ def _book_rows(snapshot: Snapshot) -> list[BookRow]:
             verdict = "early"
         else:
             lo, hi = expected_band(expected.avg_trade_pct, expected.sd_trade_pct, len(returns))
-            verdict = "below" if per_trade < lo else "above" if per_trade > hi else "in_band"
+            # compare the unrounded mean: a mean that rounds to the band edge must not read as "in_band" (the
+            # scorecard on the strategy page compares the same unrounded mean, so the two never disagree)
+            verdict = "below" if per_trade_raw < lo else "above" if per_trade_raw > hi else "in_band"
         rows.append(BookRow(
             id=book.id, name=book.name, strategy=strategy.name if strategy else book.strategy_id, money=book.money,
             status=book.status, value=book.value,

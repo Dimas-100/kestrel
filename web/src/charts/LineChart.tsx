@@ -125,7 +125,7 @@ export function LineChart(props: Props) {
           <g>
             <path data-band="wash" d={bandArea} fill="var(--ink1)" fillOpacity={0.05} />
             {[band.lo, band.hi].map((edge, k) => (
-              <path key={k} d={pathOf(edge)} fill="none" stroke="var(--ref)" strokeWidth={1} strokeDasharray="1.5 3"
+              <path key={k} d={pathOf(edge)} fill="none" stroke="var(--ref)" strokeWidth={1} strokeDasharray="1.5 3.5"
                 strokeLinecap="round" />
             ))}
           </g>

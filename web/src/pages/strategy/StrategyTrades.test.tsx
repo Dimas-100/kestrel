@@ -1,19 +1,26 @@
 // The Strategy page's trade-level sections: anatomy, recent trades, is it worth it, month by month, all trades.
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { StrategyView } from '../../lib/api'
 import { renderApp, strategyFixture } from '../../test/renderApp'
-import { reasonWord, sessionsText } from './Anatomy'
+import { reasonWord, selectedChartKey, sessionsText } from './Anatomy'
 
+// a title lookup, not a role query over the whole app: role queries dominate these tests' time
+const panel = (name: string) => {
+  const title = [...document.querySelectorAll('.panel-title')].find((t) => t.textContent === name)
+  if (!title) throw new Error(`no panel titled "${name}"`)
+  return title.closest('section') as HTMLElement
+}
+const findPanel = (name: string) => waitFor(() => panel(name))
 const withView = (view: StrategyView) => ({ strategy: [{ id: view.id, book: 'real' as const, view }] })
-const rows = (region: HTMLElement) => within(region).getAllByRole('row').slice(1)
+const rows = (region: HTMLElement) => [...region.querySelectorAll('tbody tr')] as HTMLElement[]
 
-describe('Strategy page, trade by trade', () => {
+describe('Strategy page, trade by trade', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('opens the newest charted trade in the anatomy chart', async () => {
     renderApp('/strategies/rsi2')
-    const anatomy = await screen.findByRole('region', { name: 'Trade anatomy' })
+    const anatomy = await findPanel('Trade anatomy')
     expect(within(anatomy).getByText('HON · real · bought Thu 10 Sep, sold Fri 18 Sep · stop')).toBeTruthy()
     expect(anatomy.textContent).toContain('−8.01%')
     expect(within(anatomy).getByText('−1.00 R')).toBeTruthy()
@@ -28,14 +35,14 @@ describe('Strategy page, trade by trade', () => {
 
   it('picks another recent trade for the chart', async () => {
     renderApp('/strategies/rsi2')
-    const recent = await screen.findByRole('region', { name: 'Recent trades' })
+    const recent = await findPanel('Recent trades')
     const buttons = within(recent).getAllByRole('button')
     expect(buttons).toHaveLength(8)
     expect(buttons[0].getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(within(recent).getByRole('button', { name: 'TXN, closed Thu 3 Sep' }))
-    expect(within(recent).getByRole('button', { name: 'TXN, closed Thu 3 Sep' }).getAttribute('aria-pressed'))
+    fireEvent.click(within(recent).getByRole('button', { name: 'TXN, closed Thu 3 Sep, Signal, +3.5%' }))
+    expect(within(recent).getByRole('button', { name: 'TXN, closed Thu 3 Sep, Signal, +3.5%' }).getAttribute('aria-pressed'))
       .toBe('true')
-    const anatomy = screen.getByRole('region', { name: 'Trade anatomy' })
+    const anatomy = panel('Trade anatomy')
     expect(within(anatomy).getByText('TXN · real · bought Fri 28 Aug, sold Thu 3 Sep · signal')).toBeTruthy()
     expect(within(recent).getByRole('link', { name: 'All 34' }).getAttribute('href')).toBe('#trades-title')
   })
@@ -47,19 +54,19 @@ describe('Strategy page, trade by trade', () => {
       charts: anatomy.charts.filter((c) => c.key !== anatomy.recent[1].key),
     }
     const { unmount } = renderApp('/strategies/rsi2', withView({ ...strategyFixture, anatomy: one }))
-    const recent = await screen.findByRole('region', { name: 'Recent trades' })
+    const recent = await findPanel('Recent trades')
     expect(within(recent).getAllByRole('button')).toHaveLength(7)
     expect(within(recent).getByText('no chart')).toBeTruthy()
     unmount()
     const none = { ...anatomy, recent: anatomy.recent.map((r) => ({ ...r, chart: false })), charts: [], selected: null }
     renderApp('/strategies/rsi2', withView({ ...strategyFixture, anatomy: none }))
-    const panel = await screen.findByRole('region', { name: 'Trade anatomy' })
-    expect(within(panel).getByText('No chart for these trades.')).toBeTruthy()
+    const region = await findPanel('Trade anatomy')
+    expect(within(region).getByText('No chart for these trades.')).toBeTruthy()
   })
 
   it('plots yearly return against worst drop, labelled, with a table', async () => {
     renderApp('/strategies/rsi2')
-    const worth = await screen.findByRole('region', { name: 'Is it worth it?' })
+    const worth = await findPanel('Is it worth it?')
     expect(within(worth).getByText('Yearly return against the worst drop along the way')).toBeTruthy()
     for (const text of ['Backtest', 'Real book', 'Long-term accounts', 'S&P 500', '+23.4%/yr · 2006–2020',
       '+19.0%/yr · 12 months']) {
@@ -75,13 +82,13 @@ describe('Strategy page, trade by trade', () => {
   it('marks a book with under a year of history as early', async () => {
     const points = strategyFixture.worth.points.map((p) => (p.key === 'book' ? { ...p, early: true, period: '7 months' } : p))
     renderApp('/strategies/rsi2', withView({ ...strategyFixture, worth: { points } }))
-    const worth = await screen.findByRole('region', { name: 'Is it worth it?' })
+    const worth = await findPanel('Is it worth it?')
     expect(within(worth).getByText('+19.0%/yr · 7 months · early')).toBeTruthy()
   })
 
   it('sums up month by month against the long-term accounts', async () => {
     renderApp('/strategies/rsi2')
-    const monthly = await screen.findByRole('region', { name: 'Month by month' })
+    const monthly = await findPanel('Month by month')
     expect(within(monthly).getByText('Real book against your long-term accounts')).toBeTruthy()
     expect(monthly.textContent).toContain('Months ahead of long-term7 of 12')
     expect(monthly.textContent).toContain('Best month · Jan▲ up +6.9%')
@@ -92,7 +99,7 @@ describe('Strategy page, trade by trade', () => {
 
   it('lists every closed trade, newest first, and sorts by return or P/L', async () => {
     renderApp('/strategies/rsi2')
-    const all = await screen.findByRole('region', { name: 'All trades' })
+    const all = await findPanel('All trades')
     expect(within(all).getByText('Real book · 34 closed trades')).toBeTruthy()
     expect(rows(all)).toHaveLength(34)
     expect(rows(all)[0].textContent).toBe('HONreal10 Sep18 Sep8▼ down −8.01%−1.00▼ down −$225.72Stop')
@@ -109,13 +116,20 @@ describe('Strategy page, trade by trade', () => {
 
   it('says so when the book has no closed trades', async () => {
     renderApp('/strategies/rsi2', withView({ ...strategyFixture, trades: [] }))
-    const all = await screen.findByRole('region', { name: 'All trades' })
+    const all = await findPanel('All trades')
     expect(within(all).getByText('No closed trades yet.')).toBeTruthy()
+  })
+
+  it('falls back to the view’s own pick once a refetch drops the current selection’s chart', () => {
+    const charts = [{ key: 'a' }, { key: 'b' }]
+    expect(selectedChartKey(charts, 'b', 'a')).toBe('b') // still charted: keep it
+    expect(selectedChartKey(charts, 'c', 'a')).toBe('a') // gone: fall back to the view's pick
+    expect(selectedChartKey([], 'a', null)).toBe(null) // nothing charted at all
   })
 
   it('links a book below its band on Home to its strategy', async () => {
     renderApp('/')
-    const needs = await screen.findByRole('region', { name: 'Needs you' })
+    const needs = await findPanel('Needs you')
     const item = within(needs).getAllByRole('listitem').find((li) => li.textContent?.includes('below its expected band'))
     expect(item && within(item).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('/strategies/leader')
   })

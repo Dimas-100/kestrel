@@ -8,9 +8,10 @@ const COUNT = ['', 'one step', 'two steps', 'three steps', 'four steps']
 /** The rule as up to four cards joined by arrows, each with its parameters, then the sizing line. */
 export function HowItTrades({ steps, sizing }: { steps: Step[]; sizing: string }) {
   const shown = steps.slice(0, 4)
+  const subtitle = steps.length > 4 ? `The first four of its ${steps.length} steps`
+    : shown.length ? `The whole rule, in ${COUNT[shown.length]}` : undefined
   return (
-    <Panel id="how" title="How it trades" span={12} height={252}
-      subtitle={shown.length ? `The whole rule, in ${COUNT[shown.length]}` : undefined}>
+    <Panel id="how" title="How it trades" span={12} height={252} subtitle={subtitle}>
       {shown.length === 0 ? (
         <Empty>This strategy hasn&rsquo;t described its rules.</Empty>
       ) : (
@@ -32,8 +33,9 @@ export function HowItTrades({ steps, sizing }: { steps: Step[]; sizing: string }
                 <div className="text-xs text-ink3 mt-1">{step.text}</div>
                 {step.params.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
-                    {step.params.map((param) => (
-                      <span key={param} className="num text-2xs text-ink2 rounded-[5px] border border-line2 px-[7px] py-[3px]">
+                    {step.params.map((param, k) => (
+                      <span key={`${param}-${k}`}
+                        className="num text-2xs text-ink2 rounded-[5px] border border-line2 px-[7px] py-[3px]">
                         {param}
                       </span>
                     ))}

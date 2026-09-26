@@ -16,6 +16,12 @@ export function sessionsText(n: number): string {
   return `${n} session${n === 1 ? '' : 's'}`
 }
 
+/** The trade key to chart: the current pick, unless a refetch dropped its chart (a new trade closed), in which case
+ *  the view's own default takes over. */
+export function selectedChartKey(charts: { key: string }[], selected: string | null, fallback: string | null): string | null {
+  return charts.some((c) => c.key === selected) ? selected : fallback
+}
+
 function AnatomyPanel({ v, selected }: { v: StrategyView; selected: string | null }) {
   const [view, setView] = useState<(typeof VIEWS)[number]>('Chart')
   const trade = v.anatomy.recent.find((r) => r.key === selected)
@@ -51,23 +57,26 @@ function AnatomyPanel({ v, selected }: { v: StrategyView; selected: string | nul
 }
 
 function RecentRow({ r, selected, onSelect }: { r: RecentTrade; selected: boolean; onSelect: () => void }) {
+  const reason = reasonWord(r.exit_reason)
+  const returnText = pct(r.return_pct, 1)
   const inner = (
     <>
       <BookMark kind={r.money} color="var(--s2)" />
+      <span className="sr-only">{r.money}</span>
       <span className="num font-semibold w-12 flex-none text-left">{r.symbol}</span>
       <span className="num text-xs text-ink3 w-14 flex-none whitespace-nowrap text-left">{monthLabel(r.closed, true)}</span>
       <span className="chip" style={{ padding: '3px 8px', fontSize: 11 }}>
         {r.exit_reason === 'stop' && <Icon name="shield" size={12} style={{ color: 'var(--serious)' }} />}
-        {reasonWord(r.exit_reason)}
+        {reason}
       </span>
       {!r.chart && <span className="text-2xs text-ink3">no chart</span>}
-      <span className="ml-auto text-sm"><Delta value={r.return_pct} digits={1}>{pct(r.return_pct, 1)}</Delta></span>
+      <span className="ml-auto text-sm"><Delta value={r.return_pct} digits={1}>{returnText}</Delta></span>
     </>
   )
   const look = 'flex w-full items-center gap-2.5 h-11 px-2.5 rounded-[7px] text-left'
   return r.chart ? (
     <button type="button" className={`${look} ease`} aria-pressed={selected} onClick={onSelect}
-      aria-label={`${r.symbol}, closed ${shortDate(r.closed)}`}
+      aria-label={`${r.symbol}, closed ${shortDate(r.closed)}, ${reason}, ${returnText}`}
       style={selected ? { background: 'var(--panel2)', boxShadow: 'inset 0 0 0 1px var(--line2)' } : undefined}>
       {inner}
     </button>
@@ -79,9 +88,10 @@ function RecentRow({ r, selected, onSelect }: { r: RecentTrade; selected: boolea
 /** The anatomy chart and the recent trades that pick what it shows. */
 export function AnatomySection({ v }: { v: StrategyView }) {
   const [selected, setSelected] = useState(v.anatomy.selected)
+  const key = selectedChartKey(v.anatomy.charts, selected, v.anatomy.selected)
   return (
     <>
-      <AnatomyPanel v={v} selected={selected} />
+      <AnatomyPanel v={v} selected={key} />
       <Panel id="recent" title="Recent trades" span={4} height={452}
         actions={v.trades.length > 0 && (
           <a href="#trades-title" className="text-xs">All {v.trades.length}</a>
@@ -92,7 +102,7 @@ export function AnatomySection({ v }: { v: StrategyView }) {
           <ul className="mt-2 -mx-2.5">
             {v.anatomy.recent.map((r) => (
               <li key={r.key}>
-                <RecentRow r={r} selected={r.key === selected} onSelect={() => setSelected(r.key)} />
+                <RecentRow r={r} selected={r.key === key} onSelect={() => setSelected(r.key)} />
               </li>
             ))}
           </ul>

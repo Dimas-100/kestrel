@@ -37,7 +37,7 @@ with pages that explain each strategy and whether it is behaving as expected. Th
    - Never encode meaning by colour alone.
    - Re-run the palette validator before changing any colour, and record the result in the design-system doc.
 4. **Every chart has a table view, every page works by keyboard, and no panel overflows.** Check this with a
-   screenshot pass at 1440 px and 390 px in both themes.
+   screenshot pass at 1440, 1280 and 390 px in both themes.
 
 ## Run and test
 
