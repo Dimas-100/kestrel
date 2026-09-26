@@ -1,19 +1,9 @@
 import { useState } from 'react'
 import { baseline, RANGES, type Range, windowPoints } from '../../charts/geometry'
 import { LineChart, LineKey } from '../../charts/LineChart'
-import { Delta, Panel, Seg } from '../../components/bits'
+import { Delta, Panel, Seg, Stat } from '../../components/bits'
 import type { NetWorth } from '../../lib/api'
 import { compactMoney, monthLabel, money, pct, shortDate, signedMoney, splitCents } from '../../lib/format'
-
-function Stat({ label, children, sub }: { label: string; children: React.ReactNode; sub?: React.ReactNode }) {
-  return (
-    <div>
-      <div className="label">{label}</div>
-      <div className="text-[13px] mt-1.5">{children}</div>
-      {sub && <div className="text-xs text-ink3 mt-1">{sub}</div>}
-    </div>
-  )
-}
 
 export function NetWorthPanel({ nw }: { nw: NetWorth }) {
   const [range, setRange] = useState<Range>('1Y')

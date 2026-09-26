@@ -1,13 +1,12 @@
 import { type CSSProperties, useState } from 'react'
 import { Empty } from '../../charts/marks'
-import { BookMark, Delta, Missing, Panel } from '../../components/bits'
+import { BookMark, Delta, Missing, Panel, type Sort, SortHeader, toggleSort } from '../../components/bits'
 import { type StrategyView, type TradeRow, useShell } from '../../lib/api'
 import { monthLabel, num, pct, signedMoney } from '../../lib/format'
 import { MONEY_WORD } from '../strategies/Strategies'
 import { reasonWord } from './Anatomy'
 
 type SortKey = 'closed' | 'return' | 'pnl'
-interface Sort { key: SortKey; dir: 'desc' | 'asc' }
 
 const VALUE: Record<SortKey, (t: TradeRow) => string | number> = {
   closed: (t) => `${t.closed}|${t.opened}|${t.symbol}`,
@@ -20,30 +19,13 @@ function day(iso: string, year: number): string {
   return Number(iso.slice(0, 4)) === year ? monthLabel(iso, true) : `${monthLabel(iso, true)} ${iso.slice(0, 4)}`
 }
 
-function SortHeader({ label, k, sort, onSort, right = false }: {
-  label: string; k: SortKey; sort: Sort; onSort: (key: SortKey) => void; right?: boolean
-}) {
-  const active = sort.key === k
-  return (
-    <th className={right ? 'r' : undefined} aria-sort={active ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}>
-      <button type="button" onClick={() => onSort(k)} className="uppercase tracking-[0.08em] font-medium"
-        style={{ color: active ? 'var(--ink1)' : 'inherit', background: 'none', border: 0, padding: 0, cursor: 'pointer',
-          font: 'inherit' }}>
-        {label}
-      </button>
-      {active && <span aria-hidden="true"> {sort.dir === 'desc' ? '↓' : '↑'}</span>}
-    </th>
-  )
-}
-
 /** Every closed trade in the primary book, newest first; sortable by closed date, return and P/L. */
 export function TradesPanel({ v }: { v: StrategyView }) {
-  const [sort, setSort] = useState<Sort>({ key: 'closed', dir: 'desc' })
+  const [sort, setSort] = useState<Sort<SortKey>>({ key: 'closed', dir: 'desc' })
   const shell = useShell()
   const year = new Date(shell.data?.now ?? Date.now()).getUTCFullYear()
   const word = MONEY_WORD[v.book ?? 'real']
-  const onSort = (key: SortKey) =>
-    setSort((s) => (s.key === key ? { key, dir: s.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' }))
+  const onSort = (key: SortKey) => setSort((s) => toggleSort(s, key))
   const sorted = [...v.trades].sort((a, b) => {
     const [x, y] = [VALUE[sort.key](a), VALUE[sort.key](b)]
     const order = x < y ? -1 : x > y ? 1 : 0
