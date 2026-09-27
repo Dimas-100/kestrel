@@ -21,6 +21,7 @@ from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from pydantic import ValidationError
 
+from .. import __version__
 from ..contract import Snapshot, Source
 from .base import DETAIL_LIMIT, ConnectorError
 
@@ -63,11 +64,10 @@ def _shown(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc.rpartition("@")[2], parts.path, "", ""))
 
 
-def _read(response: http.client.HTTPResponse, deadline: float, timeout: float) -> bytes:
-    """The body, up to MAX_BYTES and within the deadline. `read1` makes at most one read on the socket, so a feed
-    that sends a byte at a time can't outlast the timeout (the socket's own timeout is per read)."""
-    length = response.headers.get("Content-Length", "")
-    if length.isdigit() and int(length) > MAX_BYTES:
+def _read(response: http.client.HTTPResponse, deadline: float, still_sending: str) -> bytes:
+    """The body, up to MAX_BYTES. The deadline is checked between reads; a read that blocks inside the chunked
+    framing (a chunk-size or trailer line trickled a byte at a time) is ended by `_fetch`'s watchdog instead."""
+    if response.length is not None and response.length > MAX_BYTES:  # http.client's own reading of Content-Length
         raise ConnectorError("the feed sent more than 20 MB")
     chunks: list[bytes] = []
     size = 0
@@ -77,10 +77,15 @@ def _read(response: http.client.HTTPResponse, deadline: float, timeout: float) -
             if size > MAX_BYTES:
                 raise ConnectorError("the feed sent more than 20 MB")
             if time.monotonic() > deadline:
-                raise ConnectorError(f"the feed was still sending after {timeout:g} s")
+                raise ConnectorError(still_sending)
             chunks.append(chunk)
     except TimeoutError:
-        raise ConnectorError(f"the feed was still sending after {timeout:g} s") from None
+        raise ConnectorError(still_sending) from None
+    except (http.client.HTTPException, OSError) as exc:
+        # the class name only: an exception's text can quote what the feed sent
+        raise ConnectorError(f"the feed couldn't be read ({type(exc).__name__})") from None
+    if response.length:  # what Content-Length promised and never came
+        raise ConnectorError("the feed stopped partway")
     return b"".join(chunks)
 
 
@@ -186,43 +191,44 @@ class FeedConnector:
         token = self._token()
         parts = urlsplit(url)
         target = urlunsplit(("", "", parts.path or "/", parts.query, ""))
-        headers = {"Accept": "application/json"}
+        headers = {"Accept": "application/json", "User-Agent": f"kestrel/{__version__}"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
         connection_cls = http.client.HTTPSConnection if parts.scheme == "https" else http.client.HTTPConnection
         connection = connection_cls(parts.hostname, parts.port, timeout=self.timeout)
         no_answer = f"the feed didn't answer within {self.timeout:g} s"
+        still_sending = f"the feed was still sending after {self.timeout:g} s"
+        deadline = time.monotonic() + self.timeout  # one deadline for the whole answer: connecting, headers, body
         timed_out = False
-        # set once the headers are in (or the attempt has already failed), so the watchdog thread below stands down
-        done = threading.Event()
+        done = threading.Event()  # set once the whole answer is in, or the attempt has failed
 
         def _watch() -> None:
-            # the watchdog: a peer that trickles bytes without ever finishing its headers keeps resetting the
-            # socket's own per-read timeout, so that alone can't be trusted to end this. Shutting the socket down
-            # unblocks whatever call is waiting on it.
+            # the watchdog: a peer that trickles bytes (in its headers, or in a chunked body's framing) keeps
+            # resetting the socket's own per-read timeout, so that alone can't be trusted to end this. Shutting the
+            # socket down unblocks whatever call is waiting on it.
             nonlocal timed_out
-            if done.wait(self.timeout):
-                return  # stood down before the timeout: nothing to do
-            timed_out = True
-            sock = connection.sock
+            if done.wait(max(0.0, deadline - time.monotonic())):
+                return  # stood down before the deadline: nothing to do
+            timed_out = True  # before the socket is read: a connect that finishes now still sees this
+            sock = connection.sock  # None while connecting: the connect has its own timeout, and is checked after
             if sock is not None:
                 try:
-                    sock.shutdown(socket.SHUT_RDWR)
+                    # the plain socket's shutdown, even under TLS: SSLSocket.shutdown also drops the TLS state,
+                    # which a read in progress on the other thread may be about to use
+                    socket.socket.shutdown(sock, socket.SHUT_RDWR)
                 except OSError:
                     pass
-
-        try:
-            connection.connect()  # the host's address is resolved here, before the watchdog can act
-        except TimeoutError:
-            connection.close()
-            raise ConnectorError(no_answer) from None
-        except OSError as exc:
-            connection.close()
-            raise ConnectorError(f"the feed couldn't be reached ({_why(exc)})") from None
 
         watchdog = threading.Thread(target=_watch, daemon=True)
         watchdog.start()
         try:
+            try:
+                connection.connect()  # looking up the host's address happens in here, and nothing can cut it short
+            except OSError as exc:
+                late = timed_out or isinstance(exc, TimeoutError)
+                raise ConnectorError(no_answer if late else f"the feed couldn't be reached ({_why(exc)})") from None
+            if timed_out:
+                raise ConnectorError(no_answer)
             try:
                 connection.request("GET", target, headers=headers)
                 response = connection.getresponse()
@@ -230,8 +236,6 @@ class FeedConnector:
                 raise ConnectorError(no_answer) from None
             except (http.client.HTTPException, OSError) as exc:
                 raise ConnectorError(no_answer if timed_out else f"the feed couldn't be read ({exc})") from None
-            finally:
-                done.set()  # the headers are in (or the call above raised); the body has its own deadline below
             if timed_out:
                 # the watchdog cut the connection while the headers were still coming in; whatever getresponse()
                 # pieced together from what was left isn't a real answer
@@ -240,11 +244,23 @@ class FeedConnector:
                 if 300 <= response.status < 400:
                     location = response.getheader("Location")
                     if location:
-                        raise ConnectorError(f"the feed redirected to {_shown(urljoin(url, location))}; kestrel "
-                                             "doesn't follow redirects (set url to the feed's own address)")
+                        try:
+                            where = f" to {_shown(urljoin(url, location))}"
+                        except ValueError:  # an address urllib can't read: don't repeat it, or why
+                            where = ""
+                        raise ConnectorError(f"the feed redirected{where}; kestrel doesn't follow redirects "
+                                             "(set url to the feed's own address)")
                 raise ConnectorError(f"the feed answered {response.status}")
-            deadline = time.monotonic() + self.timeout
-            return _read(response, deadline, self.timeout)
+            try:
+                body = _read(response, deadline, still_sending)
+            except ConnectorError:
+                if timed_out:  # whatever went wrong, it went wrong because the watchdog cut the connection
+                    raise ConnectorError(still_sending) from None
+                raise
+            if timed_out:  # the watchdog ended a read that would otherwise have gone on: what came isn't the answer
+                raise ConnectorError(still_sending)
+            return body
         finally:
             done.set()
+            watchdog.join()  # it has stood down, or is finishing a shutdown: never close under it
             connection.close()

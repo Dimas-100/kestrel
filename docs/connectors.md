@@ -142,8 +142,8 @@ trades, runs and alerts (and its accounts, if it has any) without kestrel knowin
   reads it each time it asks the feed and sends it as `Authorization: Bearer …` to the configured URL and nowhere
   else: it doesn't follow redirects and doesn't use a proxy, and it never prints or logs the token. A URL can't carry
   a user name or password (`http://name:secret@…`); use `token_env`.
-- **Read-only, and asked each time a page loads.** One GET, with `Accept: application/json` and no cookies, or one
-  file read. Nothing is cached.
+- **Read-only, and asked each time a page loads.** One GET, with `Accept: application/json`,
+  `User-Agent: kestrel/<version>` and no cookies, or one file read. Nothing is cached.
 
 A feed's shape is checked when the profile loads: a source with both `url` and `path` (or neither), another scheme,
 a user name in the URL, a `token_env` that isn't a variable's name (or that goes with a `path`), or a `timeout`
@@ -154,10 +154,10 @@ outside 1 to 60 stops `kestrel check` with `profile problem: …` and exit statu
 In this order; the first check that fails is the source's error, and the rest of kestrel keeps working.
 
 1. **The token**, when `token_env` is set: the variable must be set and not empty, and hold only visible characters.
-2. **The answer:** status 200 only; the whole answer inside `timeout` — connecting, the headers and the body, not
-   just the first byte of the body — and at most 20 MB. Looking up the host's address comes first and isn't itself
-   bounded by `timeout` (a local desk resolves at once); everything after that is, including a peer that trickles
-   bytes without ever finishing its headers. A file must exist and be at most 20 MB.
+2. **The answer:** status 200 only, at most 20 MB, and all of it inside `timeout`, counted from when kestrel starts
+   asking: connecting, the headers and the body, chunked or not, however slowly the feed trickles them. The one step
+   `timeout` can't cut short is looking up the host's address, which comes first (a local desk resolves at once). A
+   body that ends before its `Content-Length` is refused. A file must exist and be at most 20 MB.
 3. **JSON:** UTF-8 text (a byte-order mark is fine), not a web page, and no `NaN`, `Infinity` or `-Infinity` (not
    valid JSON, though a lenient writer can produce them).
 4. **The contract version:** the payload must say `"contract_version"`, and its major version must be 1. A newer
@@ -194,6 +194,7 @@ Serve it at any address on this computer, or save it to a file, and point a `fee
 | `set KESTREL_DESK_TOKEN in the environment (token_env)` | Set the variable where kestrel runs, then restart `kestrel serve`. |
 | `the token in KESTREL_DESK_TOKEN has a character a header can't carry …` | The variable holds more than the token: a space or a line break inside it. |
 | `the feed couldn't be reached (…)` or `the feed couldn't be read (…)` | Is the system that serves the feed running? Check `url`. |
+| `the feed stopped partway` | The feed closed the connection before it had sent the body it announced: did the system that serves it stop mid-answer? |
 | `the feed answered 401` (or `403`, `404`, `503`, …) | The feed's own answer: check the token, the address, or the system itself. |
 | `the feed redirected to …; kestrel doesn't follow redirects` | Set `url` to the feed's own address; a redirect to a sign-in page usually means the feed wants a token (`token_env`). |
 | `the feed didn't answer within 5 s` or `the feed was still sending after 5 s` | Make the feed faster, or raise `timeout` (up to 60). |

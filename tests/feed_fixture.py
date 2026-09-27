@@ -7,7 +7,11 @@ Every name and number here is made up.
 from __future__ import annotations
 
 import json
+import socket
+import struct
+import sys
 import threading
+import time
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -15,6 +19,8 @@ from pathlib import Path
 Reply = Callable[[BaseHTTPRequestHandler], None]
 
 MADE = "2026-09-25T21:05:00+00:00"  # three minutes before the tests' NOW
+CAP = 5.0  # seconds: the longest a slow reply keeps going, so a kestrel that never gives up still gets an end
+CHUNKED = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n"
 
 
 def desk(**changes) -> dict:
@@ -142,3 +148,89 @@ def header_trickle(handler: BaseHTTPRequestHandler) -> None:
     handler.wfile.write(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n")
     while not handler.server.stop.wait(0.02):
         handler.wfile.write(b"X")
+
+
+def _drip(handler: BaseHTTPRequestHandler, data: bytes, seconds: float = CAP) -> None:
+    """`data` a byte every 50 ms, round and round, for `seconds` (or until the test ends)."""
+    until, i = time.monotonic() + seconds, 0
+    while time.monotonic() < until and not handler.server.stop.wait(0.05):
+        handler.wfile.write(data[i % len(data):i % len(data) + 1])
+        i += 1
+
+
+def chunk_size_trickle(handler: BaseHTTPRequestHandler) -> None:
+    """The headers of a chunked answer, then a chunk-size line a byte every 50 ms that never ends."""
+    handler.wfile.write(CHUNKED + b"1")
+    _drip(handler, b"0")
+
+
+def trailer_trickle(handler: BaseHTTPRequestHandler) -> None:
+    """A whole chunked body (the desk's payload) and the last chunk, then trailer lines a byte every 50 ms: the blank
+    line that ends them never comes."""
+    body = json.dumps(desk()).encode("utf-8")
+    handler.wfile.write(CHUNKED + f"{len(body):x}\r\n".encode("ascii") + body + b"\r\n0\r\n")
+    _drip(handler, b"X-Trailer: 1\r\n")
+
+
+def slow_head_then_body(handler: BaseHTTPRequestHandler) -> None:
+    """Headers that take 0.7 s, a body that takes 0.9 s more, then silence: each part fits a 1 s timeout on its own;
+    together they don't."""
+    handler.wfile.write(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 1000\r\nX-Pad: ")
+    _drip(handler, b"a", 0.7)
+    handler.wfile.write(b"\r\n\r\n")
+    _drip(handler, b"z", 0.9)
+    handler.server.stop.wait(CAP)
+
+
+def chunked_cut_off(handler: BaseHTTPRequestHandler) -> None:
+    """A chunk that promises 16 bytes, five of them, then the connection closes."""
+    handler.wfile.write(CHUNKED + b'10\r\n{"con')
+
+
+def reset_midway(handler: BaseHTTPRequestHandler) -> None:
+    """Part of a body, then the connection is reset (a TCP RST: SO_LINGER with no wait, then close)."""
+    handler.wfile.write(b'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 1000\r\n\r\n{"con')
+    handler.server.stop.wait(0.3)  # long enough for kestrel to be waiting on the rest of the body
+    linger = struct.pack("HH", 1, 0) if sys.platform == "win32" else struct.pack("ii", 1, 0)
+    handler.connection.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, linger)
+    handler.connection.close()
+
+
+class RawServer:
+    """A server on 127.0.0.1 that hands each connection's socket to `serve(conn, stop)`: for answers an HTTP server
+    can't give, such as a TLS handshake that never finishes."""
+
+    def __init__(self, serve: Callable[[socket.socket, threading.Event], None]) -> None:
+        self.listener = socket.create_server(("127.0.0.1", 0))
+        self.listener.settimeout(0.02)
+        self.stop = threading.Event()
+        self.port = self.listener.getsockname()[1]
+        self.thread = threading.Thread(target=self._run, args=(serve,), daemon=True)
+        self.thread.start()
+
+    def _run(self, serve: Callable[[socket.socket, threading.Event], None]) -> None:
+        while not self.stop.is_set():
+            try:
+                conn, _ = self.listener.accept()
+            except OSError:  # the accept timed out: look at stop again
+                continue
+            with conn:
+                try:
+                    serve(conn, self.stop)
+                except OSError:
+                    pass  # kestrel hung up first
+
+    def close(self) -> None:
+        self.stop.set()
+        self.thread.join(CAP + 1)
+        self.listener.close()
+
+
+def tls_trickle(conn: socket.socket, stop: threading.Event) -> None:
+    """Read the client's hello, then start a 16 KB handshake record and send it a byte every 50 ms."""
+    conn.settimeout(CAP)
+    conn.recv(4096)
+    conn.sendall(b"\x16\x03\x03\x40\x00")  # a handshake record in TLS 1.2 framing, 16,384 bytes long
+    until = time.monotonic() + CAP
+    while time.monotonic() < until and not stop.wait(0.05):
+        conn.sendall(b"\x00")

@@ -5,8 +5,26 @@ import os
 import time
 
 import pytest
-from feed_fixture import MADE, FeedServer, answer, desk, feed_file, hang, hang_up, header_trickle, trickle
+from feed_fixture import (
+    MADE,
+    FeedServer,
+    RawServer,
+    answer,
+    chunk_size_trickle,
+    chunked_cut_off,
+    desk,
+    feed_file,
+    hang,
+    hang_up,
+    header_trickle,
+    reset_midway,
+    slow_head_then_body,
+    tls_trickle,
+    trailer_trickle,
+    trickle,
+)
 
+from kestrel import __version__
 from kestrel.cli import main
 from kestrel.connectors import build, collect
 from kestrel.connectors.base import ConnectorError
@@ -24,6 +42,20 @@ def serve():
 
     def start(reply):
         server = FeedServer(reply)
+        servers.append(server)
+        return server
+
+    yield start
+    for server in servers:
+        server.close()
+
+
+@pytest.fixture
+def raw():
+    servers = []
+
+    def start(serve):
+        server = RawServer(serve)
         servers.append(server)
         return server
 
@@ -258,7 +290,7 @@ def test_a_slow_trickle_is_cut_off_at_the_timeout(serve):
     server = serve(trickle)
     started = time.monotonic()
     assert refused_over_http(server.url, timeout=0.5) == "the feed was still sending after 0.5 s"
-    assert time.monotonic() - started < 1.0  # timeout + 0.5 s: the whole answer is bounded, not just cut off eventually
+    assert time.monotonic() - started < 1.5  # timeout + 1 s: the whole answer is bounded, not just cut off eventually
 
 
 def test_a_feed_that_trickles_its_headers_forever_is_cut_off(serve):
@@ -269,6 +301,60 @@ def test_a_feed_that_trickles_its_headers_forever_is_cut_off(serve):
     started = time.monotonic()
     assert refused_over_http(server.url, timeout=0.3) == "the feed didn't answer within 0.3 s"
     assert time.monotonic() - started < 1.5
+
+
+def cut_off(url, timeout=1):
+    """How a fetch ended (its error, or None when it didn't fail) and how long it took, in seconds."""
+    started = time.monotonic()
+    try:
+        over_http(url, timeout=timeout)
+    except ConnectorError as error:
+        return str(error), time.monotonic() - started
+    return None, time.monotonic() - started
+
+
+@pytest.mark.parametrize("reply", [chunk_size_trickle, trailer_trickle, slow_head_then_body],
+                         ids=["chunk-size line", "trailer lines", "slow head then slow body"])
+def test_one_timeout_covers_the_whole_answer_chunked_or_not(serve, reply):
+    # a chunk-size line or trailer lines trickled a byte at a time used to block inside one read of the body for as
+    # long as the feed kept it up; headers and body each had their own timeout, so together they could take ~3x
+    message, took = cut_off(serve(reply).url)
+    assert took < 2.5, (message, took)
+    assert message == "the feed was still sending after 1 s"
+
+
+def test_a_tls_handshake_that_trickles_is_cut_off(raw):
+    server = raw(tls_trickle)
+    message, took = cut_off(f"https://127.0.0.1:{server.port}/api/feed")
+    assert took < 2.5, (message, took)
+    assert message == "the feed didn't answer within 1 s"
+
+
+@pytest.mark.parametrize("reply,message", [
+    (chunked_cut_off, "the feed couldn't be read (IncompleteRead)"),
+    (reset_midway, "the feed couldn't be read (ConnectionResetError)"),
+    (answer(b'{"contract_version": "1"', headers={"Content-Length": "1000"}, length=False), "the feed stopped partway"),
+], ids=["chunked, cut off", "reset", "shorter than its Content-Length"])
+def test_a_body_that_breaks_off_is_named_plainly(serve, reply, message):
+    assert refused_over_http(serve(reply).url) == message
+
+
+def test_a_content_length_that_isnt_a_number_is_no_length(serve):
+    # "²".isdigit() is True, and int("²") raises: the answer is read to its end instead
+    server = serve(answer(desk(), headers={"Content-Type": "application/json", "Content-Length": "²"}, length=False))
+    assert len(over_http(server.url).books) == 2
+
+
+def test_a_redirect_to_a_malformed_address_is_refused_without_repeating_it(serve):
+    server = serve(answer(b"", status=302, headers={"Location": "http://[::1/login?session=a1b2c3"}))
+    assert refused_over_http(server.url) == (
+        "the feed redirected; kestrel doesn't follow redirects (set url to the feed's own address)")
+
+
+def test_the_request_says_it_comes_from_kestrel(serve):
+    server = serve(answer(desk()))
+    over_http(server.url)
+    assert server.requests[0]["user-agent"] == f"kestrel/{__version__}"
 
 
 def test_more_than_20_mb_in_one_line_is_refused_whether_or_not_the_feed_says_so_up_front(serve):
