@@ -12,13 +12,17 @@ def growth_index(points: Sequence[ValuePoint]) -> list[float]:
     """Time-weighted growth index starting at 1.0.
 
     Each step is the day's change net of that day's deposits and withdrawals, so adding money never
-    looks like performance.
+    looks like performance. A deposit can be on the books before the balance shows it; when taking it
+    would leave a negative starting value, it waits for the next point instead of turning the line over.
     """
     if not points:
         return []
     index = [1.0]
+    waiting = 0.0
     for prev, cur in zip(points, points[1:]):
-        step = (cur.value - cur.net_flow) / prev.value if prev.value > 0 else 1.0
+        flow = cur.net_flow + waiting
+        waiting = flow if prev.value > 0 and cur.value - flow < 0 else 0.0
+        step = (cur.value - flow + waiting) / prev.value if prev.value > 0 else 1.0
         index.append(index[-1] * step)
     return index
 

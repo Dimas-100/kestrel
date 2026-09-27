@@ -20,6 +20,15 @@ def test_growth_index_chains_daily_returns():
     assert index == pytest.approx([1.0, 1.1, 0.99])
 
 
+def test_growth_index_waits_for_a_deposit_the_balance_does_not_show_yet():
+    # a 200 deposit is on the books on the 2nd but the balance shows it on the 3rd: taking it on the 2nd would
+    # need a negative starting value (100 - 200) and turn the whole line upside down; it counts on the 3rd instead,
+    # like any deposit made that day
+    index = growth_index([vp(1, 100), vp(2, 100, 200), vp(3, 302)])
+    assert index == pytest.approx([1.0, 1.0, 1.02])
+    assert growth_index([vp(1, 100), vp(2, 100, 200), vp(3, 100), vp(4, 300)]) == pytest.approx([1.0] * 4)
+
+
 def test_growth_index_survives_a_zero_balance_and_empty_input():
     assert growth_index([]) == []
     assert growth_index([vp(1, 0), vp(2, 50, 50)]) == [1.0, 1.0]

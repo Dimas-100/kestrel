@@ -15,7 +15,10 @@ code entering this repo ([how](connectors.md#feed-any-system-that-serves-the-con
   ignores fields it does not know, and refuses an unknown major version (the source shows as `error` with the reason).
 - Every timestamp carries an offset (`2026-09-25T17:08:00-04:00`); dates are `YYYY-MM-DD`.
 - Money is in the profile's currency. `net_flow` on a value point is that day's deposits minus withdrawals, so
-  performance is measured net of money moving in and out.
+  performance is measured net of money moving in and out. Date a flow on the day the value first includes it: a
+  deposit dated before the balance shows it reads as a loss that day and a gain the day it lands. kestrel only
+  guards the extreme case (a deposit bigger than the value it lands on waits for the next point rather than turning
+  the return line upside down).
 - `status` on a source is `ok`, `stale` or `error`; kestrel also marks a source stale once its `last_success` is older
   than the profile's `stale_after` for it.
 - An alert's `link` is a page inside kestrel (`/books`) or empty. A link to another site (`https://…`, `//host`) fails
