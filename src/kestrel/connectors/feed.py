@@ -12,9 +12,9 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import socket
+import threading
 import time
-import urllib.error
-import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit, urlunsplit
@@ -55,17 +55,6 @@ def read_file(path: Path) -> bytes:
     if len(body) > MAX_BYTES:
         raise ConnectorError("the feed file is more than 20 MB")
     return body
-
-
-def _opener() -> urllib.request.OpenerDirector:
-    """HTTP and HTTPS and nothing more: no proxy (the token goes to the configured host only), no redirect handler
-    (a redirect comes back as an error), no cookie jar."""
-    opener = urllib.request.OpenerDirector()
-    for handler in (urllib.request.HTTPHandler(), urllib.request.HTTPSHandler(),
-                    urllib.request.HTTPDefaultErrorHandler(), urllib.request.HTTPErrorProcessor(),
-                    urllib.request.UnknownHandler()):
-        opener.add_handler(handler)
-    return opener
 
 
 def _shown(url: str) -> str:
@@ -113,6 +102,13 @@ def problems(exc: ValidationError) -> str:
         shown -= 1
 
 
+def _reject_constant(constant: str) -> None:
+    # json.loads accepts NaN, Infinity and -Infinity by default (they aren't valid JSON), and pydantic's floats
+    # accept them too; kestrel's own JSON responses refuse NaN, so a feed that sent one would break a page instead
+    # of showing a red row
+    raise ConnectorError(f"the feed sent {constant}, which JSON doesn't allow")
+
+
 def parse(body: bytes) -> Snapshot:
     """The body as a Snapshot, or a ConnectorError that says what is wrong with it."""
     try:
@@ -122,7 +118,7 @@ def parse(body: bytes) -> Snapshot:
     if text.lstrip().startswith("<"):
         raise ConnectorError(f"{NOT_JSON}: a web page (a sign-in page, or the wrong address?)")
     try:
-        payload = json.loads(text)
+        payload = json.loads(text, parse_constant=_reject_constant)
     except json.JSONDecodeError as exc:
         raise ConnectorError(f"{NOT_JSON} (line {exc.lineno}, column {exc.colno}: {exc.msg})") from None
     except RecursionError:
@@ -185,30 +181,70 @@ class FeedConnector:
         return token
 
     def _fetch(self, url: str) -> bytes:
+        # http.client, not urllib: it never follows a redirect (so the token can never follow one either) and never
+        # reads HTTP_PROXY/HTTPS_PROXY from the environment (so a feed on another host must be reachable directly)
         token = self._token()
-        request = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
+        parts = urlsplit(url)
+        target = urlunsplit(("", "", parts.path or "/", parts.query, ""))
+        headers = {"Accept": "application/json"}
         if token:
-            # unredirected: were a redirect ever followed, the token would stay behind
-            request.add_unredirected_header("Authorization", f"Bearer {token}")
-        deadline = time.monotonic() + self.timeout
+            headers["Authorization"] = f"Bearer {token}"
+        connection_cls = http.client.HTTPSConnection if parts.scheme == "https" else http.client.HTTPConnection
+        connection = connection_cls(parts.hostname, parts.port, timeout=self.timeout)
         no_answer = f"the feed didn't answer within {self.timeout:g} s"
+        timed_out = False
+        # set once the headers are in (or the attempt has already failed), so the watchdog thread below stands down
+        done = threading.Event()
+
+        def _watch() -> None:
+            # the watchdog: a peer that trickles bytes without ever finishing its headers keeps resetting the
+            # socket's own per-read timeout, so that alone can't be trusted to end this. Shutting the socket down
+            # unblocks whatever call is waiting on it.
+            nonlocal timed_out
+            if done.wait(self.timeout):
+                return  # stood down before the timeout: nothing to do
+            timed_out = True
+            sock = connection.sock
+            if sock is not None:
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
         try:
-            with _opener().open(request, timeout=self.timeout) as response:
-                if response.status != 200:
-                    raise ConnectorError(f"the feed answered {response.status}")
-                return _read(response, deadline, self.timeout)
-        except urllib.error.HTTPError as exc:  # any answer outside 2xx, a redirect included
-            location = exc.headers.get("Location")
-            exc.close()
-            if 300 <= exc.code < 400 and location:
-                raise ConnectorError(f"the feed redirected to {_shown(urljoin(url, location))}; kestrel doesn't "
-                                     "follow redirects (set url to the feed's own address)") from None
-            raise ConnectorError(f"the feed answered {exc.code}") from None
-        except urllib.error.URLError as exc:
-            if isinstance(exc.reason, TimeoutError):
-                raise ConnectorError(no_answer) from None
-            raise ConnectorError(f"the feed couldn't be reached ({_why(exc.reason)})") from None
+            connection.connect()  # the host's address is resolved here, before the watchdog can act
         except TimeoutError:
+            connection.close()
             raise ConnectorError(no_answer) from None
-        except (http.client.HTTPException, OSError) as exc:
-            raise ConnectorError(f"the feed couldn't be read ({exc})") from None
+        except OSError as exc:
+            connection.close()
+            raise ConnectorError(f"the feed couldn't be reached ({_why(exc)})") from None
+
+        watchdog = threading.Thread(target=_watch, daemon=True)
+        watchdog.start()
+        try:
+            try:
+                connection.request("GET", target, headers=headers)
+                response = connection.getresponse()
+            except TimeoutError:
+                raise ConnectorError(no_answer) from None
+            except (http.client.HTTPException, OSError) as exc:
+                raise ConnectorError(no_answer if timed_out else f"the feed couldn't be read ({exc})") from None
+            finally:
+                done.set()  # the headers are in (or the call above raised); the body has its own deadline below
+            if timed_out:
+                # the watchdog cut the connection while the headers were still coming in; whatever getresponse()
+                # pieced together from what was left isn't a real answer
+                raise ConnectorError(no_answer)
+            if response.status != 200:
+                if 300 <= response.status < 400:
+                    location = response.getheader("Location")
+                    if location:
+                        raise ConnectorError(f"the feed redirected to {_shown(urljoin(url, location))}; kestrel "
+                                             "doesn't follow redirects (set url to the feed's own address)")
+                raise ConnectorError(f"the feed answered {response.status}")
+            deadline = time.monotonic() + self.timeout
+            return _read(response, deadline, self.timeout)
+        finally:
+            done.set()
+            connection.close()

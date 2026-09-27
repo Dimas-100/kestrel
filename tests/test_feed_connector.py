@@ -5,7 +5,7 @@ import os
 import time
 
 import pytest
-from feed_fixture import MADE, FeedServer, answer, desk, feed_file, hang, hang_up, trickle
+from feed_fixture import MADE, FeedServer, answer, desk, feed_file, hang, hang_up, header_trickle, trickle
 
 from kestrel.cli import main
 from kestrel.connectors import build, collect
@@ -114,6 +114,17 @@ def test_a_web_page_such_as_a_sign_in_page_is_named(tmp_path):
     path.write_bytes(b"\n  <!DOCTYPE html>\n<html><head><title>Sign in</title></head><body><form></form></body></html>")
     assert refused(path) == ("the feed sent something that isn't JSON: "
                              "a web page (a sign-in page, or the wrong address?)")
+
+
+@pytest.mark.parametrize("field,constant", [("positions", "NaN"), ("books", "Infinity"), ("books", "-Infinity")],
+                         ids=["nan", "infinity", "-infinity"])
+def test_nan_and_infinity_are_refused(tmp_path, field, constant):
+    payload = desk()
+    value = {"NaN": float("nan"), "Infinity": float("inf"), "-Infinity": float("-inf")}[constant]
+    payload[field][0]["value" if field == "books" else "last_price"] = value
+    path = tmp_path / "feed.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")  # json.dumps allows these by default; JSON itself doesn't
+    assert refused(path) == f"the feed sent {constant}, which JSON doesn't allow"
 
 
 @pytest.mark.parametrize("version", ["2", "2.0", "0"])
@@ -247,7 +258,17 @@ def test_a_slow_trickle_is_cut_off_at_the_timeout(serve):
     server = serve(trickle)
     started = time.monotonic()
     assert refused_over_http(server.url, timeout=0.5) == "the feed was still sending after 0.5 s"
-    assert time.monotonic() - started < 2  # a byte every 50 ms never trips a per-read timeout
+    assert time.monotonic() - started < 1.0  # timeout + 0.5 s: the whole answer is bounded, not just cut off eventually
+
+
+def test_a_feed_that_trickles_its_headers_forever_is_cut_off(serve):
+    # a status line and one header, then a byte every 20 ms, the terminating blank line never sent: this used to
+    # defeat the timeout entirely (a 0.2 s timeout still blocked after 4 s) because nothing but a per-socket-read
+    # timeout guarded the header phase, and a trickle resets that every time
+    server = serve(header_trickle)
+    started = time.monotonic()
+    assert refused_over_http(server.url, timeout=0.3) == "the feed didn't answer within 0.3 s"
+    assert time.monotonic() - started < 1.5
 
 
 def test_more_than_20_mb_in_one_line_is_refused_whether_or_not_the_feed_says_so_up_front(serve):

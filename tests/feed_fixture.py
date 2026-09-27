@@ -134,3 +134,11 @@ def trickle(handler: BaseHTTPRequestHandler) -> None:
 def hang_up(handler: BaseHTTPRequestHandler) -> None:
     """Close the connection without a word."""
     handler.close_connection = True
+
+
+def header_trickle(handler: BaseHTTPRequestHandler) -> None:
+    """A status line and one full header, then a header byte every 20 ms, forever, without ever finishing the
+    headers (the blank line that ends them never comes)."""
+    handler.wfile.write(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n")
+    while not handler.server.stop.wait(0.02):
+        handler.wfile.write(b"X")
