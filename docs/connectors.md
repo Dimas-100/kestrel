@@ -9,11 +9,12 @@ source's data.
 |---|---|---|
 | `demo` | nothing: a fictional year for "Alex" | Phase 2; the default when there is no `profile.toml` |
 | `fdc` | [financial-data-collector](https://github.com/Dimas-100/financial-data-collector)'s SQLite warehouse | Phase 4a |
-| `feed` | any system that serves the contract as JSON (your trading desk) | Phase 4b |
-| `rails` | a trading-rails install: paper books, the run log, backtests | Phase 4b |
+| `feed` | any system that serves the contract as JSON, at a URL or in a file (your trading desk) | Phase 4b |
+| `rails` | a trading-rails install: paper books, the run log, backtests | later |
 
 `kestrel check` tries every source and prints what it found; `kestrel serve --demo` and `kestrel check --demo` show
-the demo whatever `profile.toml` says.
+the demo whatever `profile.toml` says. When two sources use the same id, the one earlier in the profile wins (see
+[the last section](#when-two-sources-use-the-same-id)).
 
 ## `demo`
 
@@ -118,6 +119,108 @@ An unknown category is a profile error, not a line under the source: `kestrel ch
 with `profile problem: <path>: sources.0: Value error, unknown category 'trade' for 'Brokerage' (use long_term,
 trading, cash or other)` and exits with status 2. Use one of those four in `[sources.categories]`.
 
-## `feed` and `rails`
+## `feed`: any system that serves the contract
 
-Phase 4b. Until then a source of either kind shows as an error that says it isn't available in this version.
+```toml
+[[sources]]
+id = "desk"
+kind = "feed"
+label = "Trading desk"
+url = "http://127.0.0.1:8000/api/feed"   # or: path = "../desk/feed.json" (relative to this profile's folder)
+token_env = "KESTREL_DESK_TOKEN"          # optional, with a url: the NAME of the variable that holds a bearer token
+timeout = 5                               # optional: seconds, 1 to 60 (default 5)
+stale_after = "15m"
+```
+
+A feed is one JSON document in the contract's own format, a Snapshot ([`data-contract.md`](data-contract.md)), served
+at a URL or saved in a file. It is how a system of your own, such as a trading desk, shows its books, strategies,
+trades, runs and alerts (and its accounts, if it has any) without kestrel knowing anything else about it.
+
+- **Exactly one of `url` and `path`.** A `url` starts with `http://` or `https://`. A relative `path` is relative to
+  the folder `profile.toml` is in.
+- **`token_env`** names an environment variable, in capitals; the token itself never goes in the profile. kestrel
+  reads it each time it asks the feed and sends it as `Authorization: Bearer …` to the configured URL and nowhere
+  else: it doesn't follow redirects and doesn't use a proxy, and it never prints or logs the token. A URL can't carry
+  a user name or password (`http://name:secret@…`); use `token_env`.
+- **Read-only, and asked each time a page loads.** One GET, with `Accept: application/json` and no cookies, or one
+  file read. Nothing is cached.
+
+A feed's shape is checked when the profile loads: a source with both `url` and `path` (or neither), another scheme,
+a user name in the URL, a `token_env` that isn't a variable's name (or that goes with a `path`), or a `timeout`
+outside 1 to 60 stops `kestrel check` with `profile problem: …` and exit status 2, before any source is read.
+
+### What is checked
+
+In this order; the first check that fails is the source's error, and the rest of kestrel keeps working.
+
+1. **The token**, when `token_env` is set: the variable must be set and not empty, and hold only visible characters.
+2. **The answer:** status 200 only; the whole answer inside `timeout`, not just its first byte; at most 20 MB. A
+   file must exist and be at most 20 MB.
+3. **JSON:** UTF-8 text (a byte-order mark is fine), and not a web page.
+4. **The contract version:** the payload must say `"contract_version"`, and its major version must be 1. A newer
+   minor version (`"1.4"`) loads; fields this kestrel doesn't know are ignored.
+5. **The Snapshot:** every field the contract names. The first three problems are listed as `field.path: message`,
+   then how many more (fewer than three when three wouldn't fit on the source's line).
+6. **The time:** `generated_at` no more than five minutes ahead of this computer's clock. A payload up to five
+   minutes ahead reads as made now.
+
+### What kestrel keeps
+
+Every list the payload carries, and its benchmark. The payload's own `sources` are replaced by one row for the feed:
+its label, `kind = "feed"`, a last success of the payload's `generated_at`, and a detail like
+`2 books · 1 strategy · 61 trades` (the accounts first, when there are any). So a system that keeps serving an old
+payload turns amber after `stale_after`. The payload's alerts pass through; the contract already limits their links
+to pages inside kestrel.
+
+### Build a payload
+
+`kestrel demo` prints a complete, valid payload (the demo's fictional year), and `kestrel schema` prints the contract
+as JSON Schema. The smallest payload kestrel accepts is:
+
+```json
+{"contract_version": "1", "generated_at": "2026-09-25T21:05:00+00:00"}
+```
+
+Serve it at any address on this computer, or save it to a file, and point a `feed` source at it. Set
+`generated_at` each time the payload is rebuilt: it is how kestrel knows the feed is fresh.
+
+### Troubleshooting
+
+| The source's line says | What to do |
+|---|---|
+| `set KESTREL_DESK_TOKEN in the environment (token_env)` | Set the variable where kestrel runs, then restart `kestrel serve`. |
+| `the token in KESTREL_DESK_TOKEN has a character a header can't carry …` | The variable holds more than the token: a space or a line break inside it. |
+| `the feed couldn't be reached (…)` or `the feed couldn't be read (…)` | Is the system that serves the feed running? Check `url`. |
+| `the feed answered 401` (or `403`, `404`, `503`, …) | The feed's own answer: check the token, the address, or the system itself. |
+| `the feed redirected to …; kestrel doesn't follow redirects` | Set `url` to the feed's own address; a redirect to a sign-in page usually means the feed wants a token (`token_env`). |
+| `the feed didn't answer within 5 s` or `the feed was still sending after 5 s` | Make the feed faster, or raise `timeout` (up to 60). |
+| `the feed sent more than 20 MB` or `the feed file is more than 20 MB` | Send less: a feed carries what the pages show, not raw history. |
+| `no feed file at …` | Check `path`: it is relative to the folder `profile.toml` is in. |
+| `the feed sent something that isn't JSON: a web page …` | The address answers with a page, often a sign-in page: point `url` at the feed itself. |
+| `the feed sent something that isn't JSON (…)` | Compare the feed with `kestrel demo`'s output. |
+| `the feed doesn't say which contract it speaks …` | Add `"contract_version": "1"` to the payload. |
+| `unsupported contract version '2'; this kestrel reads major version 1` | The feed speaks a newer contract: update kestrel. |
+| `books.0.money: Input should be 'real' or 'paper'; …; and 2 more` | The payload doesn't match the contract: fix those fields in the feed. |
+| `the feed's generated_at is 4 hours ahead of this computer's clock …` | Check the clock, and the time zone offset, where the payload is made. |
+
+## When two sources use the same id
+
+Two sources can name the same thing: two warehouses that each have an account called "Brokerage", or the demo left in
+next to a real feed. The source earlier in `profile.toml` keeps its item, and the later source's goes, with
+everything that hangs off it:
+
+| A later source's duplicate | Goes with it |
+|---|---|
+| account id | its holdings and its account history |
+| book id | its book history, positions, trades, trade charts and runs |
+| strategy id | nothing else: books keep pointing at the first source's strategy |
+
+The later source's line in the sidebar then ends with `ignored duplicate ids: brokerage, rsi2` (the ids only, at
+most five, then `and N more`), on its first row when it has several. To show the later source's item instead, move
+that source up in the profile. `kestrel check` reads each source on its own, so it lists every source's accounts and
+never shows this note.
+
+## `rails`
+
+Later: a trading-rails install's paper books, run log and backtests. Until then a source of this kind shows as an
+error that says it isn't available in this version.

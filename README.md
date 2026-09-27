@@ -4,8 +4,9 @@
 book appear side by side. Each strategy gets a page that shows how it trades and whether it's behaving the way its
 backtest said it would.
 
-> **Status: Phase 4a of 5 — Home, Accounts and the Strategies pages run.** Accounts read your own data from
-> financial-data-collector, or the demo; Books, Backtests, Activity and Settings arrive in later phases. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
+> **Status: Phase 4b of 5 — Home, Accounts and the Strategies pages run.** Accounts read your own data from
+> financial-data-collector, books and strategies from any system that serves the data contract (a `feed`), or the
+> demo; Books, Backtests, Activity and Settings arrive in later phases. See the [design spec](docs/specs/2026-09-25-kestrel-design.md).
 
 ## What it shows
 
@@ -82,6 +83,9 @@ Make it yours: copy `profile.example.toml` to `profile.toml` (gitignored) and se
    symbol the collector already prices (an index fund you hold, for example; SPY often isn't priced there).
 3. Run `kestrel check`: the source should read `ok`, with every account and its category listed under it (never a
    balance). Then `kestrel serve`; `kestrel serve --demo` still shows the demo.
+4. A system of your own, such as a trading desk, plugs in through a `feed` source: serve the
+   [data contract](docs/data-contract.md) as JSON at a local address (`kestrel demo` prints an example) and add the
+   commented `feed` block.
 
 Every source and what it reads: [docs/connectors.md](docs/connectors.md).
 

@@ -35,16 +35,16 @@ label = "Demo data"
 # [sources.categories]               # optional: account id or exact label = long_term | trading | cash | other
 # "brokerage-2" = "trading"
 #
-# Coming in Phase 4b:
-#
-# [[sources]]
-# id = "paper"
-# kind = "rails"                     # a trading-rails install: paper state, run log, backtests
-# path = "../trading-rails/data"
+# A system of your own (a trading desk) that serves the kestrel contract as JSON: its books, strategies, trades and
+# runs. Add it next to your other sources; `kestrel demo` prints an example payload:
 #
 # [[sources]]
 # id = "desk"
-# kind = "feed"                      # any system that serves the kestrel contract as JSON
-# url = "http://127.0.0.1:8000/api/feed"
-# token_env = "KESTREL_DESK_TOKEN"
+# kind = "feed"
+# label = "Trading desk"
+# url = "http://127.0.0.1:8000/api/feed"   # or: path = "../desk/feed.json" (relative to this file's folder)
+# token_env = "KESTREL_DESK_TOKEN"          # optional: the NAME of the environment variable holding a bearer token
+# timeout = 5                               # optional: seconds, 1 to 60
 # stale_after = "15m"
+#
+# When two sources use the same id, the one higher up in this file wins. A trading-rails source comes later.

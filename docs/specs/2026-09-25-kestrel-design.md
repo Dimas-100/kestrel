@@ -1,7 +1,7 @@
 # kestrel — design
 
 - **Date:** 2026-09-25
-- **Status:** design approved. Phases 0 (mockups), 1 (this repo, spec, design system, hygiene test), 2 (the skeleton), 3a (the Strategies pages) and 4a (Accounts and the `fdc` connector) are done; Phase 4b (the trading desk's `feed` and `rails`) is next, then 3b (Books).
+- **Status:** design approved. Phases 0 (mockups), 1 (this repo, spec, design system, hygiene test), 2 (the skeleton), 3a (the Strategies pages), 4a (Accounts and the `fdc` connector) and 4b (the `feed` connector) are done; Phase 3b (Books) is next, and `rails` later.
 - **Look:** Graphite, variant A. The full token and component rules are in [`../design-system.md`](../design-system.md), and reference mockups are in [`../design/mockups/`](../design/mockups/).
 
 ## 1. Why
@@ -133,7 +133,7 @@ kestrel/
   src/kestrel/
     contract.py             pydantic v2 models: the versioned data contract (§7)
     profile.py              profile.toml → Profile; falls back to the demo profile
-    connectors/             base protocol · demo (Phase 2) · fdc (Phase 4a) · rails · feed (Phase 4b)   (§8)
+    connectors/             base protocol · demo (Phase 2) · fdc (Phase 4a) · feed (Phase 4b) · rails (later)   (§8)
     metrics.py              growth net of deposits, drawdown, expected band, waffle rounding
     views/                  one Snapshot → a view model per page: home.py (net worth, allocation, comparison,
                             attention list, books), shell.py (name, settings, sources, counts),
@@ -258,7 +258,7 @@ Each phase gets its own spec, plan and build.
 | 1 | This repo: spec, design system, mockups, hygiene test | done |
 | 2 | Skeleton: contract, profile, `demo` connector, server, shell (sidebar, greeting, routing, theming), Home | done |
 | 3 | Books + Strategies pages; the chart kit | 3a done (Strategies, the chart kit); 3b (Books) next |
-| 4 | Accounts; `fdc`, `rails`, `feed` connectors | 4a done (Accounts, `fdc`); 4b (`feed`, `rails`) next |
+| 4 | Accounts; `fdc`, `rails`, `feed` connectors | 4a done (Accounts, `fdc`); 4b done (`feed`); `rails` later |
 | 5 | Backtests, Activity, Settings | |
 
 ## 12. Testing

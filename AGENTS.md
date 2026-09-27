@@ -12,8 +12,9 @@ specific to one assistant.
 with pages that explain each strategy and whether it is behaving as expected. The design is in
 `docs/specs/2026-09-25-kestrel-design.md`, and the look is in `docs/design-system.md`.
 
-**Status:** Phase 4a of 5 — the skeleton, the Strategies pages and the Accounts pages, with the `fdc` connector reading
-financial-data-collector's warehouse. The trading desk's `feed` and `rails` are Phase 4b; Books is Phase 3b.
+**Status:** Phase 4b of 5 — the skeleton, the Strategies pages and the Accounts pages, with the `fdc` connector reading
+financial-data-collector's warehouse and the `feed` connector reading any system that serves the contract (a trading
+desk). Books is Phase 3b; `rails` comes later.
 
 ## Hard invariants
 

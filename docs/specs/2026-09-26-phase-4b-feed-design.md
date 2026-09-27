@@ -1,7 +1,7 @@
 # Phase 4b — the `feed` connector — design
 
 - **Date:** 2026-09-26
-- **Status:** design decided autonomously (owner: "proceed with the next phase"); plan next.
+- **Status:** built (plan: [`../plans/2026-09-26-phase-4b-feed.md`](../plans/2026-09-26-phase-4b-feed.md)).
 - **Parent spec:** [`2026-09-25-kestrel-design.md`](2026-09-25-kestrel-design.md) (§7 contract, §8 connectors, §10 safety). Phase 4a ([`2026-09-26-phase-4a-accounts-design.md`](2026-09-26-phase-4a-accounts-design.md)) brought real accounts through `fdc`. This phase adds the generic `feed` connector, through which any private system serves its books, strategies, trades and runs. The private system's own side (what it reads and how it builds the payload) is specified in that system's repo, never here.
 - **Deferred from 4a:** duplicate ids across sources (done here, §3).
 - **Not in 4b:** `rails` (trading-rails is not running anywhere yet; YAGNI), the Books pages (Phase 3b).
