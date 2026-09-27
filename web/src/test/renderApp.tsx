@@ -3,13 +3,14 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
 import type {
-  AccountsView, AccountView, HomeView, Money, PlanView, ShellView, StrategiesView, StrategyView,
+  AccountsView, AccountView, HomeView, Money, PlanView, ReservesView, ShellView, StrategiesView, StrategyView,
 } from '../lib/api'
 import { createAppRouter } from '../router'
 import accountJson from './fixtures/account-roth.json'
 import accountsJson from './fixtures/accounts.json'
 import homeJson from './fixtures/home.json'
 import planJson from './fixtures/plan.json'
+import reservesJson from './fixtures/reserves.json'
 import shellJson from './fixtures/shell.json'
 import strategiesJson from './fixtures/strategies.json'
 import strategyJson from './fixtures/strategy-rsi2.json'
@@ -29,6 +30,7 @@ export const strategyFixture = (strategyJson satisfies Widen<StrategyView>) as u
 export const accountsFixture = (accountsJson satisfies Widen<AccountsView>) as unknown as AccountsView
 export const accountFixture = (accountJson satisfies Widen<AccountView>) as unknown as AccountView
 export const planFixture = (planJson satisfies Widen<PlanView>) as unknown as PlanView
+export const reservesFixture = (reservesJson satisfies Widen<ReservesView>) as unknown as ReservesView
 
 interface Data {
   home?: HomeView
@@ -38,6 +40,7 @@ interface Data {
   accounts?: AccountsView | null
   account?: { id: string; view: AccountView }[] // answers for GET /api/accounts/{id}
   plan?: PlanView | null
+  reserves?: ReservesView | null
 }
 
 /** The whole app at `path`, with the API answered from fixtures. Any other network call goes to `fetchImpl`, which
@@ -56,6 +59,7 @@ export function renderApp(path = '/', data: Data = {}, fetchImpl?: (url: string)
     client.setQueryData(['account', id], view)
   }
   if (data.plan !== null) client.setQueryData(['plan'], data.plan ?? planFixture)
+  if (data.reserves !== null) client.setQueryData(['reserves'], data.reserves ?? reservesFixture)
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
   const view = render(
     <QueryClientProvider client={client}>

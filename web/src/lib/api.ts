@@ -51,6 +51,7 @@ export interface ValuePoint {
 export interface NetWorth {
   total: number // everything owned less everything owed
   owed: number // what the debt accounts owe, already taken off total; 0 with none
+  debt_accounts: number // how many accounts that owed comes from
   today: Delta
   month: Delta
   year: Delta
@@ -577,4 +578,48 @@ export interface PlanView {
 
 export function usePlan() {
   return useQuery({ queryKey: ['plan'], queryFn: () => getJson<PlanView>('/api/plan'), refetchInterval: MINUTE })
+}
+
+// --- the Reserves page (src/kestrel/views/reserves.py) -------------------------------------------------------------
+
+export interface CashLine {
+  id: string
+  name: string
+  institution: string
+  value: number
+  rate_pct: number | null
+  as_of: string
+}
+
+export interface DebtLine {
+  id: string
+  name: string
+  institution: string
+  owed: number // a credit balance (paid past zero) is below zero
+  limit: number | null
+  utilization_pct: number | null
+  rate_pct: number | null
+  as_of: string
+}
+
+export interface Spread {
+  owed_rate_pct: number
+  earned_rate_pct: number
+  yearly_cost: number
+  yearly_earned: number
+  gap: number // yearly_earned minus yearly_cost
+}
+
+export interface ReservesView {
+  as_of: string
+  cash: CashLine[]
+  debts: DebtLine[]
+  totals: { cash: number; owed: number; net: number; utilization_pct: number | null }
+  spread: Spread | null
+}
+
+export function useReserves() {
+  return useQuery({
+    queryKey: ['reserves'], queryFn: () => getJson<ReservesView>('/api/reserves'), refetchInterval: MINUTE,
+  })
 }

@@ -1,0 +1,46 @@
+{
+  "as_of": "2026-09-25T21:08:00Z",
+  "cash": [
+    {
+      "id": "savings",
+      "name": "High-yield savings",
+      "institution": "Bank C",
+      "value": 24242.85,
+      "rate_pct": 4.1,
+      "as_of": "2026-09-25"
+    },
+    {
+      "id": "checking",
+      "name": "Checking",
+      "institution": "Bank C",
+      "value": 6653.13,
+      "rate_pct": null,
+      "as_of": "2026-09-25"
+    }
+  ],
+  "debts": [
+    {
+      "id": "card",
+      "name": "Credit card",
+      "institution": "Bank D",
+      "owed": 640.0,
+      "limit": 5000.0,
+      "utilization_pct": 12.8,
+      "rate_pct": 24.9,
+      "as_of": "2026-09-25"
+    }
+  ],
+  "totals": {
+    "cash": 30895.98,
+    "owed": 640.0,
+    "net": 30255.98,
+    "utilization_pct": 12.8
+  },
+  "spread": {
+    "owed_rate_pct": 24.9,
+    "earned_rate_pct": 4.1,
+    "yearly_cost": 159.36,
+    "yearly_earned": 993.96,
+    "gap": 834.6
+  }
+}

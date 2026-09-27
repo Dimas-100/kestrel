@@ -8,6 +8,7 @@
   "net_worth": {
     "total": 168278.24,
     "owed": 640.0,
+    "debt_accounts": 1,
     "today": {
       "amount": -81.32,
       "pct": -0.05

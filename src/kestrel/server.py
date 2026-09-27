@@ -18,6 +18,7 @@ from .profile import Profile
 from .views.accounts import AccountsView, AccountView, account_view, accounts_view
 from .views.home import HomeView, home_view
 from .views.plan import PlanView, plan_view
+from .views.reserves import ReservesView, reserves_view
 from .views.shell import ShellView, shell_view
 from .views.strategy import StrategiesView, StrategyView, strategies_view, strategy_view
 
@@ -80,6 +81,11 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
     def plan() -> PlanView:
         now = clock()
         return plan_view(collect(profile, now), profile, now)
+
+    @app.get("/api/reserves", response_model=ReservesView)
+    def reserves() -> ReservesView:
+        now = clock()
+        return reserves_view(collect(profile, now), profile, now)
 
     @app.get("/api/strategies", response_model=StrategiesView)
     def strategies() -> StrategiesView:

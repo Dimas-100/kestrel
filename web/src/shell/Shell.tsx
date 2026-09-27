@@ -18,6 +18,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/accounts', label: 'Accounts', icon: 'accounts', count: 'accounts' },
       { to: '/plan', label: 'Plan', icon: 'target' },
+      { to: '/reserves', label: 'Reserves', icon: 'scale' },
     ],
   },
   {

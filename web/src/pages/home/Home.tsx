@@ -52,7 +52,8 @@ export function Home() {
       </header>
       <div className="grid12">
         <NetWorthPanel nw={h.net_worth} />
-        <AllocationPanel slices={h.allocation} accounts={h.accounts} />
+        <AllocationPanel slices={h.allocation} accounts={h.accounts} owed={h.net_worth.owed}
+          debtAccounts={h.net_worth.debt_accounts} />
         <ComparisonPanel c={h.comparison} />
         <AttentionPanel items={h.attention} />
         <BooksPanel books={h.books} tz={tz} now={h.as_of} />
