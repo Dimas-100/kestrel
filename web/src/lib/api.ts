@@ -735,3 +735,45 @@ export function useStrategy(id: string, book: Money) {
     placeholderData: (previous, query) => (query?.queryKey[1] === id ? previous : undefined),
   })
 }
+
+// --- the Settings page (src/kestrel/views/settings.py) ----------------------------------------------------------
+
+export interface YouSettings {
+  name: string
+}
+
+export interface BenchmarkConfig {
+  symbol: string
+  label: string
+}
+
+export interface SettingsSource {
+  id: string
+  label: string
+  kind: string
+  reads: string
+  stale_after: string
+  refresh: string | null
+  timeout: number | null
+  token_env: string | null
+  status: Source['status']
+  last_success: string | null
+  detail: string
+}
+
+export interface SettingsView {
+  as_of: string
+  you: YouSettings
+  app: AppSettings
+  benchmark: BenchmarkConfig
+  profile: string
+  contract_version: string
+  version: string
+  sources: SettingsSource[]
+}
+
+export function useSettings() {
+  return useQuery({
+    queryKey: ['settings'], queryFn: () => getJson<SettingsView>('/api/settings'), refetchInterval: MINUTE,
+  })
+}

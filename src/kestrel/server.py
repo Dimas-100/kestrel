@@ -21,6 +21,7 @@ from .views.backtests import BacktestsView, backtests_view
 from .views.books import BooksView, BookView, book_view, books_view
 from .views.calendar import CalendarView, calendar_view
 from .views.home import HomeView, home_view
+from .views.settings import SettingsView, settings_view
 from .views.shell import ShellView, shell_view
 from .views.strategy import StrategiesView, StrategyView, strategies_view, strategy_view
 
@@ -45,7 +46,7 @@ def _plain_parts(rest: str) -> tuple[str, ...] | None:
     return None if ".." in parts else parts
 
 
-def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
+def create_app(profile: Profile, *, profile_origin: str = "demo data", clock: Callable[[], datetime] = _utcnow,
                web_dist: Path | None = WEB_DIST, allowed_hosts: Sequence[str] = LOCAL_HOSTS) -> FastAPI:
     app = FastAPI(title="kestrel", version=__version__, docs_url=None, redoc_url=None,
                   openapi_url="/api/openapi.json")
@@ -119,6 +120,11 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
     def backtests() -> BacktestsView:
         now = clock()
         return backtests_view(collect(profile, now), profile, now)
+
+    @app.get("/api/settings", response_model=SettingsView)
+    def settings() -> SettingsView:
+        now = clock()
+        return settings_view(collect(profile, now), profile, now, profile_origin)
 
     @app.get("/api/{rest:path}", include_in_schema=False)
     def unknown_api(rest: str) -> None:

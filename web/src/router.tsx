@@ -9,6 +9,7 @@ import { Books } from './pages/books/Books'
 import { Calendar } from './pages/calendar/Calendar'
 import { Home } from './pages/home/Home'
 import { Soon } from './pages/Soon'
+import { Settings } from './pages/settings/Settings'
 import { Strategies } from './pages/strategies/Strategies'
 import { Strategy } from './pages/strategy/Strategy'
 import { Shell } from './shell/Shell'
@@ -17,9 +18,6 @@ const root = createRootRoute({
   component: Shell,
   notFoundComponent: () => <Soon title="Not found" text="There is no page here. Pick one from the menu." />,
 })
-
-const later = (path: string, title: string, text: string) =>
-  createRoute({ getParentRoute: () => root, path, component: () => <Soon title={title} text={text} /> })
 
 /** `?book=real|paper` picks the money the page focuses on; anything else is dropped (the page defaults to real). */
 function bookSearch(search: Record<string, unknown>): { book?: Money } {
@@ -76,7 +74,7 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/backtests', component: Backtests }),
   createRoute({ getParentRoute: () => root, path: '/calendar', component: Calendar }),
   createRoute({ getParentRoute: () => root, path: '/activity', component: Activity }),
-  later('/settings', 'Settings', 'Your profile and the status of every source — Phase 5.'),
+  createRoute({ getParentRoute: () => root, path: '/settings', component: Settings }),
 ])
 
 export function createAppRouter(history?: RouterHistory) {

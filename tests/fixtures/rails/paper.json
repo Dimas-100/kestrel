@@ -1,0 +1,31 @@
+{
+  "cash": 8000.0,
+  "positions": {
+    "ACME": {"quantity": 10, "avg_cost": 25.0},
+    "GLOBEX": {"quantity": 5, "avg_cost": 40.0},
+    "INITCO": {"quantity": 3, "avg_cost": 100.0}
+  },
+  "open_orders": {
+    "c-1": {"client_order_id": "c-1", "symbol": "ACME", "quantity": 10, "limit_price": null, "stop_price": 22.5,
+            "side": "SELL", "order_type": "STOP", "time_in_force": "GTC", "status": "open", "reserved": 0.0,
+            "after_ts": "2026-09-18T14:31:00+00:00"}
+  },
+  "fills": [
+    {"client_order_id": "f-1", "symbol": "ACME", "side": "BUY", "quantity": 10, "price": 25.0,
+     "ts": "2026-09-18T14:31:00+00:00"},
+    {"client_order_id": "f-2", "symbol": "GLOBEX", "side": "BUY", "quantity": 5, "price": 40.0,
+     "ts": "2026-09-19T14:31:00+00:00"},
+    {"client_order_id": "f-3", "symbol": "ACME", "side": "SELL", "quantity": 3, "price": 27.5,
+     "ts": "2026-09-20T14:31:00+00:00"},
+    {"client_order_id": "f-4", "symbol": "ZETA", "side": "BUY", "quantity": 4, "price": 10.0,
+     "ts": "2026-09-15T14:31:00+00:00"},
+    {"client_order_id": "f-5", "symbol": "ZETA", "side": "BUY", "quantity": 6, "price": 20.0,
+     "ts": "2026-09-16T14:31:00+00:00"},
+    {"client_order_id": "f-6", "symbol": "ZETA", "side": "SELL", "quantity": 10, "price": 25.0,
+     "ts": "2026-09-17T14:31:00+00:00"},
+    {"client_order_id": "f-7", "symbol": "ORPHAN", "side": "SELL", "quantity": 5, "price": 50.0,
+     "ts": "2026-09-18T09:00:00+00:00"}
+  ],
+  "rejected": [],
+  "as_of": "2026-09-21"
+}

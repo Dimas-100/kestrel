@@ -54,7 +54,10 @@ def _serve(args: argparse.Namespace) -> int:
         print("web/dist is not built yet: run `npm ci && npm run build` in web/ (the API works without it)")
     if not args.no_open:
         threading.Timer(1.0, webbrowser.open, args=(url,)).start()
-    uvicorn.run(create_app(profile), host=HOST, port=args.port, log_level="warning")
+    # Settings shows which profile is in use: the file it was loaded from, or "demo data" when there wasn't one
+    # (--demo, or no profile.toml at all) — never the "built-in demo profile" wording `check`'s banner line uses.
+    settings_origin = "demo data" if profile is DEMO_PROFILE else origin
+    uvicorn.run(create_app(profile, profile_origin=settings_origin), host=HOST, port=args.port, log_level="warning")
     return 0
 
 
@@ -91,6 +94,7 @@ def _demo(args: argparse.Namespace) -> int:
     from .views.books import book_view, books_view
     from .views.calendar import calendar_view
     from .views.home import home_view
+    from .views.settings import settings_view
     from .views.shell import shell_view
     from .views.strategy import strategies_view, strategy_view
 
@@ -112,6 +116,8 @@ def _demo(args: argparse.Namespace) -> int:
         _emit(calendar_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view == "backtests":
         _emit(backtests_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "settings":
+        _emit(settings_view(snapshot, DEMO_PROFILE, now, "demo data").model_dump_json(indent=2))
     elif args.view in ("strategy", "account", "book"):
         if not args.id:
             example = {"strategy": "rsi2", "account": "roth", "book": "rsi2-real"}[args.view]
@@ -151,7 +157,8 @@ def main(argv: list[str] | None = None) -> int:
         which.add_argument("--demo", action="store_true", help="show the demo data, whatever profile.toml says")
     demo = sub.add_parser("demo", help="print the demo data as JSON (an example feed payload)")
     demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy", "accounts", "account",
-                                         "books", "book", "activity", "calendar", "backtests"], default="snapshot")
+                                         "books", "book", "activity", "calendar", "backtests", "settings"],
+                      default="snapshot")
     demo.add_argument("--id", help="the strategy, account or book the view shows, e.g. rsi2, roth or rsi2-real")
     demo.add_argument("--book", choices=["real", "paper"], default="real", help="the money --view strategy shows")
     demo.add_argument("--now", help="ISO time with offset, for reproducible output")

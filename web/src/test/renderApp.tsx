@@ -12,6 +12,7 @@ import type {
   CalendarView,
   HomeView,
   Money,
+  SettingsView,
   ShellView,
   StrategiesView,
   StrategyView,
@@ -25,6 +26,7 @@ import bookJson from './fixtures/book-rsi2-real.json'
 import booksJson from './fixtures/books.json'
 import calendarJson from './fixtures/calendar.json'
 import homeJson from './fixtures/home.json'
+import settingsJson from './fixtures/settings.json'
 import shellJson from './fixtures/shell.json'
 import strategiesJson from './fixtures/strategies.json'
 import strategyJson from './fixtures/strategy-rsi2.json'
@@ -48,6 +50,7 @@ export const bookFixture = (bookJson satisfies Widen<BookView>) as unknown as Bo
 export const activityFixture = (activityJson satisfies Widen<ActivityView>) as unknown as ActivityView
 export const calendarFixture = (calendarJson satisfies Widen<CalendarView>) as unknown as CalendarView
 export const backtestsFixture = (backtestsJson satisfies Widen<BacktestsView>) as unknown as BacktestsView
+export const settingsFixture = (settingsJson satisfies Widen<SettingsView>) as unknown as SettingsView
 
 interface Data {
   home?: HomeView
@@ -61,6 +64,7 @@ interface Data {
   activity?: ActivityView | null
   calendar?: CalendarView | null
   backtests?: BacktestsView | null
+  settings?: SettingsView | null
 }
 
 /** The whole app at `path`, with the API answered from fixtures. Any other network call goes to `fetchImpl`, which
@@ -85,6 +89,7 @@ export function renderApp(path = '/', data: Data = {}, fetchImpl?: (url: string)
   if (data.activity !== null) client.setQueryData(['activity'], data.activity ?? activityFixture)
   if (data.calendar !== null) client.setQueryData(['calendar'], data.calendar ?? calendarFixture)
   if (data.backtests !== null) client.setQueryData(['backtests'], data.backtests ?? backtestsFixture)
+  if (data.settings !== null) client.setQueryData(['settings'], data.settings ?? settingsFixture)
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
   const view = render(
     <QueryClientProvider client={client}>
