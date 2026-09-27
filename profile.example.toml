@@ -59,4 +59,13 @@ label = "Demo data"
 # refresh = "1m"              # optional: how long one run's output is reused, 5s to 1h
 # stale_after = "15m"
 #
-# When two sources use the same id, the one higher up in this file wins. A trading-rails source comes later.
+# A trading-rails install's own paper book: reads its paper.json and runs.jsonl (never trading_rails itself):
+#
+# [[sources]]
+# id = "rails"
+# kind = "rails"
+# label = "Paper (trading-rails)"
+# path = "../trading-rails/data"   # the folder holding paper.json and runs.jsonl (relative to this file's folder)
+# stale_after = "36h"
+#
+# When two sources use the same id, the one higher up in this file wins.

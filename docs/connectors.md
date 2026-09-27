@@ -10,7 +10,7 @@ source's data.
 | `demo` | nothing: a fictional year for "Alex" | Phase 2; the default when there is no `profile.toml` |
 | `fdc` | [financial-data-collector](https://github.com/Dimas-100/financial-data-collector)'s SQLite warehouse | Phase 4a |
 | `feed` | any system that serves the contract as JSON: at a URL, in a file, or printed by a command kestrel runs (your trading desk) | Phase 4b; commands Phase 5 |
-| `rails` | a trading-rails install: paper books, the run log, backtests | later |
+| `rails` | a trading-rails install: its paper account (`paper.json`) and run log (`runs.jsonl`) | Phase 5 |
 
 `kestrel check` tries every source and prints what it found; `kestrel serve --demo` and `kestrel check --demo` show
 the demo whatever `profile.toml` says. When two sources use the same id, the one earlier in the profile wins (see
@@ -316,7 +316,40 @@ symbol, and events by their date, kind, symbol and title. In one source or acros
 later one goes on its own (nothing hangs off these). The ids and symbols dropped are named in the same
 `ignored duplicate ids: …` note; an event has no id, so a dropped event isn't.
 
-## `rails`
+## `rails`: a trading-rails install
 
-Later: a trading-rails install's paper books, run log and backtests. Until then a source of this kind shows as an
-error that says it isn't available in this version.
+```toml
+[[sources]]
+id = "rails"
+kind = "rails"
+label = "Paper (trading-rails)"
+path = "../trading-rails/data"     # the folder holding paper.json and runs.jsonl; relative to this profile's folder
+stale_after = "36h"
+```
+
+- **`path`** is the folder [trading-rails](https://github.com/Dimas-100/trading-rails)' paper broker and runner write
+  to: its `paper.json` (cash, positions, open orders) and `runs.jsonl` (one line per step of every cycle it has run).
+  A relative path is relative to the folder `profile.toml` is in, like `fdc`'s. It's required: a source with none, or
+  an empty one, is a source error — `a rails source needs a path to its data folder …` — not a profile problem, so
+  the rest of the page still works.
+- **Read-only, file reads only.** kestrel never imports `trading_rails` (the read-only guard forbids it): it reads
+  `paper.json` and `runs.jsonl` by their own keys, the way `paper.py` and `runner.py` write them, and nothing else
+  about the install.
+- **One paper book**, `rails-paper`: its value is the account's cash plus each position's quantity times a price for
+  it. trading-rails never persists a "last price" (it always prices live, against a bar source kestrel can't reach),
+  so the price used is that symbol's most recent fill in `paper.json`'s `fills`, or the position's average cost when
+  there has never been one. Its `started` date is the first row of `runs.jsonl`, or, without a run log yet, the
+  state file's own `as_of`.
+- **Positions** carry their quantity, average cost, that same last price, their opened date (their earliest BUY
+  fill, or the book's `started` without one), and a resting protective stop when `paper.json`'s `open_orders` has
+  one for that symbol.
+- **A strategy stub**, id and name from the run log's own `strategy` field on its newest row when a future log sends
+  one, else `rails` / "trading-rails": today's run log names no strategy of its own.
+- **Runs**, one per cycle in `runs.jsonl` (its rows share one timestamp per cycle): `done`, or `failed` when one of
+  its steps errored, with that step's own message as the detail. A torn last line — the log may still be growing, or
+  a run crashed mid-write — is skipped, not fatal.
+- **Book history** picks up an equity point from a run row that reports one (a future log's `equity`, top-level or
+  inside `extra`); today's runner sends neither, so this is ordinarily empty.
+- **Errors, worded for a person:** a missing folder (`no trading-rails data at …`), a missing `paper.json`
+  (`no paper.json in … : run trading-rails' paper broker first`), and torn JSON in it (`… isn't valid JSON …`) each
+  show as the source's error; a missing `runs.jsonl` is not an error (there simply are no runs yet).

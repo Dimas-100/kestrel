@@ -16,6 +16,7 @@ from .demo import DemoConnector
 from .fdc import FdcConnector
 from .feed import TIMEOUT as FEED_TIMEOUT
 from .feed import FeedConnector
+from .rails import RailsConnector
 
 __all__ = ["Connector", "ConnectorError", "ConnectorUnavailable", "build", "collect"]
 
@@ -44,6 +45,12 @@ def build(cfg: SourceCfg, profile: Profile) -> Connector:
         return FeedConnector(cfg.id, cfg.label or cfg.id, url=getattr(cfg, "url", None),
                              path=Path(path) if path is not None else None, token_env=getattr(cfg, "token_env", None),
                              timeout=float(getattr(cfg, "timeout", FEED_TIMEOUT)))
+    if cfg.kind == "rails":
+        path = getattr(cfg, "path", None)
+        if not isinstance(path, str) or not path:
+            raise ConnectorError('a rails source needs a path to its data folder (paper.json and runs.jsonl), '
+                                 'e.g. path = "../trading-rails/data"')
+        return RailsConnector(cfg.id, cfg.label or cfg.id, Path(path))
     raise ConnectorUnavailable(f"connector kind {cfg.kind!r} is not available in this version of kestrel")
 
 
