@@ -196,6 +196,13 @@ class Benchmark(Model):
     points: list[ValuePoint]  # value = the close
 
 
+def check_version(value: str) -> str:
+    """`value` when its major version is this contract's; a ValueError worded for a person when it isn't."""
+    if value.split(".")[0] != CONTRACT_VERSION:
+        raise ValueError(f"unsupported contract version {value!r}; this kestrel reads major version {CONTRACT_VERSION}")
+    return value
+
+
 class Snapshot(Model):
     contract_version: str = CONTRACT_VERSION
     generated_at: AwareDatetime
@@ -216,11 +223,7 @@ class Snapshot(Model):
     @field_validator("contract_version")
     @classmethod
     def _same_major(cls, value: str) -> str:
-        if value.split(".")[0] != CONTRACT_VERSION:
-            raise ValueError(
-                f"unsupported contract version {value!r}; this kestrel reads major version {CONTRACT_VERSION}"
-            )
-        return value
+        return check_version(value)
 
 
 _LIST_FIELDS = (

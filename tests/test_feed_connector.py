@@ -5,6 +5,7 @@ import os
 import time
 
 import pytest
+from fastapi.testclient import TestClient
 from feed_fixture import (
     MADE,
     FeedServer,
@@ -31,6 +32,7 @@ from kestrel.connectors.base import ConnectorError
 from kestrel.connectors.feed import MAX_BYTES, FeedConnector
 from kestrel.contract import Snapshot
 from kestrel.profile import Profile, SourceCfg, load_profile
+from kestrel.server import create_app
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
 TOKEN = "kst_9f8e7d6c5b4a3210"  # a made-up token
@@ -200,6 +202,113 @@ def test_problems_too_long_for_a_source_row_are_fewer_but_still_counted(tmp_path
 
 def test_not_a_json_object_is_a_problem_of_the_whole_payload(tmp_path):
     assert refused(feed_file(tmp_path, [desk()])) == "Input should be a valid dictionary or instance of Snapshot"
+
+
+def test_more_than_a_million_items_is_refused_before_any_is_checked(tmp_path):
+    # pydantic collects every problem at once: 1.3 million empty books once took 7.5 GB to describe
+    path = feed_file(tmp_path, desk(books=[{}] * 2_000_000))
+    started = time.monotonic()
+    assert refused(path) == "the feed sent more than 1,000,000 items"
+    assert time.monotonic() - started < 5
+
+
+def test_items_inside_items_count_toward_the_million(tmp_path):
+    chart = {"book_id": "swing-real", "symbol": "PG", "opened": "2026-09-08",
+             "bars": [{"date": "2026-09-08", "open": 158.0, "high": 159.0, "low": 157.9, "close": 158.4}],
+             "indicator": {"label": "RSI(2)", "values": [5.0] * 1_000_001}}
+    assert refused(feed_file(tmp_path, desk(trade_charts=[chart]))) == "the feed sent more than 1,000,000 items"
+
+
+def test_thousands_of_problems_are_counted_quickly(tmp_path):
+    trade = {"bookId": "swing-real", "symbol": "PG", "opened": "2026-09-08", "closed": "2026-09-11",
+             "entryPrice": 158.4, "exitPrice": 162.1, "quantity": 3, "pnl": 11.1, "returnPct": 2.34}  # camelCase
+    path = feed_file(tmp_path, desk(trades=[trade] * 5000))
+    started = time.monotonic()
+    message = refused(path)
+    assert time.monotonic() - started < 2
+    assert message == ("trades.0.book_id: Field required; trades.0.entry_price: Field required; "
+                       "trades.0.exit_price: Field required; and 19997 more")
+
+
+def test_a_huge_list_inside_one_item_is_counted_quickly_too(tmp_path):
+    # a million problems inside one chart: checking the chart whole once took seconds and gigabytes
+    chart = {"book_id": "swing-real", "symbol": "PG", "opened": "2026-09-08", "bars": [{}] * 200_000}
+    path = feed_file(tmp_path, desk(trade_charts=[chart]))
+    started = time.monotonic()
+    message = refused(path)
+    assert time.monotonic() - started < 2
+    assert message == ("trade_charts.0.bars.0.date: Field required; trade_charts.0.bars.0.open: Field required; "
+                       "trade_charts.0.bars.0.high: Field required; and 999997 more")
+
+
+def test_a_long_history_loads_whole_and_its_problems_keep_their_places(tmp_path):
+    points = [{"date": (dt.date(2006, 1, 2) + dt.timedelta(days=i)).isoformat(), "value": 100.0 + i}
+              for i in range(5000)]
+    payload = desk(book_history=[{"id": "swing-real", "points": points}])
+    assert from_file(feed_file(tmp_path, payload)).book_history == Snapshot.model_validate(payload).book_history
+    points[4321]["value"] = "x"
+    payload["book_history"].append({"points": []})
+    assert refused(feed_file(tmp_path, payload)) == (
+        "book_history.0.points.4321.value: Input should be a valid number, unable to parse string as a number; "
+        "book_history.1.id: Field required")
+    bars = [{"date": "2026-09-08", "open": 158.0, "high": 159.0, "low": 157.9, "close": 158.4}] * 3000
+    chart = {"book_id": "swing-real", "symbol": "PG", "opened": "2026-09-08", "stop": "x",
+             "bars": [*bars[:2500], {**bars[0], "open": "x"}, *bars[2501:]]}
+    assert refused(feed_file(tmp_path, desk(trade_charts=[chart]))) == (
+        "trade_charts.0.bars.2500.open: Input should be a valid number, unable to parse string as a number; "
+        "trade_charts.0.stop: Input should be a valid number, unable to parse string as a number")
+
+
+def test_the_demo_payload_loads_exactly_as_the_contract_reads_it(tmp_path, capsysbinary):
+    main(["demo", "--now", NOW.isoformat()])
+    body = capsysbinary.readouterr().out
+    path = tmp_path / "demo.json"
+    path.write_bytes(body)
+    expected = Snapshot.model_validate_json(body)
+    assert from_file(path).model_dump(exclude={"sources"}) == expected.model_dump(exclude={"sources"})
+
+
+def raw_desk(field: str | None, key: str, raw: str) -> str:
+    """The desk's payload, plus an account with two days of history, as JSON text with `raw` written as-is for
+    `key` of the first item in `field` (or of the payload itself)."""
+    payload = desk(accounts=[{"id": "desk-cash", "name": "Desk cash", "category": "trading", "value": 5000.0,
+                              "as_of": "2026-09-25T20:00:00+00:00"}],
+                   account_history=[{"id": "desk-cash", "points": [{"date": "2026-09-24", "value": 4900.0},
+                                                                   {"date": "2026-09-25", "value": 5000.0}]}])
+    (payload if field is None else payload[field][0])[key] = "__RAW__"
+    return json.dumps(payload).replace('"__RAW__"', raw)
+
+
+@pytest.mark.parametrize("field,key,raw,message", [
+    ("runs", "time", '"0001-01-01T00:00:00Z"', "runs.0.time is 0001-01-01, outside 1970–2200"),
+    (None, "generated_at", '"0001-01-01T00:00:00Z"', "generated_at is 0001-01-01, outside 1970–2200"),
+    ("trades", "closed", '"9999-12-31"', "trades.0.closed is 9999-12-31, outside 1970–2200"),
+    ("accounts", "value", "1e999", "the feed sent a number too large to use"),
+    ("accounts", "value", "1e300", "accounts.0.value is too large"),
+    ("accounts", "value", '"-inf"', "accounts.0.value is too large"),  # pydantic reads these strings as floats
+    ("accounts", "value", '"NaN"', "accounts.0.value isn't a number"),
+    ("books", "slots_total", "1" + "0" * 400, "books.0.slots_total is too large"),
+    ("books", "value", "1" * 5000, "the feed sent a number too large to use"),
+], ids=["Go's zero time in a run", "Go's zero time as generated_at", "the year 9999", "1e999", "1e300",
+        "the string -inf", "the string NaN", "a 401-digit integer", "a 5000-digit integer"])
+def test_a_date_or_number_the_pages_cant_use_is_refused_and_every_page_still_answers(tmp_path, field, key, raw,
+                                                                                      message):
+    path = tmp_path / "feed.json"
+    path.write_text(raw_desk(field, key, raw), encoding="utf-8")
+    profile = Profile(sources=[SourceCfg(id="demo", kind="demo", label="Demo data"),
+                               SourceCfg(id="desk", kind="feed", label="Trading desk", path=str(path))])
+    client = TestClient(create_app(profile, clock=lambda: NOW, web_dist=None), base_url="http://127.0.0.1",
+                        raise_server_exceptions=False)
+    codes = {page: client.get(page).status_code for page in ("/api/home", "/api/strategies", "/api/strategies/swing")}
+    row = next(s for s in client.get("/api/shell").json()["sources"] if s["id"] == "desk")
+    assert (row["status"], row["detail"]) == ("error", message)
+    assert codes == {"/api/home": 200, "/api/strategies": 200, "/api/strategies/swing": 404}  # no desk, no swing
+
+
+def test_the_payloads_own_sources_are_not_checked_since_they_are_replaced(tmp_path):
+    # a Go system's source that has never succeeded says so with Go's zero time; kestrel drops that row anyway
+    never = {"id": "desk-broker", "label": "Broker link", "kind": "api", "last_success": "0001-01-01T00:00:00Z"}
+    assert len(from_file(feed_file(tmp_path, desk(sources=[never]))).books) == 2
 
 
 def test_a_payload_from_the_future_is_refused_beyond_five_minutes_of_clock_drift(tmp_path):

@@ -11,18 +11,22 @@ from __future__ import annotations
 
 import http.client
 import json
+import math
 import os
 import socket
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from functools import cache
 from pathlib import Path
+from types import NoneType, UnionType
+from typing import Any, Union, get_args, get_origin
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
-from pydantic import ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from .. import __version__
-from ..contract import Snapshot, Source
+from ..contract import Snapshot, Source, check_version
 from .base import DETAIL_LIMIT, ConnectorError
 
 TIMEOUT = 5.0  # seconds, unless the profile says otherwise (1 to 60)
@@ -31,6 +35,15 @@ CHUNK = 64 * 1024
 CLOCK_DRIFT = timedelta(minutes=5)  # how far a feed's clock may run ahead of this one before its time is refused
 SHOWN_PROBLEMS = 3
 NOT_JSON = "the feed sent something that isn't JSON"
+TOO_LARGE = "the feed sent a number too large to use"
+MAX_ITEMS = 1_000_000  # list items in all, at any depth: far more than any feed needs
+# the most list items pydantic sees in one call: it keeps every problem it finds until the call returns, so a whole
+# payload of bad items at once could take gigabytes, and minutes to describe
+BATCH = 2_000
+EARLIEST, LATEST = date(1970, 1, 1), date(2200, 12, 31)  # the dates kestrel's pages can work with
+LARGEST = 1e15  # the largest number, either way, that they can: sums, returns and charts stay finite
+_PLAIN = {"include_url": False, "include_context": False, "include_input": False}  # an error's words and place only
+_BAD = object()  # what a check returns for a part that didn't pass (None is a value a field can have)
 
 
 def _count(n: int, one: str, many: str) -> str:
@@ -93,14 +106,12 @@ def _why(reason: object) -> str:
     return reason.strerror if isinstance(reason, OSError) and reason.strerror else str(reason)
 
 
-def problems(exc: ValidationError) -> str:
-    """The first three problems as `field.path: message`, then how many more; fewer than three when three wouldn't
-    fit in a source row, so the count always shows."""
-    found = [f"{'.'.join(str(part) for part in e['loc'])}: {e['msg']}" if e["loc"] else e["msg"]
-             for e in exc.errors()]
+def problems(found: list[str], total: int) -> str:
+    """The first three problems `found` (as `field.path: message`), then how many more of the `total`; fewer than
+    three when three wouldn't fit in a source row, so the count always shows."""
     shown = min(SHOWN_PROBLEMS, len(found))
     while True:
-        more = len(found) - shown
+        more = total - shown
         text = "; ".join(found[:shown]) + (f"; and {more} more" if more else "")
         if len(text) <= DETAIL_LIMIT or shown <= 1:
             return text
@@ -114,6 +125,195 @@ def _reject_constant(constant: str) -> None:
     raise ConnectorError(f"the feed sent {constant}, which JSON doesn't allow")
 
 
+def _finite(text: str) -> float:
+    # json turns a number too large for a float, such as 1e999, into inf without ever asking parse_constant
+    value = float(text)
+    if not math.isfinite(value):
+        raise ConnectorError(TOO_LARGE)
+    return value
+
+
+def _inside(nodes: list, cap: int) -> int:
+    """How many list items `nodes` hold, at any depth (a list's items, their lists' items, and so on). The count
+    stops as soon as it passes `cap`, so it never walks much more than `cap` items."""
+    total, stack = 0, [node for node in nodes if isinstance(node, (list, dict))]
+    pop, push = stack.pop, stack.append
+    while stack:
+        node = pop()
+        if isinstance(node, list):
+            total += len(node)
+            if total > cap:
+                break
+            children = node
+        else:
+            children = node.values()
+        for child in children:
+            if isinstance(child, (list, dict)):
+                push(child)
+    return total
+
+
+def _unwrap(tp: Any) -> Any:
+    """X for `X | None`; any other type as it is."""
+    if get_origin(tp) in (Union, UnionType):
+        rest = [arg for arg in get_args(tp) if arg is not NoneType]
+        if len(rest) == 1:
+            return rest[0]
+    return tp
+
+
+@cache
+def _deep(tp: Any) -> bool:
+    """Whether a value of `tp` can hold a list (it is a list, or a model with one inside): such a value is checked
+    in parts."""
+    if get_origin(tp) is list:
+        return True
+    model = _unwrap(tp)
+    return (isinstance(model, type) and issubclass(model, BaseModel)
+            and any(_deep(field.annotation) for field in model.model_fields.values()))
+
+
+@cache
+def _adapter(tp: Any) -> TypeAdapter:
+    return TypeAdapter(tp)
+
+
+class _Problems:
+    """What is wrong with a payload: the first few problems as `field.path: message`, in the order pydantic would
+    list them, and how many there are in all."""
+
+    def __init__(self) -> None:
+        self.found: list[str] = []
+        self.total = 0
+
+    def add(self, errors: list, path: tuple, offset: int = 0) -> None:
+        """`errors` from a check of the part at `path`; `offset` is where a batch of list items began."""
+        self.total += len(errors)
+        for e in errors[:SHOWN_PROBLEMS - len(self.found)]:
+            loc = e["loc"]
+            if offset and loc and isinstance(loc[0], int):
+                loc = (loc[0] + offset, *loc[1:])  # the item's place in the whole list, not in its batch
+            where = ".".join(str(part) for part in (*path, *loc))
+            self.found.append(f"{where}: {e['msg']}" if where else e["msg"])
+
+    def add_error(self, exc: ValidationError, path: tuple, offset: int = 0) -> None:
+        if len(self.found) < SHOWN_PROBLEMS:
+            self.add(exc.errors(**_PLAIN), path, offset)  # one check's errors: at most BATCH items' worth
+        else:
+            self.total += exc.error_count()  # only the count: nothing more will be shown
+
+
+def _validate(tp: Any, value: Any, path: tuple, found: _Problems, offset: int = 0) -> Any:
+    try:
+        return _adapter(tp).validate_python(value)
+    except ValidationError as exc:
+        found.add_error(exc, path, offset)
+        return _BAD
+
+
+def _check(tp: Any, value: Any, path: tuple, found: _Problems) -> Any:
+    """`value` checked as `tp` without pydantic ever seeing more than BATCH list items at once; the checked value,
+    or _BAD with the problems in `found`."""
+    if get_origin(tp) is list:
+        return _check_list(get_args(tp)[0], value, path, found)
+    model = _unwrap(tp)
+    if isinstance(value, dict) and _deep(model):
+        return _check_model(model, value, path, found)
+    return _validate(tp, value, path, found)  # None, or not even a dict: one quick check
+
+
+def _check_list(item: Any, value: Any, path: tuple, found: _Problems) -> Any:
+    """A list, in batches of at most BATCH items (counting what each item holds); an item bigger than that on its
+    own is checked in parts."""
+    if not isinstance(value, list):
+        return _validate(list[item], value, path, found)
+    deep = _deep(item)
+    out: list = []
+    bad = False
+    batch: list = []
+    start = weight = 0
+
+    def flush() -> None:
+        nonlocal bad, batch, weight
+        if batch:
+            checked = _validate(list[item], batch, path, found, offset=start)
+            if checked is _BAD:
+                bad = True
+            else:
+                out.extend(checked)
+        batch, weight = [], 0
+
+    for i, element in enumerate(value):
+        size = 1 + _inside([element], BATCH) if deep else 1
+        if weight + size > BATCH:
+            flush()
+        if size > BATCH:
+            checked = _check(item, element, (*path, i), found)
+            if checked is _BAD:
+                bad = True
+            else:
+                out.append(checked)
+            continue
+        if not batch:
+            start = i
+        batch.append(element)
+        weight += size
+    flush()
+    return _BAD if bad else out
+
+
+def _check_model(model: type[BaseModel], value: dict, path: tuple, found: _Problems) -> Any:
+    """A model in parts: each field that can hold a list on its own, the rest at once; the problems in the model's
+    field order, as pydantic would list them."""
+    fields = model.model_fields
+    parts = [name for name, field in fields.items() if name in value and _deep(field.annotation)]
+    left_out = {(name,) for name in parts}
+    rest = {key: v for key, v in value.items() if key not in parts}
+    errors: list = []
+    try:
+        _adapter(model).validate_python(rest)
+    except ValidationError as exc:
+        # these fields hold no lists, so there are few of these; a part left out reads as missing here, and is
+        # checked on its own below
+        errors = [e for e in exc.errors(**_PLAIN) if not (e["type"] == "missing" and e["loc"] in left_out)]
+    before = found.total
+    found.add([e for e in errors if not e["loc"]], path)
+    checked = {}
+    for name, field in fields.items():
+        found.add([e for e in errors if e["loc"][:1] == (name,)], path)
+        if name in parts:
+            checked[name] = _check(field.annotation, value[name], (*path, name), found)
+    if found.total > before:
+        return _BAD
+    return _validate(model, {**rest, **checked}, path, found)  # the parts are models by now: not checked again
+
+
+def _unusable(node: BaseModel | list, path: tuple = ()) -> str | None:
+    """The first date or number in `node` that kestrel's pages can't work with, as the problem to show, or None: a
+    date outside 1970–2200 (Go's zero time, 0001-01-01, is the usual one), a number bigger than LARGEST either way,
+    or NaN (pydantic reads the string "NaN" as one). Models and lists are walked in field order."""
+    # a validated model keeps its fields in __dict__, in field order; exact types first, as a feed can hold a lot
+    items = node.__dict__.items() if isinstance(node, BaseModel) else enumerate(node)
+    for key, value in items:
+        kind = type(value)
+        if kind is float or kind is int:  # not bool: its type is bool
+            if not -LARGEST <= value <= LARGEST:
+                where = ".".join(str(part) for part in (*path, key))
+                return f"{where} isn't a number" if value != value else f"{where} is too large"
+        elif kind is str or value is None:
+            continue
+        elif isinstance(value, date):
+            day = value.date() if isinstance(value, datetime) else value
+            if not EARLIEST <= day <= LATEST:
+                where = ".".join(str(part) for part in (*path, key))
+                return f"{where} is {day.isoformat()}, outside 1970–2200"
+        elif isinstance(value, BaseModel | list):
+            problem = _unusable(value, (*path, key))
+            if problem:
+                return problem
+    return None
+
+
 def parse(body: bytes) -> Snapshot:
     """The body as a Snapshot, or a ConnectorError that says what is wrong with it."""
     try:
@@ -123,21 +323,34 @@ def parse(body: bytes) -> Snapshot:
     if text.lstrip().startswith("<"):
         raise ConnectorError(f"{NOT_JSON}: a web page (a sign-in page, or the wrong address?)")
     try:
-        payload = json.loads(text, parse_constant=_reject_constant)
+        payload = json.loads(text, parse_constant=_reject_constant, parse_float=_finite)
     except json.JSONDecodeError as exc:
         raise ConnectorError(f"{NOT_JSON} (line {exc.lineno}, column {exc.colno}: {exc.msg})") from None
     except RecursionError:
         raise ConnectorError(f"{NOT_JSON} (it is nested too deeply to read)") from None
-    if isinstance(payload, dict) and "contract_version" not in payload:
-        # the contract defaults a missing version to 1; a feed must say it, so a future one can't pass for this one
-        raise ConnectorError('the feed doesn\'t say which contract it speaks: add "contract_version": "1"')
-    try:
-        return Snapshot.model_validate(payload)
-    except ValidationError as exc:
-        for e in exc.errors():
-            if e["loc"] == ("contract_version",) and e["type"] == "value_error":
-                raise ConnectorError(str(e["ctx"]["error"])) from None  # the contract's own words
-        raise ConnectorError(problems(exc)) from None
+    except ValueError:  # an integer longer than Python reads (4,300 digits)
+        raise ConnectorError(TOO_LARGE) from None
+    if isinstance(payload, dict):
+        if _inside([payload.get(name) for name in Snapshot.model_fields], MAX_ITEMS) > MAX_ITEMS:
+            raise ConnectorError(f"the feed sent more than {MAX_ITEMS:,} items")
+        if "contract_version" not in payload:
+            # the contract defaults a missing version to 1; a feed must say it, so a future one can't pass for this
+            raise ConnectorError('the feed doesn\'t say which contract it speaks: add "contract_version": "1"')
+        if isinstance(payload["contract_version"], str):  # anything else is a problem the check below names
+            try:
+                check_version(payload["contract_version"])
+            except ValueError as exc:
+                raise ConnectorError(str(exc)) from None  # the contract's own words
+    found = _Problems()
+    snapshot = _check(Snapshot, payload, (), found)
+    if snapshot is _BAD:
+        raise ConnectorError(problems(found.found, found.total))
+    # the payload's own sources are left out: keep() replaces them, and a Go system that has never succeeded
+    # writes Go's zero time as their last success
+    problem = _unusable(snapshot.model_copy(update={"sources": []}))
+    if problem:
+        raise ConnectorError(problem)
+    return snapshot
 
 
 def keep(snapshot: Snapshot, source_id: str, label: str, now: datetime) -> Snapshot:

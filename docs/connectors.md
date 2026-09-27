@@ -158,13 +158,20 @@ In this order; the first check that fails is the source's error, and the rest of
    asking: connecting, the headers and the body, chunked or not, however slowly the feed trickles them. The one step
    `timeout` can't cut short is looking up the host's address, which comes first (a local desk resolves at once). A
    body that ends before its `Content-Length` is refused. A file must exist and be at most 20 MB.
-3. **JSON:** UTF-8 text (a byte-order mark is fine), not a web page, and no `NaN`, `Infinity` or `-Infinity` (not
-   valid JSON, though a lenient writer can produce them).
-4. **The contract version:** the payload must say `"contract_version"`, and its major version must be 1. A newer
+3. **JSON:** UTF-8 text (a byte-order mark is fine), not a web page, no `NaN`, `Infinity` or `-Infinity` (not
+   valid JSON, though a lenient writer can produce them), and no number too large to use (`1e999`, or an integer
+   thousands of digits long).
+4. **The size:** at most 1,000,000 items in the payload's lists, counted together at any depth (a history's points
+   and a chart's bars count too).
+5. **The contract version:** the payload must say `"contract_version"`, and its major version must be 1. A newer
    minor version (`"1.4"`) loads; fields this kestrel doesn't know are ignored.
-5. **The Snapshot:** every field the contract names. The first three problems are listed as `field.path: message`,
-   then how many more (fewer than three when three wouldn't fit on the source's line).
-6. **The time:** `generated_at` no more than five minutes ahead of this computer's clock. A payload up to five
+6. **The Snapshot:** every field the contract names. The first three problems are listed as `field.path: message`,
+   then how many more (fewer than three when three wouldn't fit on the source's line). The lists are checked a
+   batch at a time, so even a payload full of mistakes is described in a second or two.
+7. **Dates and numbers the pages can use:** every date from 1970-01-01 to 2200-12-31, and every number at most
+   1e15 either way and not NaN. Go's zero time, `0001-01-01T00:00:00Z`, is the usual date outside that range. The
+   payload's own `sources` are left out of this check, since kestrel replaces them (below).
+8. **The time:** `generated_at` no more than five minutes ahead of this computer's clock. A payload up to five
    minutes ahead reads as made now.
 
 ### What kestrel keeps
@@ -203,9 +210,13 @@ Serve it at any address on this computer, or save it to a file, and point a `fee
 | `the feed sent something that isn't JSON: a web page …` | The address answers with a page, often a sign-in page: point `url` at the feed itself. |
 | `the feed sent something that isn't JSON (…)` | Compare the feed with `kestrel demo`'s output. |
 | `the feed sent NaN, which JSON doesn't allow` (or `Infinity`, `-Infinity`) | Send a number, or leave the field out; standard JSON has no way to write "not a number" or "infinite". |
+| `the feed sent a number too large to use` | A number beyond what a float can hold (`1e999`), or an integer thousands of digits long: send the real value. |
+| `the feed sent more than 1,000,000 items` | Send less: a feed carries what the pages show, not raw history. |
 | `the feed doesn't say which contract it speaks …` | Add `"contract_version": "1"` to the payload. |
 | `unsupported contract version '2'; this kestrel reads major version 1` | The feed speaks a newer contract: update kestrel. |
 | `books.0.money: Input should be 'real' or 'paper'; …; and 2 more` | The payload doesn't match the contract: fix those fields in the feed. |
+| `runs.0.time is 0001-01-01, outside 1970–2200` | A time the feed never set: Go writes an unset time as `0001-01-01T00:00:00Z`. Send the real time, or `null` (or nothing) where the contract allows it. |
+| `books.0.value is too large` or `books.0.value isn't a number` | Send the real value: a number over 1e15, or NaN (which pydantic reads from the string `"NaN"`), can't be added up or drawn. |
 | `the feed's generated_at is 4 hours ahead of this computer's clock …` | Check the clock, and the time zone offset, where the payload is made. |
 
 ## When two sources use the same id
