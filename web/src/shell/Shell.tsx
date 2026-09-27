@@ -21,7 +21,13 @@ export const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/strategies', label: 'Strategies', icon: 'strategy', count: 'strategies' },
     ],
   },
-  { group: 'Research', items: [{ to: '/backtests', label: 'Backtests', icon: 'backtests' }] },
+  {
+    group: 'Research',
+    items: [
+      { to: '/backtests', label: 'Backtests', icon: 'backtests' },
+      { to: '/calendar', label: 'Calendar', icon: 'calendar' },
+    ],
+  },
   {
     group: 'System',
     items: [

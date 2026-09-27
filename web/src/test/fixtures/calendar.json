@@ -1,0 +1,225 @@
+{
+  "as_of": "2026-09-25T21:08:00Z",
+  "today": "2026-09-25",
+  "upcoming": [
+    {
+      "week_start": "2026-10-05",
+      "items": [
+        {
+          "date": "2026-10-05",
+          "symbol": "COST",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "After the close",
+          "url": "",
+          "held": true
+        },
+        {
+          "date": "2026-10-06",
+          "symbol": "KO",
+          "kind": "dividend",
+          "title": "Ex-dividend date",
+          "detail": "Own it the day before to receive the quarterly dividend",
+          "url": "",
+          "held": true
+        },
+        {
+          "date": "2026-10-07",
+          "symbol": "JPM",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "Before the open",
+          "url": "",
+          "held": true
+        }
+      ]
+    },
+    {
+      "week_start": "2026-10-12",
+      "items": [
+        {
+          "date": "2026-10-12",
+          "symbol": "KO",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "Before the open",
+          "url": "",
+          "held": true
+        },
+        {
+          "date": "2026-10-14",
+          "symbol": "PG",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "Before the open",
+          "url": "",
+          "held": true
+        }
+      ]
+    },
+    {
+      "week_start": "2026-10-19",
+      "items": [
+        {
+          "date": "2026-10-21",
+          "symbol": "MSFT",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "After the close",
+          "url": "",
+          "held": true
+        }
+      ]
+    },
+    {
+      "week_start": "2026-10-26",
+      "items": [
+        {
+          "date": "2026-10-28",
+          "symbol": "CAT",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "Before the open",
+          "url": "",
+          "held": true
+        }
+      ]
+    },
+    {
+      "week_start": "2026-11-02",
+      "items": [
+        {
+          "date": "2026-11-05",
+          "symbol": "ORCL",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "After the close",
+          "url": "",
+          "held": false
+        }
+      ]
+    },
+    {
+      "week_start": "2026-11-16",
+      "items": [
+        {
+          "date": "2026-11-16",
+          "symbol": "HD",
+          "kind": "earnings",
+          "title": "Quarterly results",
+          "detail": "Before the open",
+          "url": "",
+          "held": true
+        }
+      ]
+    }
+  ],
+  "recent": [
+    {
+      "date": "2026-09-22",
+      "symbol": "MSFT",
+      "kind": "filing",
+      "title": "Form 8-K",
+      "detail": "Current report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=MSFT&type=8-K",
+      "held": true
+    },
+    {
+      "date": "2026-09-18",
+      "symbol": "CAT",
+      "kind": "insider",
+      "title": "A director bought shares",
+      "detail": "Form 4",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CAT&type=4",
+      "held": true
+    },
+    {
+      "date": "2026-09-16",
+      "symbol": "KO",
+      "kind": "filing",
+      "title": "Form 8-K",
+      "detail": "Current report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=KO&type=8-K",
+      "held": true
+    },
+    {
+      "date": "2026-09-11",
+      "symbol": "COST",
+      "kind": "filing",
+      "title": "Form 10-K",
+      "detail": "Annual report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=COST&type=10-K",
+      "held": true
+    },
+    {
+      "date": "2026-09-07",
+      "symbol": "HD",
+      "kind": "insider",
+      "title": "An officer sold shares",
+      "detail": "Form 4",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=HD&type=4",
+      "held": true
+    },
+    {
+      "date": "2026-09-04",
+      "symbol": "JPM",
+      "kind": "filing",
+      "title": "Form 8-K",
+      "detail": "Current report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=JPM&type=8-K",
+      "held": true
+    },
+    {
+      "date": "2026-08-28",
+      "symbol": "HD",
+      "kind": "filing",
+      "title": "Form 10-Q",
+      "detail": "Quarterly report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=HD&type=10-Q",
+      "held": true
+    },
+    {
+      "date": "2026-08-21",
+      "symbol": "PG",
+      "kind": "filing",
+      "title": "Form 10-K",
+      "detail": "Annual report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=PG&type=10-K",
+      "held": true
+    },
+    {
+      "date": "2026-08-14",
+      "symbol": "CAT",
+      "kind": "filing",
+      "title": "Form 10-Q",
+      "detail": "Quarterly report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CAT&type=10-Q",
+      "held": true
+    },
+    {
+      "date": "2026-08-07",
+      "symbol": "MSFT",
+      "kind": "filing",
+      "title": "Form 10-K",
+      "detail": "Annual report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=MSFT&type=10-K",
+      "held": true
+    },
+    {
+      "date": "2026-07-31",
+      "symbol": "JPM",
+      "kind": "filing",
+      "title": "Form 10-Q",
+      "detail": "Quarterly report",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=JPM&type=10-Q",
+      "held": true
+    }
+  ],
+  "counts": {
+    "earnings": 8,
+    "filing": 9,
+    "insider": 2,
+    "dividend": 1,
+    "other": 0
+  }
+}

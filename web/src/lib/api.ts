@@ -454,6 +454,33 @@ export interface AccountView {
   totals: Totals
 }
 
+// --- the Calendar page (src/kestrel/views/calendar.py) -----------------------------------------------------------
+
+export type EventKind = 'earnings' | 'filing' | 'insider' | 'dividend' | 'other'
+
+export interface EventRow {
+  date: string
+  symbol: string
+  kind: EventKind
+  title: string
+  detail: string
+  url: string
+  held: boolean
+}
+
+export interface WeekGroup {
+  week_start: string
+  items: EventRow[]
+}
+
+export interface CalendarView {
+  as_of: string
+  today: string
+  upcoming: WeekGroup[]
+  recent: EventRow[]
+  counts: Record<EventKind, number>
+}
+
 /** A non-2xx answer, with its status, so a page can tell "not found" from "the server is down". */
 export class HttpError extends Error {
   readonly status: number
@@ -497,6 +524,12 @@ export function useAccount(id: string) {
 export function useStrategies() {
   return useQuery({
     queryKey: ['strategies'], queryFn: () => getJson<StrategiesView>('/api/strategies'), refetchInterval: MINUTE,
+  })
+}
+
+export function useCalendar() {
+  return useQuery({
+    queryKey: ['calendar'], queryFn: () => getJson<CalendarView>('/api/calendar'), refetchInterval: MINUTE,
   })
 }
 

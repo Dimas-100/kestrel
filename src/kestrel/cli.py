@@ -86,6 +86,7 @@ def _check(args: argparse.Namespace) -> int:
 def _demo(args: argparse.Namespace) -> int:
     from .connectors import collect
     from .views.accounts import account_view, accounts_view
+    from .views.calendar import calendar_view
     from .views.home import home_view
     from .views.shell import shell_view
     from .views.strategy import strategies_view, strategy_view
@@ -100,6 +101,8 @@ def _demo(args: argparse.Namespace) -> int:
         _emit(strategies_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view == "accounts":
         _emit(accounts_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "calendar":
+        _emit(calendar_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view in ("strategy", "account"):
         if not args.id:
             example = "rsi2" if args.view == "strategy" else "roth"
@@ -135,8 +138,8 @@ def main(argv: list[str] | None = None) -> int:
         which.add_argument("--profile", type=Path, help="profile file (default: ./profile.toml, else demo data)")
         which.add_argument("--demo", action="store_true", help="show the demo data, whatever profile.toml says")
     demo = sub.add_parser("demo", help="print the demo data as JSON (an example feed payload)")
-    demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy", "accounts", "account"],
-                      default="snapshot")
+    demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy", "accounts", "account",
+                                         "calendar"], default="snapshot")
     demo.add_argument("--id", help="the strategy or account the view shows, e.g. rsi2 or roth")
     demo.add_argument("--book", choices=["real", "paper"], default="real", help="the money --view strategy shows")
     demo.add_argument("--now", help="ISO time with offset, for reproducible output")

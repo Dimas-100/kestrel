@@ -30,6 +30,8 @@ const PATHS: Record<string, ReactElement> = {
   more: (<><path d="M5 12h.01" /><path d="M12 12h.01" /><path d="M19 12h.01" /></>),
   scale: (<><path d="M12 4v16" /><path d="M5 8h14" /><path d="m5 8-2.5 6a3 3 0 0 0 5 0z" />
     <path d="m19 8-2.5 6a3 3 0 0 0 5 0z" /><path d="M8 20h8" /></>),
+  calendar: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18" /><path d="M8 3v4" />
+    <path d="M16 3v4" /></>),
 }
 
 export type IconName = keyof typeof PATHS
