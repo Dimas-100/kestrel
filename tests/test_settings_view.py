@@ -59,8 +59,8 @@ def test_a_feed_path_source_does_time_out():
 def test_the_demo_profile_says_demo_data():
     view_ = settings_view(Snapshot(generated_at=NOW), DEMO_PROFILE, NOW, "demo data")
     assert view_.profile == "demo data"
-    other = settings_view(Snapshot(generated_at=NOW), DEMO_PROFILE, NOW, "C:/Users/alex/profile.toml")
-    assert other.profile == "C:/Users/alex/profile.toml"
+    other = settings_view(Snapshot(generated_at=NOW), DEMO_PROFILE, NOW, "config/profile.toml")
+    assert other.profile == "config/profile.toml"
 
 
 def test_a_source_row_with_no_matching_config_still_renders():
