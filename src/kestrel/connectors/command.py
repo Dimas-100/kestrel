@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import ntpath
 import os
-import shutil
 import subprocess
 import sys
 import threading
@@ -41,11 +40,37 @@ LAST_LINE = 160  # characters of that line in a message
 GRACE = 1.0  # seconds to wait for a killed program to be reaped and its pipes to close
 # no console window flashing up on Windows each time a page loads
 _FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+_PATHEXT = ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC"  # Windows' own list, when PATHEXT isn't set
 
 
 def _name(program: str) -> str:
     """The program's file name alone, whichever slash its path uses: its folder can be a machine path."""
     return ntpath.basename(program) or "the program"
+
+
+def _on_path(name: str) -> str | None:
+    """The program `name` in the first PATH folder that holds it (on Windows, the name as it is when it already ends
+    in one of PATHEXT's extensions, else with each of them in turn), or None. Only absolute PATH folders are searched,
+    never the current one: Windows' own lookup, and shutil.which there, try the folder kestrel was started from
+    first, and an empty or relative PATH entry means that folder anywhere, so a program planted there would run in
+    place of the one PATH names."""
+    windows = sys.platform == "win32"
+    names = [name]
+    if windows:
+        extensions = [ext for ext in os.environ.get("PATHEXT", _PATHEXT).split(os.pathsep) if ext]
+        if not name.lower().endswith(tuple(ext.lower() for ext in extensions)):
+            names = [name + ext for ext in extensions]
+    for folder in os.environ.get("PATH", os.defpath).split(os.pathsep):
+        if windows:
+            folder = folder.strip().strip('"')
+        # on Windows an absolute folder has a drive or a share: \desk alone hangs off whichever drive is current
+        if not os.path.isabs(folder) or (windows and not ntpath.splitdrive(folder)[0]):
+            continue
+        for candidate in names:
+            path = os.path.join(folder, candidate)
+            if os.path.isfile(path) and (windows or os.access(path, os.X_OK)):
+                return path
+    return None
 
 
 def _size(limit: int) -> str:
@@ -112,21 +137,29 @@ def _stop(process: subprocess.Popen) -> None:
 def run(argv: list[str], *, cwd: Path | None, timeout: float, limit: int = MAX_OUTPUT) -> bytes:
     """Run argv (never through a shell), stdin closed, no console window on Windows. Returns stdout.
 
+    A bare program name (no slash) is looked up on PATH only (`_on_path`), never in the current folder.
+
     Raises ConnectorError worded for a person: 'no such program: <name>', 'the command took longer than <t> s',
     'the command failed (exit <n>): <last stderr line, <=160 chars>', 'the command printed more than 20 MB'.
-    On timeout or overflow the child is killed before returning. No message holds the arguments or the environment:
-    either can carry a secret.
+    On timeout or overflow the child is killed before returning. kestrel's own words never hold the arguments or the
+    environment (either can carry a secret); the stderr line is the program's own, and may.
     """
     deadline = time.monotonic() + timeout
     too_long = f"the command took longer than {timeout:g} s"
     program = argv[0]
-    if cwd is not None and not cwd.is_dir():
-        raise ConnectorError(f"the command's folder doesn't exist: {cwd}")
-    if ntpath.basename(program) == program:  # a bare name, such as python: looked up on PATH, as a shell would
-        found = shutil.which(program)
+    if cwd is not None:
+        try:
+            exists = cwd.is_dir()
+        except OSError as exc:  # a folder kestrel may not look into, say
+            why = exc.strerror or type(exc).__name__
+            raise ConnectorError(f"the command's folder can't be read: {cwd} ({why})") from None
+        if not exists:
+            raise ConnectorError(f"the command's folder doesn't exist: {cwd}")
+    if ntpath.basename(program) == program:  # a bare name, such as python: looked up on PATH
+        found = _on_path(program)
         if found is None:
             raise ConnectorError(f"no such program: {program}")
-        program = os.path.abspath(found)  # Windows looks in the current folder first, and that is kestrel's
+        program = found
     if sys.platform == "win32" and program.lower().rstrip(". ").endswith((".bat", ".cmd")):
         # Windows runs a batch file through cmd.exe, which reads the arguments again, its own way: a shell (and
         # drops a name's trailing dots and spaces, so "desk.cmd." is one too)
@@ -139,12 +172,14 @@ def run(argv: list[str], *, cwd: Path | None, timeout: float, limit: int = MAX_O
         raise ConnectorError(f"no such program: {_name(program)}") from None
     except (OSError, ValueError) as exc:  # not a program (a folder, a script Windows can't run), or no permission
         why = exc.strerror if isinstance(exc, OSError) and exc.strerror else type(exc).__name__
+        # Windows' words for some of these hold a %1 where the program's name goes
+        why = why.replace("%1", _name(program))
         raise ConnectorError(f"the command couldn't start {_name(program)} ({why})") from None
     out = _Reader(process.stdout, limit)
     err = _Reader(process.stderr, ERROR_TAIL, keep_tail=True)
-    out.start()
-    err.start()
     try:
+        out.start()  # in here, so a thread that can't start still stops the program
+        err.start()
         out.join(max(0.0, deadline - time.monotonic()))  # ends at the end of the output, or just past the limit
         if out.over or out.is_alive():
             raise ConnectorError(f"the command printed more than {_size(limit)}" if out.over else too_long)
@@ -158,7 +193,10 @@ def run(argv: list[str], *, cwd: Path | None, timeout: float, limit: int = MAX_O
     finally:
         until = time.monotonic() + GRACE  # one grace period for both pipes, so a request never waits long here
         for reader in (out, err):
-            reader.join(max(0.0, until - time.monotonic()))
+            if reader.ident is None:  # never started: nothing else will close its pipe
+                reader.pipe.close()
+            else:
+                reader.join(max(0.0, until - time.monotonic()))
     if code != 0:
         line = _last_line(bytes(err.data))
         raise ConnectorError(f"the command failed (exit {code})" + (f": {line}" if line else ""))
@@ -182,7 +220,7 @@ def cached_run(key: tuple, argv: list[str], *, cwd: Path | None, timeout: float,
     """One run per key at a time; a result (bytes or the ConnectorError) is reused for `refresh`; callers arriving
     while a run is in flight wait for it. Module-level cache guarded by a lock per key.
 
-    The key is the source's id and its argv, so a source whose command changes runs the new one at once."""
+    The key is the source's id, its argv and its folder: the same program run elsewhere is another run."""
     with _results_lock:
         result = _results.setdefault(key, _Result())
     with result.lock:

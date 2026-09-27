@@ -51,6 +51,9 @@ def test_the_guard_catches_what_it_should():
 
 # kestrel starts one kind of program: a feed's command, which the owner names in the profile. Only the runner may
 # start it, and never through a shell (where a stray character in the profile could become a second command).
+# Outside this rule, on purpose or as known gaps: multiprocessing and concurrent.futures' ProcessPoolExecutor (they
+# start Python itself, and kestrel uses neither), webbrowser (`kestrel serve` opens the owner's browser at start-up),
+# and shell=True reaching Popen inside a **kwargs dict, which an AST check can't see.
 RUNNER = SRC / "connectors" / "command.py"
 PROGRAM_MODULES = {"subprocess", "pty"}
 # os.system, os.popen, os.spawn*, os.exec*, os.posix_spawn*, os.startfile, os.fork* and asyncio's

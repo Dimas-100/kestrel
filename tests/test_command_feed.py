@@ -149,6 +149,62 @@ def test_a_bare_program_name_is_looked_up_on_path(tmp_path, monkeypatch, started
     assert os.path.normcase(process.args[0]) == os.path.normcase(sys.executable)  # the file PATH led to, in full
 
 
+def test_a_bare_name_is_never_taken_from_the_folder_kestrel_started_in(tmp_path, monkeypatch, started):
+    # Windows' own lookup (and Python's shutil.which there) tries the current folder before PATH, and an empty or
+    # relative PATH entry means the current folder anywhere: a program planted where kestrel was started would run
+    name = Path(sys.executable).name
+    planted = tmp_path / "planted"
+    planted.mkdir()
+    for file in (name, "kestrel-planted-4f2a", "kestrel-planted-4f2a.exe"):
+        (planted / file).write_bytes(b"not a program")
+        (planted / file).chmod(0o755)
+    monkeypatch.chdir(planted)
+    monkeypatch.setenv("PATH", os.pathsep.join(["", ".", "planted", str(Path(sys.executable).parent)]))
+    assert run([name, PROGRAM, "ok"], cwd=tmp_path, timeout=20).startswith(b"{")
+    (process, _), = started
+    assert os.path.normcase(process.args[0]) == os.path.normcase(sys.executable)  # PATH's, not the planted one
+    assert failure(["kestrel-planted-4f2a"]) == "no such program: kestrel-planted-4f2a"
+    assert len(started) == 1
+
+
+def test_a_folder_that_cant_be_read_is_named_and_that_is_reused_too(tmp_path):
+    looked: list[bool] = []
+
+    class Locked(type(tmp_path)):
+        def is_dir(self) -> bool:
+            looked.append(True)
+            raise PermissionError(13, "Permission denied")
+
+    message = failure(argv("ok"), cwd=Locked(tmp_path))
+    assert message == f"the command's folder can't be read: {tmp_path} (Permission denied)"
+    feed = FeedConnector("desk", "Trading desk", command=argv("ok"), cwd=Locked(tmp_path))
+    for _ in range(2):
+        with pytest.raises(ConnectorError, match="the command's folder can't be read"):
+            feed.snapshot(NOW)
+    assert len(looked) == 2  # once for run() above, once for both snapshots
+
+
+def test_a_program_the_system_cant_run_is_named_without_windows_placeholder(tmp_path):
+    program = tmp_path / "desk.exe"
+    program.write_bytes(b"not a program")
+    program.chmod(0o755)
+    message = failure([str(program)])
+    assert message.startswith("the command couldn't start desk.exe (") and "%1" not in message
+    if sys.platform == "win32":  # Windows' own words carry a %1 where the program's name goes
+        assert message.startswith("the command couldn't start desk.exe (This version of desk.exe is not compatible")
+
+
+def test_the_program_is_stopped_even_when_its_output_cant_be_read(tmp_path, monkeypatch, started):
+    def broken(self) -> None:
+        raise RuntimeError("can't start new thread")
+
+    monkeypatch.setattr(command_module._Reader, "start", broken)
+    with pytest.raises(RuntimeError, match="can't start new thread"):
+        run(argv("sleep"), cwd=tmp_path, timeout=20)
+    (process, _), = started
+    assert process.returncode is not None  # killed and reaped, not left sleeping
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="only Windows runs a batch file through cmd.exe")
 def test_a_batch_file_is_refused_since_windows_runs_it_through_a_shell(tmp_path, monkeypatch, started):
     (tmp_path / "deskfeed.cmd").write_text("@echo {}\n", encoding="utf-8")
@@ -239,10 +295,37 @@ def test_an_error_is_reused_within_refresh_too(tmp_path, started):
     assert len(started) == 1
 
 
+def test_an_unexpected_failure_isnt_kept_and_frees_the_source_for_the_next_request(tmp_path, monkeypatch):
+    calls: list[int] = []
+    real = command_module.run
+
+    def hiccup(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("the machine hiccupped")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(command_module, "run", hiccup)
+    feed = desk_feed(tmp_path, "ok")
+    with pytest.raises(RuntimeError, match="hiccupped"):
+        feed.snapshot(NOW)
+    assert not any(result.lock.locked() for result in command_module._results.values())  # never a stuck source
+    assert feed.snapshot(NOW).sources[0].status == "ok"
+    assert len(calls) == 2  # the second request ran it again: only a ConnectorError is kept
+
+
 def test_a_changed_command_never_reuses_the_old_result(tmp_path):
     counted = tmp_path / "count.txt"
     desk_feed(tmp_path, "count", str(counted)).snapshot(NOW)
     desk_feed(tmp_path, "count", str(counted), "0").snapshot(NOW)  # the same source id, other arguments
+    assert runs(counted) == 2
+
+
+def test_the_same_command_in_another_folder_is_another_run(tmp_path):
+    counted = tmp_path / "count.txt"
+    for folder in ("a", "b"):
+        (tmp_path / folder).mkdir()
+        FeedConnector("desk", "Trading desk", command=argv("count", str(counted)), cwd=tmp_path / folder).snapshot(NOW)
     assert runs(counted) == 2
 
 

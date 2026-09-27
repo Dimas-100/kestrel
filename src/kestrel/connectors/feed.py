@@ -396,8 +396,8 @@ class FeedConnector:
 
     def snapshot(self, now: datetime) -> Snapshot:
         if self.command is not None:
-            body = cached_run((self.source_id, tuple(self.command)), self.command, cwd=self.cwd,
-                              timeout=self.timeout, refresh=self.refresh)
+            key = (self.source_id, tuple(self.command), str(self.cwd) if self.cwd is not None else None)
+            body = cached_run(key, self.command, cwd=self.cwd, timeout=self.timeout, refresh=self.refresh)
         elif self.url is not None:
             body = self._fetch(self.url)
         else:

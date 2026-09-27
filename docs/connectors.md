@@ -177,28 +177,33 @@ of its own. The program prints the payload (the same JSON a URL would serve) on 
 
 - **The command is a list:** the program, then its arguments, each in quotes. kestrel starts the program directly,
   never through a shell, so nothing in it is read as a pipe, a wildcard or a second command. A program path with a
-  slash in it (`../desk/.venv/Scripts/python.exe`, or `~/desk/run`) is relative to the folder `profile.toml` is in; a
-  bare name (`python`) is looked up on `PATH`, as a shell would. Arguments are passed exactly as written. On Windows,
-  a batch file (`.bat` or `.cmd`) is refused: Windows runs one through `cmd.exe`, a shell; name the program it runs
-  instead.
+  slash in it (`../desk/.venv/Scripts/python.exe`) is relative to the folder `profile.toml` is in (one that starts
+  with `~/` is in your home folder). A bare name (`python`) is looked up on `PATH` only, never in the folder kestrel
+  was started from (Windows itself would look there first) nor through an empty or relative `PATH` entry. Arguments
+  are passed exactly as written. On Windows, a batch file (`.bat` or `.cmd`) is refused, found on `PATH` or named:
+  Windows runs one through `cmd.exe`, a shell; name the program it runs instead.
 - **Where and how it runs:** in `cwd` (relative to the profile's folder; by default the profile's folder itself), with
   no standard input, a copy of kestrel's environment (so a program that needs a token reads its own variable; there
   is no `token_env` here), and on Windows no console window.
 - **Reading it:** standard output, up to 20 MB, as UTF-8, through every check below. Standard error is kept only for
   the error message: its last line.
 - **Time:** a program still running after `timeout` seconds is stopped, and so is one that prints more than 20 MB;
-  the page doesn't wait for it. Only the program itself is stopped: if it started programs of its own, they may run
-  on.
+  the page doesn't wait past `timeout`. Only the program itself is stopped: if it started programs of its own, they
+  may run on.
 - **Reuse:** one source runs its command at most once at a time. A run's result, good or bad, is reused for
   `refresh`; the first page load after that runs it again, and loads that arrive meanwhile wait for that run instead
-  of starting their own.
+  of starting their own. The same command in another `cwd` is another run.
 - **Freshness** is still the payload's `generated_at`, so `stale_after` means how old the desk's data may be, however
   often the command runs.
 - **Safety.** The command is your own configuration, like a shell alias: kestrel runs only what `profile.toml` names,
   with your permissions, so keep `profile.toml` where only you can change it. kestrel itself stays read-only: the
   program is a separate process whose code kestrel never imports, and a guard test fails if anything but the command
-  runner starts a program, or if anything passes `shell=True`. No message shows the command's arguments or
-  environment, only the program's file name.
+  runner uses `subprocess`, `os.system`, `os.popen`, `os.spawn*` or `os.exec*` (and a few like them), or if anything
+  passes `shell=True`. (kestrel also opens your browser when `kestrel serve` starts, through Python's `webbrowser`,
+  which that rule doesn't cover.) kestrel's own messages name only the program's file name, never its arguments or
+  the environment. The last line of standard error in `the command failed (…): …` is the program's own words,
+  though, and may repeat its arguments: keep secrets out of `command` and let the program read them from its
+  environment.
 
 ### What is checked
 
@@ -259,9 +264,10 @@ Serve it at any address on this computer, or save it to a file, and point a `fee
 | `the feed didn't answer within 5 s` or `the feed was still sending after 5 s` | Make the feed faster, or raise `timeout` (up to 60). |
 | `the feed sent more than 20 MB` or `the feed file is more than 20 MB` | Send less: a feed carries what the pages show, not raw history. |
 | `no feed file at …` | Check `path`: it is relative to the folder `profile.toml` is in. |
-| `no such program: python3` | Check the command's first word: a path is relative to the folder `profile.toml` is in; a bare name must be on `PATH` where kestrel runs. |
+| `no such program: python3` | Check the command's first word: a path is relative to the folder `profile.toml` is in; a bare name must be in a folder on `PATH` where kestrel runs (the folder kestrel was started from doesn't count). |
 | `the command's folder doesn't exist: …` | Check `cwd`: it is relative to the folder `profile.toml` is in. |
 | `the command couldn't start … (…)` | The first word isn't a program this computer can run (a folder, or a script with no program to run it): name the program, then the script, e.g. `["python", "export.py"]`. |
+| `the command's folder can't be read: … (…)` | kestrel may not look into `cwd`: check the folder's permissions. |
 | `export.cmd is a batch file, which Windows runs through cmd.exe …` | Name the program the batch file runs, with its arguments, instead. |
 | `the command took longer than 30 s` | Make the export faster, or raise `timeout` (up to 120). |
 | `the command failed (exit 2): …` | The program's own last line on standard error, at most 160 characters. Run the command yourself, in `cwd`, to see the rest. |
