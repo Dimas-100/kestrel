@@ -7,9 +7,8 @@ import datetime as dt
 from typing import Literal
 
 from ..contract import Category, Holding, Snapshot, ValuePoint
-from ..metrics import sum_series
 from ..profile import Profile
-from .home import View, _day_pct
+from .home import View, _day_pct, net_points
 
 Window = Literal["ytd", "1y", "all"]
 WINDOWS: tuple[Window, ...] = ("ytd", "1y", "all")
@@ -30,11 +29,13 @@ class AccountLine(View):
     institution: str
     account_type: str
     category: Category
-    value: float
-    share: float | None  # percent of all accounts
-    day_change: float | None  # the last day's change, net of that day's deposits
+    value: float  # a debt account's is what it owes
+    share: float | None  # percent of everything owned; none for a debt account
+    # the last day's change, net of that day's deposits, and this year's market growth: none for a debt account,
+    # whose balance moves with charges and payments, not with a market
+    day_change: float | None
     day_pct: float | None
-    year_market: float | None  # this year's market growth
+    year_market: float | None
 
 
 class CombinedHolding(View):
@@ -49,9 +50,9 @@ class CombinedHolding(View):
 class AccountsView(View):
     as_of: dt.datetime
     count: int
-    total: float
-    growth: dict[Window, Growth | None]  # all accounts together
-    accounts: list[AccountLine]  # largest first
+    total: float  # everything owned less everything owed: the net worth
+    growth: dict[Window, Growth | None]  # all accounts together, what is owed counting against them
+    accounts: list[AccountLine]  # largest first, then what is owed
     holdings: list[CombinedHolding]  # largest first
 
 
@@ -89,7 +90,7 @@ class AccountView(View):
     value: float
     as_of: dt.date  # the day the value is from
     points: list[ValuePoint]
-    growth: dict[Window, Growth | None]
+    growth: dict[Window, Growth | None]  # none in every window for a debt account: it has no market growth
     flows: list[Flow]  # the last eight days money moved, newest first
     holdings: list[HoldingRow]  # largest first
     holdings_as_of: dt.date | None  # the latest day the holdings were reported; None when the source doesn't say
@@ -116,8 +117,9 @@ def growth(points: list[ValuePoint], start: dt.date) -> Growth | None:
         return None
     begin, end = window[0].value, window[-1].value
     deposits = sum(p.net_flow for p in window[1:])
+    # + 0.0: an account that moves by its flows alone has no market growth, never a "-0.0"
     return Growth(start_date=window[0].date, start=round(begin, 2), deposits=round(deposits, 2),
-                  market=round(end - begin - deposits, 2), end=round(end, 2))
+                  market=round(end - begin - deposits, 2) + 0.0, end=round(end, 2))
 
 
 def growths(points: list[ValuePoint], today: dt.date) -> dict[Window, Growth | None]:
@@ -135,12 +137,14 @@ def _history(snapshot: Snapshot) -> dict[str, list[ValuePoint]]:
 
 
 def combined_holdings(snapshot: Snapshot) -> list[CombinedHolding]:
-    """Every holding added up by symbol across accounts, and one row for all the cash; largest first."""
+    """Every holding added up by symbol across accounts, and one row for all the cash (a debt account's is none of
+    it: what it owes isn't money held); largest first."""
     names = {a.id: a.name for a in snapshot.accounts}
     by_symbol: dict[str, list[Holding]] = {}
     for h in snapshot.holdings:
         by_symbol.setdefault(h.symbol, []).append(h)
-    cash = sum(a.cash for a in snapshot.accounts)
+    owned = [a for a in snapshot.accounts if a.category != "debt"]
+    cash = sum(a.cash for a in owned)
     whole = sum(h.value for h in snapshot.holdings) + cash
     rows = [
         CombinedHolding(symbol=symbol, name=next((h.name for h in held if h.name), ""), cash=False,
@@ -148,7 +152,7 @@ def combined_holdings(snapshot: Snapshot) -> list[CombinedHolding]:
                         accounts=sorted({names.get(h.account_id, h.account_id) for h in held}))
         for symbol, held in by_symbol.items()
     ]
-    holders = sorted(a.name for a in snapshot.accounts if round(a.cash, 2) != 0)
+    holders = sorted(a.name for a in owned if round(a.cash, 2) != 0)
     if holders:
         rows.append(CombinedHolding(symbol="", name="Cash", cash=True, value=round(cash, 2), share=_share(cash, whole),
                                     accounts=holders))
@@ -158,21 +162,27 @@ def combined_holdings(snapshot: Snapshot) -> list[CombinedHolding]:
 def accounts_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> AccountsView:
     today = now.astimezone(profile.tz).date()
     history = _history(snapshot)
-    total = sum(a.value for a in snapshot.accounts)
+    owned = sum(a.value for a in snapshot.accounts if a.category != "debt")
+    owed = sum(a.value for a in snapshot.accounts if a.category == "debt")
     rows = []
     for a in snapshot.accounts:
+        if a.category == "debt":  # what it owes, and nothing that reads as a return
+            rows.append(AccountLine(id=a.id, name=a.name, institution=a.institution, account_type=a.account_type,
+                                    category=a.category, value=a.value, share=None, day_change=None, day_pct=None,
+                                    year_market=None))
+            continue
         points = history.get(a.id, [])
         year = growth(points, window_start("ytd", today, points))
         rows.append(AccountLine(
             id=a.id, name=a.name, institution=a.institution, account_type=a.account_type, category=a.category,
-            value=a.value, share=_share(a.value, total),
+            value=a.value, share=_share(a.value, owned),
             day_change=round(points[-1].value - points[-2].value - points[-1].net_flow, 2) if len(points) > 1 else None,
             day_pct=_day_pct(points), year_market=year.market if year else None,
         ))
-    rows.sort(key=lambda r: (-r.value, r.name))
-    everything = sum_series([history[a.id] for a in snapshot.accounts if a.id in history])
-    return AccountsView(as_of=now, count=len(rows), total=round(total, 2), growth=growths(everything, today),
-                        accounts=rows, holdings=combined_holdings(snapshot))
+    rows.sort(key=lambda r: (r.category == "debt", -r.value, r.name))
+    return AccountsView(as_of=now, count=len(rows), total=round(owned - owed, 2),
+                        growth=growths(net_points(snapshot), today), accounts=rows,
+                        holdings=combined_holdings(snapshot))
 
 
 def _row(h: Holding, whole: float) -> HoldingRow:
@@ -197,7 +207,7 @@ def account_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, account
     return AccountView(
         id=account.id, name=account.name, institution=account.institution, account_type=account.account_type,
         category=account.category, value=account.value, as_of=account.as_of.date(), points=points,
-        growth=growths(points, today),
+        growth={w: None for w in WINDOWS} if account.category == "debt" else growths(points, today),
         flows=[Flow(date=p.date, amount=p.net_flow) for p in reversed(points) if round(p.net_flow, 2) != 0][:FLOWS],
         holdings=[_row(h, whole) for h in held], holdings_as_of=max((h.as_of for h in held if h.as_of), default=None),
         cash=account.cash, cash_weight=_share(account.cash, whole),

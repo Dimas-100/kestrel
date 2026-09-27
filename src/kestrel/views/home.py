@@ -13,7 +13,8 @@ from ..contract import Book, Snapshot, Source, ValuePoint
 from ..metrics import expected_band, growth_index, largest_remainder, max_drawdown_pct, sum_series
 from ..profile import Profile
 
-CATEGORY_LABELS = {"long_term": "Long-term", "trading": "Trading", "cash": "Cash", "other": "Other"}
+CATEGORY_LABELS = {"long_term": "Long-term", "trading": "Trading", "cash": "Cash", "debt": "Debt", "other": "Other"}
+OWNED = ("long_term", "trading", "cash", "other")  # money held; "debt" is money owed
 MIN_TRADES_FOR_VERDICT = 10  # fewer closed trades than this is "too early" to judge a book
 MIN_YTD_POINTS = 5  # early January falls back to the past twelve months
 
@@ -28,7 +29,8 @@ class Delta(View):
 
 
 class NetWorth(View):
-    total: float
+    total: float  # everything owned less everything owed
+    owed: float  # what the debt accounts owe, already taken off `total`; 0 with none, below 0 for a card paid past zero
     today: Delta
     month: Delta
     year: Delta
@@ -145,6 +147,19 @@ def _delta(points: list[ValuePoint], since: dt.date) -> Delta:
     base = next((p.value for p in reversed(points) if p.date < since), points[0].value)
     amount = points[-1].value - base
     return Delta(amount=round(amount, 2), pct=round(amount / base * 100, 2) if base else None)
+
+
+def owed_points(points: list[ValuePoint]) -> list[ValuePoint]:
+    """A debt account's history as it counts toward net worth: what it owes, below zero. Its flows keep their sign —
+    a payment in lowers what is owed, a charge out raises it — so neither is counted as growth."""
+    return [ValuePoint(date=p.date, value=-p.value, net_flow=p.net_flow) for p in points]
+
+
+def net_points(snapshot: Snapshot) -> list[ValuePoint]:
+    """Every account's history added up by date, what the debt accounts owe counting against it."""
+    history = {s.id: s.points for s in snapshot.account_history}
+    return sum_series([owed_points(history[a.id]) if a.category == "debt" else history[a.id]
+                       for a in snapshot.accounts if a.id in history])
 
 
 def _day_pct(points: list[ValuePoint]) -> float | None:
@@ -309,25 +324,28 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
     tz = profile.tz
     today = now.astimezone(tz).date()
     history = {s.id: s.points for s in snapshot.account_history}
-    net = sum_series([history[a.id] for a in snapshot.accounts if a.id in history])
-    total = round(sum(a.value for a in snapshot.accounts), 2)
+    net = net_points(snapshot)
+    owned = sum(a.value for a in snapshot.accounts if a.category != "debt")
+    owed = sum(a.value for a in snapshot.accounts if a.category == "debt")
     net_worth = NetWorth(
-        total=total,
+        total=round(owned - owed, 2), owed=round(owed, 2),
         today=_delta(net, today), month=_delta(net, today.replace(day=1)), year=_delta(net, dt.date(today.year, 1, 1)),
         year_flows=round(sum(p.net_flow for p in net[1:] if p.date >= dt.date(today.year, 1, 1)), 2),
         points=net,
     )
-    order = ["long_term", "trading", "cash", "other"]
-    values = {c: sum(a.value for a in snapshot.accounts if a.category == c) for c in order}
-    present = [c for c in order if values[c] > 0]
+    # the waffle is what is owned; what is owed is net worth's business
+    values = {c: sum(a.value for a in snapshot.accounts if a.category == c) for c in OWNED}
+    present = [c for c in OWNED if values[c] > 0]
     cells = largest_remainder([values[c] for c in present])
     allocation = [
         Slice(category=c, label=CATEGORY_LABELS[c], value=round(values[c], 2),
-              share=round(values[c] / total * 100, 2) if total else 0.0, cells=n)
+              share=round(values[c] / owned * 100, 2) if owned else 0.0, cells=n)
         for c, n in zip(present, cells)
     ]
+    # an owed balance has no day's return: it moves with charges and payments
     accounts = [AccountRow(id=a.id, name=a.name, category=a.category, value=a.value,
-                           day_pct=_day_pct(list(history.get(a.id, [])))) for a in snapshot.accounts]
+                           day_pct=None if a.category == "debt" else _day_pct(list(history.get(a.id, []))))
+                for a in snapshot.accounts]
     real_books = [b for b in snapshot.books if b.money == "real"]
     comparison = _comparison(snapshot, profile, today, real_books)
     rows = _book_rows(snapshot)

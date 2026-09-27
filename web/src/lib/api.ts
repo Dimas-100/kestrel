@@ -49,7 +49,8 @@ export interface ValuePoint {
 }
 
 export interface NetWorth {
-  total: number
+  total: number // everything owned less everything owed
+  owed: number // what the debt accounts owe, already taken off total; 0 with none
   today: Delta
   month: Delta
   year: Delta
@@ -369,7 +370,7 @@ export interface StrategyView {
 // --- the Accounts pages (src/kestrel/views/accounts.py) ---------------------------------------------------------
 
 export type Window = 'ytd' | '1y' | 'all'
-export type Category = 'long_term' | 'trading' | 'cash' | 'other'
+export type Category = 'long_term' | 'trading' | 'cash' | 'debt' | 'other' // debt: money owed
 
 export interface Growth {
   start_date: string // the day the starting value is from

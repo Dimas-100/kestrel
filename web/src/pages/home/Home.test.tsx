@@ -11,7 +11,7 @@ const panel = (name: string) => screen.getByRole('region', { name })
 const empty: HomeView = {
   ...homeFixture, allocation: [], accounts: [], attention: [], books: [], today: [], positions: [],
   comparison: { ...homeFixture.comparison, lines: [], dates: [], gap_pts: null, shallower: null },
-  net_worth: { ...homeFixture.net_worth, total: 0, points: [] },
+  net_worth: { ...homeFixture.net_worth, total: 0, owed: 0, points: [] },
   summary: { day_change: 0, gap_pts: null, needs_you: 0 },
 }
 
@@ -24,6 +24,19 @@ describe('Home', () => {
     const [whole, cents] = homeFixture.net_worth.total.toFixed(2).split('.')
     expect(within(nw).getByText(`$${Number(whole).toLocaleString('en-US')}`)).toBeTruthy()
     expect(within(nw).getByText(`.${cents}`)).toBeTruthy()
+  })
+
+  it('says what is owed under net worth, and nothing when nothing is', async () => {
+    const { unmount } = renderApp('/')
+    const nw = await screen.findByRole('region', { name: 'Net worth' })
+    expect(homeFixture.net_worth.owed).toBe(640) // the demo's card, already taken off the total
+    expect(within(nw).getByText(/owed$/).textContent).toBe('net of $640.00 owed')
+    unmount()
+    for (const owed of [0, -25]) { // nothing owed, or a card paid past zero: no line
+      const { unmount: done } = renderApp('/', { home: { ...homeFixture, net_worth: { ...homeFixture.net_worth, owed } } })
+      expect((await screen.findByRole('region', { name: 'Net worth' })).textContent).not.toContain('owed')
+      done()
+    }
   })
 
   it('opens an account from Where it sits', async () => {

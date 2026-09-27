@@ -61,7 +61,7 @@ def test_collect_marks_an_unknown_connector_as_an_error_and_keeps_going():
     snap = collect(profile, FRIDAY_EVENING)
     paper = next(s for s in snap.sources if s.id == "paper")
     assert paper.status == "error" and "not available" in paper.detail
-    assert len(snap.accounts) == 4  # the demo still arrived
+    assert len(snap.accounts) == 6  # the demo still arrived
 
 
 def test_collect_marks_a_source_stale_after_its_threshold():
@@ -137,12 +137,117 @@ def test_mean_reversion_has_backtest_figures_and_a_watch_list():
 def test_every_account_has_a_type_and_its_holdings_and_cash_add_up_to_its_value():
     snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
     assert [(a.id, a.account_type) for a in snap.accounts] == [
-        ("roth", "Roth IRA"), ("brokerage", "Brokerage"), ("trading", "Individual"), ("savings", "Savings")]
+        ("roth", "Roth IRA"), ("brokerage", "Brokerage"), ("trading", "Individual"), ("savings", "Savings"),
+        ("checking", "Checking"), ("card", "Credit card")]
     for account in snap.accounts:
+        if account.category == "debt":  # what is owed: nothing held, no cash
+            assert account.cash == 0 and not any(h.account_id == account.id for h in snap.holdings)
+            continue
         held = sum(h.value for h in snap.holdings if h.account_id == account.id)
         assert round(held + account.cash, 2) == account.value
         assert 0 <= account.cash <= account.value
-    assert {h.account_id for h in snap.holdings} == {"roth", "brokerage", "trading"}  # savings holds only cash
+    assert {h.account_id for h in snap.holdings} == {"roth", "brokerage", "trading"}  # the bank accounts hold cash
+
+
+def _band(value, low, high):
+    return "under" if low is not None and value < low else "over" if high is not None and value > high else "on"
+
+
+def test_demo_has_every_new_block():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    today = dt.date(2026, 9, 25)
+    accounts = {a.id: a for a in snap.accounts}
+    # cash that earns, cash that doesn't, and a card
+    assert (accounts["savings"].category, accounts["savings"].rate_pct) == ("cash", 4.1)
+    assert (accounts["checking"].category, accounts["checking"].rate_pct) == ("cash", None)
+    card = accounts["card"]
+    assert (card.category, card.value, card.limit, card.rate_pct, card.cash) == ("debt", 640.0, 5000.0, 24.9, 0.0)
+
+    # 8 targets: 6 percent targets with an aim and a band, a sleeve of two symbols with a band only, a ratio
+    assert len(snap.targets) == 8 and len({t.id for t in snap.targets}) == 8
+    percent = [t for t in snap.targets if t.unit == "%" and len(t.symbols) == 1]
+    sleeve = [t for t in snap.targets if t.unit == "%" and len(t.symbols) == 2]
+    ratio = [t for t in snap.targets if t.unit == "x"]
+    assert len(percent) == 6 and all(None not in (t.target, t.low, t.high) and t.actual is None for t in percent)
+    assert len(sleeve) == 1 and sleeve[0].target is None and None not in (sleeve[0].low, sleeve[0].high)
+    assert len(ratio) == 1 and ratio[0].actual is not None
+    assert {t.account_id for t in snap.targets} - {None} <= set(accounts)
+    status = {}
+    for t in percent + sleeve:  # the share of its account, from the holdings, as kestrel works it out
+        share = sum(h.value for h in snap.holdings
+                    if h.account_id == t.account_id and h.symbol in t.symbols) / accounts[t.account_id].value * 100
+        status[t.id] = _band(share, t.low, t.high)
+        assert min(abs(share - t.low), abs(share - t.high)) > 0.5  # clear of the band's edges as the values move
+    status[ratio[0].id] = _band(ratio[0].actual, ratio[0].low, ratio[0].high)
+    assert {"over", "under", "on"} <= set(status.values())
+
+    # a thesis for every holding: 2 ok, 1 watch, 1 alert, the rest not rated; each says what would prove it wrong
+    held = {h.symbol for h in snap.holdings}
+    assert sorted(t.symbol for t in snap.theses) == sorted(held)
+    health = [t.health for t in snap.theses]
+    assert (health.count("ok"), health.count("watch"), health.count("alert")) == (2, 1, 1)
+    assert health.count("none") == len(held) - 4
+    assert all(t.reasons for t in snap.theses if t.health != "none")
+    assert all(2 <= len(t.wrong_if) <= 3 for t in snap.theses)
+    for t in snap.theses:
+        assert set(t.account_ids) == {h.account_id for h in snap.holdings if h.symbol == t.symbol}
+        assert t.opened is not None and t.last_reviewed is not None and t.opened <= t.last_reviewed <= today
+
+    # 20 events within 60 days either side: results ahead, filings behind, 2 insider, 1 dividend
+    assert len(snap.events) == 20
+    assert all(abs((e.date - today).days) <= 60 for e in snap.events)
+    kinds = [e.kind for e in snap.events]
+    assert (kinds.count("insider"), kinds.count("dividend")) == (2, 1)
+    assert all(e.date > today for e in snap.events if e.kind == "earnings") and "earnings" in kinds
+    filings = [e for e in snap.events if e.kind == "filing"]
+    assert filings and all(e.date < today and e.url.startswith("https://www.sec.gov/") for e in filings)
+    assert any(e.symbol not in held for e in snap.events)  # something not held, too
+
+    # a goal for an account, one for a category, one for net worth
+    assert len(snap.goals) == 3
+    assert sorted((g.account_id is not None, g.category is not None) for g in snap.goals) == [
+        (False, False), (False, True), (True, False)]
+    assert all(g.account_id is None or g.account_id in accounts for g in snap.goals)
+
+    # exposures: what is held directly plus what the funds hold
+    assert snap.exposures and len({e.symbol for e in snap.exposures}) == len(snap.exposures)
+    for e in snap.exposures:
+        assert e.sector and 0 <= e.direct <= e.value
+        assert e.direct == round(sum(h.value for h in snap.holdings if h.symbol == e.symbol), 2)
+    assert any(0 < e.direct < e.value for e in snap.exposures)  # held both ways
+    assert any(e.direct == 0 < e.value for e in snap.exposures)  # only through a fund
+
+    # 120 backtests over 12 families, develop and confirm: mostly fails, about 15 % passes, 2 refused, 3 pending
+    assert len(snap.backtests) == 120 and len({b.id for b in snap.backtests}) == 120
+    assert len({b.family for b in snap.backtests}) == 12
+    assert {b.window for b in snap.backtests} == {"develop", "confirm"}
+    verdicts = [b.verdict for b in snap.backtests]
+    assert (verdicts.count("refused"), verdicts.count("pending")) == (2, 3)
+    assert 0.12 <= verdicts.count("pass") / 120 <= 0.18 and verdicts.count("fail") > 60
+    assert all(b.at <= FRIDAY_EVENING for b in snap.backtests)
+    assert {b.strategy_id for b in snap.backtests} - {None} <= {s.id for s in snap.strategies}
+
+
+def test_the_new_blocks_stay_put_as_the_dates_move():
+    today = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    later = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING + dt.timedelta(days=7))
+    assert [(b.id, b.verdict, b.t_stat) for b in today.backtests] == [(b.id, b.verdict, b.t_stat)
+                                                                      for b in later.backtests]
+    assert [(e.kind, e.symbol, e.title) for e in today.events] == [(e.kind, e.symbol, e.title) for e in later.events]
+    assert [t.health for t in today.theses] == [t.health for t in later.theses]
+
+
+def test_the_cash_accounts_move_only_by_what_goes_in_and_out_and_the_card_is_paid_in_full():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    history = {s.id: s.points for s in snap.account_history}
+    checking, card = history["checking"], history["card"]
+    assert min(p.value for p in checking) > 0
+    for series in (checking, card):
+        assert len(series) == len(history["roth"]) and series[0].net_flow == 0
+    # checking changes by its flows alone; a card's balance moves against them: a payment in lowers what is owed
+    assert all(round(b.value - a.value - b.net_flow, 2) == 0 for a, b in zip(checking, checking[1:]))
+    assert all(round(b.value - a.value + b.net_flow, 2) == 0 for a, b in zip(card, card[1:]))
+    assert min(p.value for p in card) >= 0 and card[-1].value == 640.0
 
 
 def test_holdings_are_priced_consistently_and_the_trading_account_holds_the_real_books_positions():

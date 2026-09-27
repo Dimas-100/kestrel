@@ -1,28 +1,28 @@
 {
   "as_of": "2026-09-25T21:08:00Z",
-  "count": 4,
-  "total": 162265.11,
+  "count": 6,
+  "total": 168278.24,
   "growth": {
     "ytd": {
       "start_date": "2026-01-01",
-      "start": 139653.46,
-      "deposits": 11100.0,
+      "start": 143051.34,
+      "deposits": 13715.25,
       "market": 11511.65,
-      "end": 162265.11
+      "end": 168278.24
     },
     "1y": {
       "start_date": "2025-09-25",
-      "start": 123300.0,
-      "deposits": 15900.0,
+      "start": 128846.51,
+      "deposits": 16366.62,
       "market": 23065.11,
-      "end": 162265.11
+      "end": 168278.24
     },
     "all": {
       "start_date": "2025-09-25",
-      "start": 123300.0,
-      "deposits": 15900.0,
+      "start": 128846.51,
+      "deposits": 16366.62,
       "market": 23065.11,
-      "end": 162265.11
+      "end": 168278.24
     }
   },
   "accounts": [
@@ -33,7 +33,7 @@
       "account_type": "Roth IRA",
       "category": "long_term",
       "value": 67890.81,
-      "share": 41.84,
+      "share": 40.19,
       "day_change": -49.79,
       "day_pct": -0.07,
       "year_market": 5603.44
@@ -45,7 +45,7 @@
       "account_type": "Brokerage",
       "category": "long_term",
       "value": 51663.74,
-      "share": 31.84,
+      "share": 30.59,
       "day_change": 146.99,
       "day_pct": 0.29,
       "year_market": 3362.77
@@ -57,7 +57,7 @@
       "account_type": "Savings",
       "category": "cash",
       "value": 24242.85,
-      "share": 14.94,
+      "share": 14.35,
       "day_change": 3.82,
       "day_pct": 0.02,
       "year_market": 701.08
@@ -69,10 +69,34 @@
       "account_type": "Individual",
       "category": "trading",
       "value": 18467.71,
-      "share": 11.38,
+      "share": 10.93,
       "day_change": -94.32,
       "day_pct": -0.51,
       "year_market": 1844.36
+    },
+    {
+      "id": "checking",
+      "name": "Checking",
+      "institution": "Bank C",
+      "account_type": "Checking",
+      "category": "cash",
+      "value": 6653.13,
+      "share": 3.94,
+      "day_change": 0.0,
+      "day_pct": 0.0,
+      "year_market": -0.0
+    },
+    {
+      "id": "card",
+      "name": "Credit card",
+      "institution": "Bank D",
+      "account_type": "Credit card",
+      "category": "debt",
+      "value": 640.0,
+      "share": null,
+      "day_change": null,
+      "day_pct": null,
+      "year_market": null
     }
   ],
   "holdings": [
@@ -81,7 +105,7 @@
       "name": "S&P 500 index fund",
       "cash": false,
       "value": 61723.68,
-      "share": 38.04,
+      "share": 36.54,
       "accounts": [
         "Brokerage",
         "Roth IRA"
@@ -91,10 +115,11 @@
       "symbol": "",
       "name": "Cash",
       "cash": true,
-      "value": 31904.07,
-      "share": 19.66,
+      "value": 38557.2,
+      "share": 22.83,
       "accounts": [
         "Brokerage",
+        "Checking",
         "High-yield savings",
         "Roth IRA",
         "Trading account"
@@ -105,7 +130,7 @@
       "name": "Health care sector fund",
       "cash": false,
       "value": 14257.06,
-      "share": 8.79,
+      "share": 8.44,
       "accounts": [
         "Roth IRA"
       ]
@@ -115,7 +140,7 @@
       "name": "Technology sector fund",
       "cash": false,
       "value": 11365.75,
-      "share": 7.0,
+      "share": 6.73,
       "accounts": [
         "Brokerage"
       ]
@@ -125,7 +150,7 @@
       "name": "Consumer staples sector fund",
       "cash": false,
       "value": 10862.49,
-      "share": 6.69,
+      "share": 6.43,
       "accounts": [
         "Roth IRA"
       ]
@@ -135,7 +160,7 @@
       "name": "Costco",
       "cash": false,
       "value": 6198.95,
-      "share": 3.82,
+      "share": 3.67,
       "accounts": [
         "Brokerage"
       ]
@@ -145,7 +170,7 @@
       "name": "Home Depot",
       "cash": false,
       "value": 5166.29,
-      "share": 3.18,
+      "share": 3.06,
       "accounts": [
         "Brokerage"
       ]
@@ -155,7 +180,7 @@
       "name": "Energy sector fund",
       "cash": false,
       "value": 4133.01,
-      "share": 2.55,
+      "share": 2.45,
       "accounts": [
         "Brokerage"
       ]
@@ -165,7 +190,7 @@
       "name": "Procter & Gamble",
       "cash": false,
       "value": 3101.6,
-      "share": 1.91,
+      "share": 1.84,
       "accounts": [
         "Trading account"
       ]
@@ -175,7 +200,7 @@
       "name": "Microsoft",
       "cash": false,
       "value": 3074.4,
-      "share": 1.89,
+      "share": 1.82,
       "accounts": [
         "Trading account"
       ]
@@ -185,7 +210,7 @@
       "name": "JPMorgan Chase",
       "cash": false,
       "value": 2978.5,
-      "share": 1.84,
+      "share": 1.76,
       "accounts": [
         "Trading account"
       ]
@@ -195,7 +220,7 @@
       "name": "Caterpillar",
       "cash": false,
       "value": 2849.7,
-      "share": 1.76,
+      "share": 1.69,
       "accounts": [
         "Trading account"
       ]
@@ -205,7 +230,7 @@
       "name": "Coca-Cola",
       "cash": false,
       "value": 2583.15,
-      "share": 1.59,
+      "share": 1.53,
       "accounts": [
         "Brokerage"
       ]
@@ -215,7 +240,7 @@
       "name": "Industrials sector fund",
       "cash": false,
       "value": 2066.46,
-      "share": 1.27,
+      "share": 1.22,
       "accounts": [
         "Brokerage"
       ]

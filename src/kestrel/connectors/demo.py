@@ -1,7 +1,8 @@
 """Fictional demo data: a believable year for "Alex".
 
 Deterministic for a seed: the numbers never change, only the dates move so the last point is today.
-Nothing here is anyone's real account; the tickers are ordinary large caps and sector funds.
+Nothing here is anyone's real account; the tickers are ordinary large caps and sector funds, and what the demo says
+about them (theses, events, fund weights, research results) is invented for the example.
 """
 
 from __future__ import annotations
@@ -13,10 +14,14 @@ from zoneinfo import ZoneInfo
 
 from ..contract import (
     Account,
+    Backtest,
     Bar,
     Benchmark,
     Book,
+    Event,
     Expected,
+    Exposure,
+    Goal,
     Holding,
     Indicator,
     IndicatorLine,
@@ -27,6 +32,8 @@ from ..contract import (
     Source,
     Step,
     Strategy,
+    Target,
+    Thesis,
     Trade,
     TradeChart,
     ValuePoint,
@@ -58,6 +65,114 @@ LONG_TERM_HOLDINGS = {
 PRICES = {"SPY": 661.20, "XLV": 142.35, "XLP": 79.10, "XLK": 281.40, "COST": 912.55, "HD": 404.66, "XLE": 88.25,
           "KO": 69.90, "XLI": 151.30}
 NAMES = {"MSFT": "Microsoft", "CAT": "Caterpillar", "PG": "Procter & Gamble", "JPM": "JPMorgan Chase"}
+
+# The bank: pay lands in checking every other Friday; on each month's first weekday it pays the rent and the monthly
+# deposits into the other accounts; every CARD_CYCLE weekdays it pays the card in full, the last time CARD_PAID
+# weekdays ago, so what the card owes today is the charges since then: CARD_OWED.
+CHECKING_START, PAY, RENT = 6200.0, 2250.0, 2200.0
+CARD_CYCLE, CARD_PAID, CARD_OWED = 21, 9, 640.0
+MONTHLY_SPEND = 3500.0  # rent and a month of card charges, for the cash runway
+
+# What the plan says the long-term accounts should hold, in percent of each account (the demo's holdings sit well
+# inside or well outside each band, so a target's status doesn't flip as the dates move)
+TARGETS = [
+    Target(id="roth-spy", account_id="roth", label="SPY", symbols=["SPY"], target=60, low=55, high=65,
+           note="The core: the whole market"),
+    Target(id="roth-xlv", account_id="roth", label="XLV", symbols=["XLV"], target=15, low=12, high=18,
+           note="A health care tilt"),
+    Target(id="roth-xlp", account_id="roth", label="XLP", symbols=["XLP"], target=20, low=18, high=22,
+           note="Staples to soften the drops"),
+    Target(id="brokerage-spy", account_id="brokerage", label="SPY", symbols=["SPY"], target=40, low=35, high=45,
+           note="The core: the whole market"),
+    Target(id="brokerage-xlk", account_id="brokerage", label="XLK", symbols=["XLK"], target=20, low=15, high=25,
+           note="Technology, capped"),
+    Target(id="brokerage-ko", account_id="brokerage", label="KO", symbols=["KO"], target=5, low=3, high=7,
+           note="A dividend holding"),
+    Target(id="brokerage-stocks", account_id="brokerage", label="Single stocks", symbols=["COST", "HD"], low=15,
+           high=25, note="Two companies held for the long run"),
+]
+
+# Why each holding is owned: symbol → (health, conviction, reasons, wrong if, days since opened, days since the last
+# review). The real book's trades share one thesis (THESIS_TRADE), dated from the day the position opened.
+THESES = {
+    "SPY": ("ok", "high", ["The index core: its only risk is the market's own"],
+            ["It trails a world index fund by 20 points over five years", "Its yearly cost rises above 0.10 %"],
+            880, 14),
+    "COST": ("ok", "high", ["Membership renewals held above 90 %", "Margins steady for four quarters"],
+             ["The renewal rate falls below 88 %", "Comparable sales shrink for two quarters",
+              "It costs more than 60 times earnings while growing under 8 % a year"], 1020, 21),
+    "XLE": ("watch", "low", ["Oil fell for three months in a row", "Two large holdings cut their buyback plans"],
+            ["Oil stays under 60 a barrel for six months", "The fund's dividend is cut"], 430, 30),
+    "HD": ("alert", "medium",
+           ["Comparable sales fell for a third quarter", "The price closed below its 200-day average"],
+           ["Comparable sales fall for a fourth quarter", "Home sales stay near their lows for another year"], 760, 7),
+    "XLV": ("none", "medium", [], ["Drug-price rules cut the sector's earnings by a fifth",
+                                   "It trails the S&P 500 by 15 points over three years"], 610, 120),
+    "XLP": ("none", "medium", [], ["It falls as far as the market in the next 10 % drop", "Its dividend is cut"],
+            540, 95),
+    "XLK": ("none", "medium", [], ["Its five largest names pass 60 % of the fund",
+                                   "Its holdings' earnings grow slower than the market's for a year"], 700, 60),
+    "KO": ("none", "high", [], ["Volumes shrink for a year", "The dividend grows slower than prices for three years",
+                                "It pays out more than it earns"], 1200, 180),
+    "XLI": ("none", "low", [], ["Factory orders shrink for two quarters",
+                                "It trails the S&P 500 by 10 points over two years"], 300, 75),
+}
+THESIS_TRADE = ["It closes under its stop", "It falls below its 200-day average before the bounce"]
+
+# Dated things about the companies, as days from today: (days, symbol, kind, title, detail, SEC form or "")
+EVENTS = [
+    (8, "COST", "earnings", "Quarterly results", "After the close", ""),
+    (11, "KO", "dividend", "Ex-dividend date", "Own it the day before to receive the quarterly dividend", ""),
+    (12, "JPM", "earnings", "Quarterly results", "Before the open", ""),
+    (16, "KO", "earnings", "Quarterly results", "Before the open", ""),
+    (19, "PG", "earnings", "Quarterly results", "Before the open", ""),
+    (26, "MSFT", "earnings", "Quarterly results", "After the close", ""),
+    (33, "CAT", "earnings", "Quarterly results", "Before the open", ""),
+    (41, "ORCL", "earnings", "Quarterly results", "After the close", ""),  # watched, not held
+    (52, "HD", "earnings", "Quarterly results", "Before the open", ""),
+    (-3, "MSFT", "filing", "Form 8-K", "Current report", "8-K"),
+    (-6, "CAT", "insider", "A director bought shares", "Form 4", "4"),
+    (-9, "KO", "filing", "Form 8-K", "Current report", "8-K"),
+    (-14, "COST", "filing", "Form 10-K", "Annual report", "10-K"),
+    (-18, "HD", "insider", "An officer sold shares", "Form 4", "4"),
+    (-20, "JPM", "filing", "Form 8-K", "Current report", "8-K"),
+    (-27, "HD", "filing", "Form 10-Q", "Quarterly report", "10-Q"),
+    (-34, "PG", "filing", "Form 10-K", "Annual report", "10-K"),
+    (-41, "CAT", "filing", "Form 10-Q", "Quarterly report", "10-Q"),
+    (-48, "MSFT", "filing", "Form 10-K", "Annual report", "10-K"),
+    (-55, "JPM", "filing", "Form 10-Q", "Quarterly report", "10-Q"),
+]
+EDGAR = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={symbol}&type={form}"
+
+# Looking through the funds: an illustrative share (%) of a few companies inside each fund the demo holds
+LOOK_THROUGH = {
+    "SPY": {"MSFT": 6.6, "JPM": 1.5, "COST": 0.9, "HD": 0.8, "PG": 0.8, "KO": 0.6, "CAT": 0.4, "ABT": 0.4, "UNP": 0.3},
+    "XLK": {"MSFT": 13.5},
+    "XLV": {"ABT": 5.4},
+    "XLP": {"COST": 9.8, "PG": 8.9, "KO": 6.1},
+    "XLI": {"CAT": 4.6, "UNP": 3.1},
+}
+COMPANIES = {  # symbol → (name, sector)
+    "MSFT": ("Microsoft", "Technology"), "JPM": ("JPMorgan Chase", "Financials"),
+    "COST": ("Costco", "Consumer staples"), "HD": ("Home Depot", "Consumer discretionary"),
+    "PG": ("Procter & Gamble", "Consumer staples"),
+    "KO": ("Coca-Cola", "Consumer staples"), "CAT": ("Caterpillar", "Industrials"),
+    "ABT": ("Abbott Laboratories", "Health care"), "UNP": ("Union Pacific", "Industrials"),
+}
+
+# The research record: nine candidates a family tried in the develop window; the passes went on to confirm
+FAMILIES = ["Dip buy", "Close strength", "Opening range", "Gap fade", "Trend pullback", "Breakout", "Overnight hold",
+            "Momentum rank", "Volatility squeeze", "Pairs spread", "Turn of the month", "Weekly reversal"]
+CANDIDATES = 9
+DEVELOP_PASSES = [3, 3, 0, 1, 2, 0, 1, 2, 0, 1, 1, 0]
+DEVELOP_PENDING = {11: 2}  # the newest family's last two are still running
+# what each family's develop passes met in the confirm window, oldest first; a pass without one still waits for it
+CONFIRMS = {0: ["pass", "fail", "fail"], 1: ["pass", "fail", "refused"], 3: ["fail"], 4: ["pass", "fail"],
+            6: ["refused"], 7: ["pass", "pending"]}
+REFUSED = {1: "refused: the confirm window is already spent for this family",
+           6: "refused: too few trades in the develop window to judge"}
+# the confirmed passes that became the demo's strategies, with the figures their strategy page quotes
+LIVE = {0: ("rsi2", 240, 0.84, 3.4, 2.0, -11.7), 1: ("ibs", 188, 0.41, 2.6, 1.4, -8.2)}
 
 
 def weekdays_ending(end: date, count: int) -> list[date]:
@@ -182,6 +297,163 @@ def _charts(book: Book, trades: list[Trade], days: list[date], seed: int) -> lis
     return [_chart(own[k], days, f"{seed}:{book.id}:{k}", book.strategy_id == "rsi2") for k in recent]
 
 
+def _card(days: list[date], seed: int) -> tuple[list[float], list[float], list[float]]:
+    """What the card owes each day, its flows (a payment in, a charge out) and each day's payment. Paid in full every
+    CARD_CYCLE weekdays counted back from today, so it owes CARD_OWED today whatever the date; the charges since the
+    last payment are scaled to add up to it."""
+    rng = random.Random(f"{seed}:card")
+    n = len(days)
+    charges = [round(rng.uniform(10.0, 110.0), 2) for _ in range(n)]
+    last_paid = n - 1 - CARD_PAID
+    since = charges[last_paid:]
+    scaled = [round(c * CARD_OWED / sum(since), 2) for c in since[:-1]]
+    charges[last_paid:] = [*scaled, round(CARD_OWED - sum(scaled), 2)]
+    owed, flows, payments = [round(rng.uniform(300.0, 900.0), 2)], [0.0], [0.0]
+    for i in range(1, n):
+        paid = owed[-1] if (n - 1 - i) % CARD_CYCLE == CARD_PAID else 0.0
+        owed.append(round(owed[-1] - paid + charges[i], 2))
+        flows.append(round(paid - charges[i], 2))
+        payments.append(paid)
+    return owed, flows, payments
+
+
+def _checking(days: list[date], transfers: list[float], card_payments: list[float]) -> tuple[list[float], list[float]]:
+    """Checking's balance and flows. Pay comes in every other Friday; out go the rent and `transfers` (the deposits
+    into the other accounts, which count as money in there) and the card's payments. It earns nothing, so it moves by
+    its flows alone, and money moved between Alex's own accounts nets to nothing in the net worth."""
+    flows = [0.0]
+    for i in range(1, len(days)):
+        pay = PAY if days[i].weekday() == 4 and days[i].toordinal() // 7 % 2 == 0 else 0.0
+        rent = RENT if days[i].month != days[i - 1].month else 0.0
+        flows.append(round(pay - rent - transfers[i] - card_payments[i], 2))
+    values = [CHECKING_START]
+    for flow in flows[1:]:
+        values.append(round(values[-1] + flow, 2))
+    return values, flows
+
+
+def _theses(holdings: list[Holding], positions: list[Position], today: date) -> list[Thesis]:
+    """One thesis per symbol held, in the order the holdings list them."""
+    accounts: dict[str, list[str]] = {}
+    names: dict[str, str] = {}
+    for h in holdings:
+        accounts.setdefault(h.symbol, [])
+        if h.account_id not in accounts[h.symbol]:
+            accounts[h.symbol].append(h.account_id)
+        names.setdefault(h.symbol, h.name)
+    opened = {p.symbol: p.opened for p in positions if p.book_id == "rsi2-real"}
+    out = []
+    for symbol, held_in in accounts.items():
+        if symbol in THESES:
+            health, conviction, reasons, wrong_if, since, reviewed = THESES[symbol]
+            out.append(Thesis(symbol=symbol, name=names[symbol], health=health, reasons=reasons,
+                              conviction=conviction, opened=today - timedelta(days=since),
+                              last_reviewed=today - timedelta(days=reviewed), wrong_if=wrong_if, account_ids=held_in))
+        else:  # a trade the real book holds: a short-term thesis, written the day it opened
+            out.append(Thesis(symbol=symbol, name=names[symbol], conviction="low", opened=opened[symbol],
+                              last_reviewed=opened[symbol], wrong_if=THESIS_TRADE, account_ids=held_in))
+    return out
+
+
+def _events(today: date) -> list[Event]:
+    """EVENTS on weekdays: one due on a weekend moves on to the Monday ahead, or back to the Friday behind."""
+    out = []
+    for days_away, symbol, kind, title, detail, form in EVENTS:
+        day = today + timedelta(days=days_away)
+        while day.weekday() >= 5:
+            day += timedelta(days=1 if days_away > 0 else -1)
+        out.append(Event(date=day, symbol=symbol, kind=kind, title=title, detail=detail,
+                         url=EDGAR.format(symbol=symbol, form=form) if form else ""))
+    return out
+
+
+def _goals(today: date) -> list[Goal]:
+    return [
+        Goal(id="roth-grow", label="Grow the Roth IRA", target=100000.0, account_id="roth",
+             by=date(today.year + 4, 12, 31), note="The monthly deposit, and time"),
+        Goal(id="cash-year", label="A year of spending in cash", target=12 * MONTHLY_SPEND, category="cash",
+             by=date(today.year + 1, 12, 31), note="Twelve months of rent and card spending"),
+        Goal(id="net-worth", label="Net worth milestone", target=250000.0, by=date(today.year + 3, 6, 30),
+             note="Everything owned, less what is owed"),
+    ]
+
+
+def _exposures(holdings: list[Holding]) -> list[Exposure]:
+    """Each company in COMPANIES: what is held of it directly plus its share of each fund held; largest first."""
+    direct: dict[str, float] = {}
+    through: dict[str, float] = {}
+    for h in holdings:
+        if h.symbol in COMPANIES:
+            direct[h.symbol] = direct.get(h.symbol, 0.0) + h.value
+        for symbol, weight in LOOK_THROUGH.get(h.symbol, {}).items():
+            through[symbol] = through.get(symbol, 0.0) + h.value * weight / 100
+    out = [Exposure(symbol=symbol, name=name, sector=sector, direct=round(direct.get(symbol, 0.0), 2),
+                    value=round(direct.get(symbol, 0.0) + through.get(symbol, 0.0), 2))
+           for symbol, (name, sector) in COMPANIES.items()]
+    return sorted(out, key=lambda e: (-e.value, e.symbol))
+
+
+def _measured(rng: random.Random, verdict: str, window: str) -> dict[str, float | int]:
+    """A result's figures: a pass clears t 2 with a positive average trade; a fail doesn't."""
+    develop = window == "develop"
+    if verdict == "pass":
+        avg = rng.uniform(0.2, 0.9 if develop else 0.7)
+        t = rng.uniform(2.05, 4.2 if develop else 3.3)
+        trades = rng.randint(80, 420) if develop else rng.randint(40, 160)
+        calmar, drop = rng.uniform(0.6, 2.2), rng.uniform(5.0, 18.0)
+    else:
+        avg = rng.uniform(-0.45, 0.3)
+        t = math.copysign(rng.uniform(0.05, 1.95), avg)
+        trades = rng.randint(15, 520) if develop else rng.randint(30, 160)
+        calmar, drop = math.copysign(rng.uniform(0.02, 0.7), avg), rng.uniform(6.0, 38.0)
+    return {"trades": trades, "avg_trade_pct": round(avg, 2), "t_stat": round(t, 2), "calmar": round(calmar, 2),
+            "max_drawdown_pct": round(-drop, 1)}
+
+
+def _backtests(now: datetime, seed: int) -> list[Backtest]:
+    """FAMILIES × CANDIDATES develop results about three days apart over the past year, then each pass's confirm
+    result a few days later (CONFIRMS); oldest first. Seeded apart from the market, so the record never moves."""
+    rng = random.Random(f"{seed}:backtests")
+    out: list[Backtest] = []
+    k = 0
+    for f, family in enumerate(FAMILIES):
+        slug = family.lower().replace(" ", "-")
+        running = DEVELOP_PENDING.get(f, 0)
+        passes = set(rng.sample(range(CANDIDATES - running), DEVELOP_PASSES[f]))
+        confirms = iter(CONFIRMS.get(f, []))
+        live = LIVE.get(f)
+        for c in range(CANDIDATES):
+            letter = chr(ord("A") + c)
+            name, ident = f"{family} {letter}", f"{slug}-{letter.lower()}"
+            at = now - timedelta(days=330 - 3 * k, hours=rng.randint(0, 8))
+            k += 1
+            if c >= CANDIDATES - running:
+                out.append(Backtest(id=f"{ident}-develop", name=name, family=family, window="develop",
+                                    verdict="pending", at=now - timedelta(hours=CANDIDATES - c), note="running"))
+                continue
+            verdict = "pass" if c in passes else "fail"
+            out.append(Backtest(id=f"{ident}-develop", name=name, family=family, window="develop", verdict=verdict,
+                                at=at, **_measured(rng, verdict, "develop")))
+            outcome = next(confirms, None) if verdict == "pass" else None
+            if outcome is None:
+                continue
+            confirm = {"id": f"{ident}-confirm", "name": name, "family": family, "window": "confirm",
+                       "verdict": outcome}
+            if outcome == "pending":
+                out.append(Backtest(**confirm, at=now - timedelta(hours=3), note="running"))
+            elif outcome == "refused":
+                out.append(Backtest(**confirm, at=at + timedelta(days=1), note=REFUSED[f]))
+            elif outcome == "pass" and live is not None:
+                strategy_id, trades, avg, t, calmar, drop = live
+                live = None  # the family's first confirmed pass is the one that runs
+                out.append(Backtest(**confirm, at=at + timedelta(days=rng.randint(2, 6)), strategy_id=strategy_id,
+                                    trades=trades, avg_trade_pct=avg, t_stat=t, calmar=calmar, max_drawdown_pct=drop))
+            else:
+                out.append(Backtest(**confirm, at=at + timedelta(days=rng.randint(2, 6)),
+                                    **_measured(rng, outcome, "confirm")))
+    return sorted(out, key=lambda b: (b.at, b.id))
+
+
 STRATEGIES = [
     Strategy(
         id="rsi2", name="Mean reversion", summary="Buys large, liquid stocks after a sharp short-term drop inside an "
@@ -253,6 +525,10 @@ class DemoConnector:
         savings = [21500.0]
         for i in range(1, DAYS):
             savings.append(round(savings[-1] * (1 + 0.041 / 260) + savings_flows[i], 2))
+        # the bank has its own seeds, so the market above never moves; every deposit above comes out of checking
+        card, card_flows, card_payments = _card(days, self.seed)
+        transfers = [sum(f) for f in zip(roth_flows, brokerage_flows, savings_flows, trading_flows)]
+        checking, checking_flows = _checking(days, transfers, card_payments)
         spx = _walk(rng, 560.0, market, 1.0, 0.0, 0.0015, zero)
         paper = _walk(rng, 100000.0, market, 0.5, 0.0005, 0.004, zero)
         options = _walk(rng, 100000.0, market, 0.8, -0.0002, 0.012, zero)
@@ -301,14 +577,23 @@ class DemoConnector:
             Account(id="trading", name="Trading account", institution="Brokerage B", account_type="Individual",
                     category="trading", value=trading[-1], cash=_cash(holdings, "trading", trading[-1]), as_of=as_of),
             Account(id="savings", name="High-yield savings", institution="Bank C", account_type="Savings",
-                    category="cash", value=savings[-1], cash=savings[-1], as_of=as_of),
+                    category="cash", value=savings[-1], cash=savings[-1], as_of=as_of, rate_pct=4.1),
+            Account(id="checking", name="Checking", institution="Bank C", account_type="Checking", category="cash",
+                    value=checking[-1], cash=checking[-1], as_of=as_of),
+            Account(id="card", name="Credit card", institution="Bank D", account_type="Credit card", category="debt",
+                    value=card[-1], as_of=as_of, rate_pct=24.9, limit=5000.0),
         ]
         account_history = [
             Series(id="roth", points=_points(days, roth, roth_flows)),
             Series(id="brokerage", points=_points(days, brokerage, brokerage_flows)),
             Series(id="trading", points=_points(days, trading, trading_flows)),
             Series(id="savings", points=_points(days, savings, savings_flows)),
+            Series(id="checking", points=_points(days, checking, checking_flows)),
+            Series(id="card", points=_points(days, card, card_flows)),
         ]
+        cash_runway = Target(id="cash-runway", label="Cash runway", unit="x", target=6, low=4,
+                             actual=round((savings[-1] + checking[-1]) / MONTHLY_SPEND, 1),
+                             note="Months of spending the cash accounts cover")
 
         at = lambda hh, mm: _next_weekday_at(local, time(hh, mm))  # noqa: E731
         books = [
@@ -355,6 +640,9 @@ class DemoConnector:
             trade_charts=[chart for book in books for chart in _charts(book, trades, days, self.seed)],
             strategies=STRATEGIES,
             runs=self._runs(local), benchmark=Benchmark(symbol="SPY", label="S&P 500", points=_points(days, spx, zero)),
+            targets=[*TARGETS, cash_runway], theses=_theses(holdings, positions, local.date()),
+            events=_events(local.date()), goals=_goals(local.date()), exposures=_exposures(holdings),
+            backtests=_backtests(now, self.seed),
         )
 
     def _runs(self, local: datetime) -> list[Run]:

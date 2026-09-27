@@ -26,9 +26,43 @@ def demo_home():
     return home_view(collect(DEMO_PROFILE, NOW), DEMO_PROFILE, NOW)
 
 
-def test_net_worth_is_the_sum_of_accounts(demo_home):
-    assert demo_home.net_worth.total == pytest.approx(sum(a.value for a in demo_home.accounts))
+def test_net_worth_is_what_the_accounts_hold_less_what_is_owed(demo_home):
+    owned = sum(a.value for a in demo_home.accounts if a.category != "debt")
+    assert demo_home.net_worth.owed == 640.0  # the demo's card
+    assert demo_home.net_worth.total == pytest.approx(owned - 640.0)
     assert demo_home.net_worth.points[-1].value == pytest.approx(demo_home.net_worth.total)
+
+
+def test_net_worth_subtracts_debt():
+    d = dt.date
+    days = [d(2026, 9, 23), d(2026, 9, 24), d(2026, 9, 25)]
+    accounts = [Account(id="lt", name="Index fund", category="long_term", value=700, as_of=NOW),
+                Account(id="bank", name="Savings", category="cash", value=300, as_of=NOW),
+                Account(id="card", name="Card", category="debt", value=200, limit=1000, as_of=NOW)]
+    history = [Series(id="lt", points=[ValuePoint(date=day, value=v) for day, v in zip(days, (690, 695, 700))]),
+               Series(id="bank", points=[ValuePoint(date=day, value=300) for day in days]),
+               # 50 charged on the 24th (money out of the card), then paid down by 100 on the 25th (money in)
+               Series(id="card", points=[ValuePoint(date=days[0], value=250), ValuePoint(date=days[1], value=300,
+                                                                                          net_flow=-50),
+                                         ValuePoint(date=days[2], value=200, net_flow=100)])]
+    home = home_view(_tiny(accounts, history), Profile(), NOW)
+    nw = home.net_worth
+    assert (nw.total, nw.owed) == (800.0, 200.0)
+    # the card counts against net worth, and its charge and payment are money moving, not the market
+    assert [(p.value, p.net_flow) for p in nw.points] == [(740.0, 0.0), (695.0, -50.0), (800.0, 100.0)]
+    assert [(s.category, s.value, s.share) for s in home.allocation] == [("long_term", 700.0, 70.0),
+                                                                        ("cash", 300.0, 30.0)]
+    assert sum(s.cells for s in home.allocation) == 100
+    card = next(a for a in home.accounts if a.id == "card")
+    assert (card.category, card.value, card.day_pct) == ("debt", 200.0, None)  # an owed balance has no day's return
+
+
+def test_an_overpaid_card_adds_to_net_worth_and_no_debt_owes_nothing():
+    credit = Account(id="card", name="Card", category="debt", value=-50, as_of=NOW)  # money owed to you
+    held = Account(id="lt", name="Index fund", category="long_term", value=1000, as_of=NOW)
+    nw = home_view(_tiny([held, credit], []), Profile(), NOW).net_worth
+    assert (nw.total, nw.owed) == (1050.0, -50.0)
+    assert home_view(_tiny([held], []), Profile(), NOW).net_worth.owed == 0.0
 
 
 def test_allocation_fills_exactly_one_hundred_cells(demo_home):

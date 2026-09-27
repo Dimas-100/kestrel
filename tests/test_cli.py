@@ -21,7 +21,7 @@ def run(capsysbinary, *argv):
 def test_demo_prints_a_valid_snapshot(capsysbinary):
     code, out, _ = run(capsysbinary, "demo", "--now", NOW)
     data = json.loads(out)
-    assert code == 0 and data["contract_version"] == "1" and len(data["accounts"]) == 4
+    assert code == 0 and data["contract_version"] == "1" and len(data["accounts"]) == 6
 
 
 def test_demo_home_is_reproducible(capsysbinary):
@@ -86,6 +86,8 @@ def test_check_lists_each_sources_accounts_but_never_a_balance(capsysbinary, tmp
         "         brokerage        long_term        Brokerage",
         "         trading          trading          Trading account",
         "         savings          cash             High-yield savings",
+        "         checking         cash             Checking",
+        "         card             debt             Credit card",
     ]
     assert "$" not in out and not re.search(r"\d{4}", out)  # no balances, no amounts
 
@@ -110,7 +112,7 @@ def test_the_demo_flag_shows_the_demo_whatever_profile_toml_says(capsysbinary, t
 
 def test_demo_prints_the_account_views(capsysbinary):
     code, out, _ = run(capsysbinary, "demo", "--view", "accounts", "--now", NOW)
-    assert code == 0 and json.loads(out)["count"] == 4
+    assert code == 0 and json.loads(out)["count"] == 6
     code, out, _ = run(capsysbinary, "demo", "--view", "account", "--id", "savings", "--now", NOW)
     savings = json.loads(out)
     assert code == 0 and savings["holdings"] == [] and savings["cash"] == savings["value"]

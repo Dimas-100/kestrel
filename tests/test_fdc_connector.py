@@ -377,4 +377,4 @@ def test_a_broken_source_is_a_red_row_and_the_rest_still_arrives(tmp_path):
     errors = {s.id: s.detail for s in snap.sources if s.status == "error"}
     assert errors["portfolio"] == f"no warehouse at {tmp_path / 'nope.db'}"
     assert errors["unset"].startswith("an fdc source needs a path to the warehouse")
-    assert len(snap.accounts) == 4  # the demo still arrived
+    assert len(snap.accounts) == 6  # the demo still arrived

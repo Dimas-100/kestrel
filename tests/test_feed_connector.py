@@ -111,8 +111,8 @@ def test_kestrel_demo_prints_a_payload_a_feed_can_read(tmp_path, capsysbinary):
     path = tmp_path / "demo.json"
     path.write_bytes(capsysbinary.readouterr().out)
     snap = from_file(path)
-    assert snap.sources[0].detail == "4 accounts · 5 books · 4 strategies · 136 trades"
-    assert [a.id for a in snap.accounts] == ["roth", "brokerage", "trading", "savings"]
+    assert snap.sources[0].detail == "6 accounts · 5 books · 4 strategies · 136 trades"
+    assert [a.id for a in snap.accounts] == ["roth", "brokerage", "trading", "savings", "checking", "card"]
 
 
 def test_a_byte_order_mark_is_fine(tmp_path):
@@ -589,4 +589,4 @@ def test_a_feed_file_is_found_from_the_profiles_folder_and_a_broken_feed_is_a_re
     rows = {s.id: (s.status, s.detail) for s in snap.sources}
     assert rows["desk"] == ("ok", "2 books · 1 strategy · 2 trades")
     assert rows["night"] == ("error", "set KESTREL_NIGHT_TOKEN in the environment (token_env)")
-    assert len(snap.accounts) == 4 and len(snap.books) == 7  # the demo's and the desk's
+    assert len(snap.accounts) == 6 and len(snap.books) == 7  # the demo's and the desk's

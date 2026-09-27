@@ -52,8 +52,9 @@ def test_history_that_begins_after_the_window_starts_at_its_first_point_and_one_
 
 def test_the_list_puts_the_largest_account_first_with_its_share_its_day_and_its_year(demo):
     view = accounts_view(demo, DEMO_PROFILE, NOW)
-    assert (view.count, view.total) == (4, round(sum(a.value for a in demo.accounts), 2))
-    assert [a.id for a in view.accounts] == ["roth", "brokerage", "savings", "trading"]
+    owned = sum(a.value for a in demo.accounts if a.category != "debt")
+    assert (view.count, view.total) == (6, round(owned - 640.0, 2))  # net of the card
+    assert [a.id for a in view.accounts] == ["roth", "brokerage", "savings", "trading", "checking", "card"]
     assert sum(a.share or 0 for a in view.accounts) == pytest.approx(100, abs=0.02)
     roth = view.accounts[0]
     assert (roth.institution, roth.account_type, roth.category) == ("Brokerage A", "Roth IRA", "long_term")
@@ -75,7 +76,7 @@ def test_holdings_add_up_by_symbol_with_one_row_for_all_the_cash(demo):
     cash = next(r for r in rows if r.cash)
     assert (cash.symbol, cash.name) == ("", "Cash")
     assert cash.value == round(sum(a.cash for a in demo.accounts), 2)
-    assert cash.accounts == ["Brokerage", "High-yield savings", "Roth IRA", "Trading account"]
+    assert cash.accounts == ["Brokerage", "Checking", "High-yield savings", "Roth IRA", "Trading account"]
     assert sum(r.share or 0 for r in rows) == pytest.approx(100, abs=0.05)
 
 
@@ -127,6 +128,30 @@ def test_a_closed_account_at_zero_sits_last_and_a_household_of_zeros_has_no_shar
                                           "unknown_cost": 0}
     zeros = accounts_view(Snapshot(generated_at=NOW, accounts=[account("old-401k", 0.0)]), Profile(), NOW)
     assert [a.share for a in zeros.accounts] == [None] and zeros.holdings == []
+
+
+def test_debt_account_has_no_market_growth():
+    lt = points((d(2026, 9, 23), 1000, 0), (d(2026, 9, 24), 1010, 0), (d(2026, 9, 25), 1020, 0))
+    # 60 charged on the 24th, 100 paid in on the 25th: the owed balance moves against its flows
+    owed = points((d(2026, 9, 23), 300, 0), (d(2026, 9, 24), 360, -60), (d(2026, 9, 25), 260, 100))
+    card = Account(id="card", name="Card", category="debt", value=260, limit=2000, rate_pct=24.9, cash=-5, as_of=NOW)
+    snap = Snapshot(generated_at=NOW, accounts=[account("lt", 1020, cash=20), card],
+                    account_history=[Series(id="lt", points=lt), Series(id="card", points=owed)])
+    view = accounts_view(snap, Profile(), NOW)
+    row = next(a for a in view.accounts if a.id == "card")
+    # the row shows what is owed; none of it is a share of what is held, a day's gain or market growth
+    assert (row.category, row.value, row.share, row.day_change, row.day_pct, row.year_market) == (
+        "debt", 260.0, None, None, None, None)
+    assert next(a for a in view.accounts if a.id == "lt").share == 100.0
+    # every account together is net of what is owed; the charge and the payment are money moving, not the market
+    assert view.total == 760.0
+    ytd = view.growth["ytd"]
+    assert ytd is not None and (ytd.start, ytd.deposits, ytd.market, ytd.end) == (700.0, 40.0, 20.0, 760.0)
+    assert [r.name for r in view.holdings if r.cash] == ["Cash"] and view.holdings[-1].value == 20.0
+    one = account_view(snap, Profile(), NOW, "card")
+    assert one is not None and (one.category, one.value) == ("debt", 260.0)
+    assert one.growth == {"ytd": None, "1y": None, "all": None}
+    assert [f.amount for f in one.flows] == [100.0, -60.0]  # what went in and out stays listed
 
 
 def test_no_accounts_is_an_empty_page_and_an_unknown_account_is_none():

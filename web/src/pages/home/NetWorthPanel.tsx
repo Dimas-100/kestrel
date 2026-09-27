@@ -25,8 +25,14 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
         <Seg label="View" options={['Chart', 'Table'] as const} value={view} onChange={setView} />
       </>}>
       <div className="flex flex-wrap items-end gap-x-9 gap-y-3 mt-3.5">
-        <div className="text-[38px] sm:text-5xl font-semibold tracking-[-0.035em] leading-none">
-          {whole}<span className="text-ink3">.{cents}</span>
+        <div>
+          <div className="text-[38px] sm:text-5xl font-semibold tracking-[-0.035em] leading-none">
+            {whole}<span className="text-ink3">.{cents}</span>
+          </div>
+          {/* what is owed is already taken off the figure above: say so, so it isn't read as all held */}
+          {nw.owed > 0 && (
+            <div className="text-xs text-ink3 mt-1.5">net of <span className="num">{money(nw.owed)}</span> owed</div>
+          )}
         </div>
         <div className="flex flex-wrap gap-x-7 gap-y-3 pb-1">
           <Stat label="Today" sub={nw.today.pct != null && pct(nw.today.pct, 2)}>

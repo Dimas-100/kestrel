@@ -43,7 +43,7 @@ def test_health_shell_and_home(client):
     assert client.get("/api/health").json()["ok"] is True
     shell = client.get("/api/shell").json()
     assert shell["name"] == "Alex" and shell["app"]["accent"] == "rufous"
-    assert shell["counts"] == {"accounts": 4, "books": 5, "strategies": 4}
+    assert shell["counts"] == {"accounts": 6, "books": 5, "strategies": 4}
     home = client.get("/api/home").json()
     assert home["summary"]["needs_you"] == 2
     assert home["net_worth"]["total"] > 0
@@ -142,7 +142,7 @@ def test_writes_to_the_strategy_routes_are_refused(client):
 
 def test_the_account_list_and_one_account(client):
     listed = client.get("/api/accounts").json()
-    assert [a["id"] for a in listed["accounts"]] == ["roth", "brokerage", "savings", "trading"]
+    assert [a["id"] for a in listed["accounts"]] == ["roth", "brokerage", "savings", "trading", "checking", "card"]
     assert list(listed["growth"]) == ["ytd", "1y", "all"]
     roth = client.get("/api/accounts/roth").json()
     assert (roth["name"], roth["holdings"][0]["symbol"]) == ("Roth IRA", "SPY")

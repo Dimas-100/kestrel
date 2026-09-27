@@ -20,12 +20,13 @@ describe('Accounts', { timeout: 15_000 }, () => {
   it('leads with how many accounts, how much, and this year in two figures', async () => {
     renderApp('/accounts')
     const title = await screen.findByRole('heading', { level: 1, name: 'Accounts' })
-    expect(title.closest('header')?.textContent).toBe('MoneyAccounts4 accounts, $162,265.11 in all. This year the '
-      + 'market added ▲ up +$11,511.65 and you deposited $11,100.00.')
+    // every account together, net of the $640.00 owed on the card
+    expect(title.closest('header')?.textContent).toBe('MoneyAccounts6 accounts, $168,278.24 in all. This year the '
+      + 'market added ▲ up +$11,511.65 and you deposited $13,715.25.')
   })
 
   it('words the sentence for one account, a withdrawal, and a year without history', () => {
-    expect(headline(accountsFixture)).toEqual({ lead: '4 accounts, $162,265.11 in all.', moved: 'you deposited $11,100.00' })
+    expect(headline(accountsFixture)).toEqual({ lead: '6 accounts, $168,278.24 in all.', moved: 'you deposited $13,715.25' })
     const one: AccountsView = { ...accountsFixture, count: 1, total: 500, growth: {
       ...accountsFixture.growth, ytd: { ...ytd, deposits: -250 } } }
     expect(headline(one)).toEqual({ lead: '1 account, $500.00 in all.', moved: 'you withdrew $250.00' })
@@ -37,14 +38,14 @@ describe('Accounts', { timeout: 15_000 }, () => {
   it('splits the growth into what you put in and what the market added, for each window', async () => {
     renderApp('/accounts')
     const growth = await findPanel('Growth')
-    expect(growth.textContent).toContain('Started at$139,653.461 Jan')
-    expect(growth.textContent).toContain('You put in$11,100.00The market added▲ up +$11,511.65Now$162,265.11')
+    expect(growth.textContent).toContain('Started at$143,051.341 Jan')
+    expect(growth.textContent).toContain('You put in$13,715.25The market added▲ up +$11,511.65Now$168,278.24')
     fireEvent.click(within(growth).getByRole('button', { name: '1 year' }))
-    expect(growth.textContent).toContain('Started at$123,300.00Sep 2025')
+    expect(growth.textContent).toContain('Started at$128,846.51Sep 2025')
     expect(within(growth).getByRole('img', { name: '1 year: started at, you put in, the market added' })).toBeTruthy()
     fireEvent.click(within(growth).getByRole('button', { name: 'Table' }))
-    expect(rows(growth)).toEqual(['Started at$123,300.00', 'You put in$15,900.00',
-      'The market added▲ up +$23,065.11', 'Now$162,265.11'])
+    expect(rows(growth)).toEqual(['Started at$128,846.51', 'You put in$16,366.62',
+      'The market added▲ up +$23,065.11', 'Now$168,278.24'])
   })
 
   it('shows dashes for a window without enough history', async () => {
@@ -61,10 +62,12 @@ describe('Accounts', { timeout: 15_000 }, () => {
     expect([...accounts.querySelectorAll('thead th')].map((th) => th.textContent)).toEqual([
       'Account', 'Category', 'Value', 'Share', 'Last day', 'Market this year'])
     expect(rows(accounts)).toEqual([
-      'Roth IRABrokerage A · Roth IRALong-term$67,890.8141.8%▼ down −$49.79−0.07%▲ up +$5,603.44',
-      'BrokerageBrokerage A · BrokerageLong-term$51,663.7431.8%▲ up +$146.99+0.29%▲ up +$3,362.77',
-      'High-yield savingsBank C · SavingsCash$24,242.8514.9%▲ up +$3.82+0.02%▲ up +$701.08',
-      'Trading accountBrokerage B · IndividualTrading$18,467.7111.4%▼ down −$94.32−0.51%▲ up +$1,844.36',
+      'Roth IRABrokerage A · Roth IRALong-term$67,890.8140.2%▼ down −$49.79−0.07%▲ up +$5,603.44',
+      'BrokerageBrokerage A · BrokerageLong-term$51,663.7430.6%▲ up +$146.99+0.29%▲ up +$3,362.77',
+      'High-yield savingsBank C · SavingsCash$24,242.8514.4%▲ up +$3.82+0.02%▲ up +$701.08',
+      'Trading accountBrokerage B · IndividualTrading$18,467.7110.9%▼ down −$94.32−0.51%▲ up +$1,844.36',
+      'CheckingBank C · CheckingCash$6,653.133.9%$0.000.00%$0.00', // moves by what goes in and out alone
+      'Credit cardBank D · Credit cardDebt$640.00———', // what it owes: no share of what is held, no market growth
     ])
     expect(within(accounts).getByRole('link', { name: 'Roth IRA' }).getAttribute('href')).toBe('/accounts/roth')
   })
@@ -74,8 +77,8 @@ describe('Accounts', { timeout: 15_000 }, () => {
     const held = await findPanel('Everything you hold')
     expect(rows(held)).toHaveLength(12)
     expect(rows(held).slice(0, 2)).toEqual([
-      'SPYS&P 500 index fund$61,723.6838.0%Brokerage, Roth IRA',
-      'Cash—$31,904.0719.7%Brokerage, High-yield savings, Roth IRA, Trading account',
+      'SPYS&P 500 index fund$61,723.6836.5%Brokerage, Roth IRA',
+      'Cash—$38,557.2022.8%Brokerage, Checking, High-yield savings, Roth IRA, Trading account',
     ])
     fireEvent.click(within(held).getByRole('button', { name: 'Show all 14' }))
     expect(rows(held)).toHaveLength(14)

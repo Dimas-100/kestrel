@@ -104,12 +104,13 @@ export function SortHeader<K extends string>({ label, k, sort, onSort, right = f
   )
 }
 
-/** Where an account's money is filed: long-term money is slate, trading rufous, cash neutral. */
+/** Where an account's money is filed: long-term money is slate, trading rufous, cash neutral. What is owed takes no
+ *  hue of its own: it is never a slice of the waffle. */
 export const CATEGORY_COLOR: Record<string, string> = {
-  long_term: 'var(--s1)', trading: 'var(--s2)', cash: 'var(--s3)', other: 'var(--ink3)',
+  long_term: 'var(--s1)', trading: 'var(--s2)', cash: 'var(--s3)', debt: 'var(--ink3)', other: 'var(--ink3)',
 }
 export const CATEGORY_WORD: Record<string, string> = {
-  long_term: 'Long-term', trading: 'Trading', cash: 'Cash', other: 'Other',
+  long_term: 'Long-term', trading: 'Trading', cash: 'Cash', debt: 'Debt', other: 'Other',
 }
 
 /** The category as a word beside its dot, so the colour is never the only cue. */
