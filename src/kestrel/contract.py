@@ -15,6 +15,7 @@ CONTRACT_VERSION = "1"
 
 Money = Literal["real", "paper"]
 Category = Literal["long_term", "trading", "cash", "debt", "other"]  # debt: money owed; its value is the amount owed
+Verdict = Literal["pass", "fail", "refused", "pending"]
 
 
 class Model(BaseModel):
@@ -282,7 +283,7 @@ class Backtest(Model):
     name: str
     family: str = ""
     window: str = ""  # free text: "develop", "confirm", ...
-    verdict: Literal["pass", "fail", "refused", "pending"]
+    verdict: Verdict
     at: AwareDatetime
     strategy_id: str | None = None
     trades: int | None = None

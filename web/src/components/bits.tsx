@@ -50,14 +50,15 @@ export function Panel({ id, title, subtitle, actions, span, height, children }: 
   )
 }
 
-export function Seg<T extends string>({ label, options, value, onChange }: {
-  label: string; options: readonly T[]; value: T; onChange: (value: T) => void
+/** `labels` overrides an option's display word (the value passed to `onChange` is always the option itself). */
+export function Seg<T extends string>({ label, options, value, onChange, labels }: {
+  label: string; options: readonly T[]; value: T; onChange: (value: T) => void; labels?: Partial<Record<T, string>>
 }) {
   return (
     <div className="seg" role="group" aria-label={label}>
       {options.map((option) => (
         <button key={option} type="button" aria-pressed={option === value} onClick={() => onChange(option)}>
-          {option}
+          {labels?.[option] ?? option}
         </button>
       ))}
     </div>

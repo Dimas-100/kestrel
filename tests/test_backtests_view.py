@@ -43,14 +43,43 @@ def test_totals_count_results_distinct_candidates_families_and_passes_by_window(
     assert view.totals.passes_by_window == {"develop": 2, "confirm": 1}
 
 
-def test_windows_are_ordered_by_their_own_newest_result_then_alphabetically():
+def test_windows_follow_the_research_pipeline_order_not_recency():
     data = [
-        bt("a", "A", "F", "confirm", "pass", 1),  # confirm's newest result is 1 day ago
-        bt("b", "B", "F", "develop", "pass", 2),  # develop's newest result is 2 days ago
-        bt("c", "C", "F", "backtest", "pass", 2),  # tied with develop at 2 days ago -> alphabetical tiebreak
+        bt("a", "A", "F", "confirm", "pass", 1),  # confirm's newest result is 1 day ago (more recent)...
+        bt("b", "B", "F", "develop", "pass", 200),  # ...but develop still comes first: it is earlier in the pipeline
     ]
     view = backtests_view(snap(data), Profile(), NOW)
-    assert view.windows == ["confirm", "backtest", "develop"]
+    assert view.windows == ["develop", "confirm"]
+
+
+def test_windows_outside_the_pipeline_sort_after_it_alphabetically():
+    data = [
+        bt("a", "A", "F", "confirm", "pass", 1),
+        bt("b", "B", "F", "develop", "pass", 2),
+        bt("c", "C", "F", "zzz-custom", "pass", 3),
+        bt("d", "D", "F", "aaa-custom", "pass", 4),
+    ]
+    view = backtests_view(snap(data), Profile(), NOW)
+    assert view.windows == ["develop", "confirm", "aaa-custom", "zzz-custom"]
+
+
+def test_windows_only_lists_windows_present_in_the_data():
+    # "holdout" and "live" are pipeline stages, but nothing in this data used them
+    data = [bt("a", "A", "F", "confirm", "pass", 1), bt("b", "B", "F", "develop", "fail", 2)]
+    view = backtests_view(snap(data), Profile(), NOW)
+    assert view.windows == ["develop", "confirm"]
+
+
+def test_best_favors_the_furthest_pipeline_stage_over_a_more_recent_earlier_stage():
+    # the controller's disagreement case: confirm passed long ago, develop is the recently active window
+    data = [
+        bt("c1", "A", "F", "confirm", "pass", 200, t_stat=2.0),
+        bt("d1", "B", "F", "develop", "fail", 1),
+    ]
+    view = backtests_view(snap(data), Profile(), NOW)
+    assert view.windows == ["develop", "confirm"]
+    family = next(f for f in view.families if f.family == "F")
+    assert family.best is not None and family.best.id == "c1"  # confirm is further along than develop, despite age
 
 
 def test_best_is_the_furthest_window_with_a_pass_ties_broken_by_higher_t_stat():

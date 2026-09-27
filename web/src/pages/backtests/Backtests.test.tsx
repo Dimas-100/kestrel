@@ -58,22 +58,35 @@ describe('Backtests', () => {
       .toEqual(['Family', 'Candidates', 'Best result', 'develop', 'confirm', 'Last ran'])
   })
 
-  it('narrows the results table by verdict and by a search term', async () => {
+  it('narrows the results table by verdict (with proper words, via the shared Seg) and by a search term', async () => {
     renderApp('/backtests')
     const results = await findPanel('Results')
     const rowCount = () => within(results).getAllByRole('row').length - 1 // minus the header row
     const all = rowCount()
-    fireEvent.click(within(results).getByRole('button', { name: 'passed' }))
+    fireEvent.click(within(results).getByRole('button', { name: 'Passed' }))
     const passed = rowCount()
     expect(passed).toBeGreaterThan(0)
     expect(passed).toBeLessThan(all)
-    fireEvent.click(within(results).getByRole('button', { name: 'all' }))
+    fireEvent.click(within(results).getByRole('button', { name: 'All' }))
     expect(rowCount()).toBe(all)
     fireEvent.change(within(results).getByRole('searchbox', { name: /Search/ }), { target: { value: 'dip buy' } })
     expect(rowCount()).toBeGreaterThan(0)
     expect(rowCount()).toBeLessThan(all)
     expect(results.textContent).toContain('Dip buy')
     expect(results.textContent).not.toContain('Gap fade')
+  })
+
+  it('shows why a refused or pending result is that way, beside its verdict', async () => {
+    renderApp('/backtests')
+    const results = await findPanel('Results')
+    fireEvent.change(within(results).getByRole('searchbox', { name: /Search/ }), { target: { value: 'overnight hold' } })
+    // the demo's "Overnight hold" confirm result is refused, with a note explaining why
+    expect(results.textContent).toContain('refused: too few trades in the develop window to judge')
+    const families = await findPanel('Families')
+    const weeklyReversal = [...families.querySelectorAll('tbody tr')]
+      .find((row) => row.textContent?.startsWith('Weekly reversal'))
+    // its best result is still pending (no candidate has passed yet), and the row says why
+    expect(weeklyReversal?.textContent).toContain('running')
   })
 
   it('shows the first families then all of them, when there are more than the page shows', async () => {

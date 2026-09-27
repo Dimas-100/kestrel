@@ -5,13 +5,15 @@ from __future__ import annotations
 import datetime as dt
 from collections import Counter, defaultdict
 
-from ..contract import Backtest, Snapshot
+from ..contract import Backtest, Snapshot, Verdict
 from ..profile import Profile
 from .home import View
 
 ROWS_LIMIT = 200  # the page lists only the newest results; a real feed can carry thousands
 # the best verdict for a window, lowest wins: a single pass outshines a pile of fails
 _VERDICT_RANK = {"pass": 0, "pending": 1, "fail": 2, "refused": 3}
+# the research pipeline's own order, earliest stage first; a window this doesn't name sorts after all of these
+_PIPELINE = ("explore", "develop", "confirm", "holdout", "paper", "live")
 
 
 class Totals(View):
@@ -25,41 +27,41 @@ class FamilyRow(View):
     family: str
     candidates: int  # distinct name, within this family
     best: Backtest | None
-    verdicts: dict[str, str]  # window -> its best verdict seen for this family
+    verdicts: dict[str, Verdict]  # window -> its best verdict seen for this family
     last_at: dt.datetime
 
 
 class BacktestsView(View):
     as_of: dt.datetime
     totals: Totals
-    windows: list[str]  # newest-used first, ties alphabetical
+    windows: list[str]  # the pipeline's own order (explore < develop < confirm < holdout < paper < live), then
+    # alphabetical for a window the pipeline doesn't name; only windows present in the data are listed
     families: list[FamilyRow]  # a pass first, then by last_at desc
     rows: list[Backtest]  # newest ROWS_LIMIT results
 
 
 def _windows_order(backtests: list[Backtest]) -> list[str]:
-    """Every window, ordered by its own most recent result: scanning the results newest first, this is the order
-    each window is first seen. A tie (the same instant) breaks alphabetically."""
-    latest: dict[str, dt.datetime] = {}
-    for b in backtests:
-        if b.window and (b.window not in latest or b.at > latest[b.window]):
-            latest[b.window] = b.at
-    return sorted(latest, key=lambda w: (-latest[w].timestamp(), w))
+    """Every window present, in the research pipeline's own order; a window the pipeline doesn't name sorts after
+    all of those, alphabetically. Recency plays no part: a family can pass an early stage recently while an older
+    pass sits in a later stage, and the later stage is still the furthest along."""
+    present = {b.window for b in backtests if b.window}
+    stage = {w: i for i, w in enumerate(_PIPELINE)}
+    return sorted(present, key=lambda w: (stage.get(w, len(_PIPELINE)), w))
 
 
 def _best(backtests: list[Backtest], rank: dict[str, int]) -> Backtest:
-    """The furthest window (lowest `rank`) with a pass, ties broken by the higher t-stat; with no pass, the newest
+    """The furthest window (highest `rank`) with a pass, ties broken by the higher t-stat; with no pass, the newest
     result of any verdict."""
     passes = [b for b in backtests if b.verdict == "pass"]
     if not passes:
         return max(backtests, key=lambda b: b.at)
-    furthest = min(rank.get(b.window, len(rank)) for b in passes)
-    at_furthest = [b for b in passes if rank.get(b.window, len(rank)) == furthest]
+    furthest = max(rank.get(b.window, -1) for b in passes)
+    at_furthest = [b for b in passes if rank.get(b.window, -1) == furthest]
     return max(at_furthest, key=lambda b: b.t_stat if b.t_stat is not None else float("-inf"))
 
 
-def _verdicts(backtests: list[Backtest]) -> dict[str, str]:
-    best: dict[str, str] = {}
+def _verdicts(backtests: list[Backtest]) -> dict[str, Verdict]:
+    best: dict[str, Verdict] = {}
     for b in backtests:
         if not b.window:
             continue

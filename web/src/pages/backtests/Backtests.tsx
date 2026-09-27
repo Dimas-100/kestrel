@@ -1,7 +1,7 @@
 // The research record: every family tried, its best result, and the newest 200 individual runs.
 import { useMemo, useState } from 'react'
 import { Empty } from '../../charts/marks'
-import { Missing, Panel, Stat } from '../../components/bits'
+import { Missing, Panel, Seg, Stat } from '../../components/bits'
 import { type Backtest, type BacktestsView, type BacktestVerdict, type FamilyRow, useBacktests } from '../../lib/api'
 import { num, pct, shortDate } from '../../lib/format'
 
@@ -15,6 +15,8 @@ const VERDICT_COLOR: Record<BacktestVerdict, string> = {
 }
 
 type RowFilter = 'all' | 'passed' | 'failed'
+const ROW_FILTER_OPTIONS = ['all', 'passed', 'failed'] as const
+const ROW_FILTER_LABEL: Record<RowFilter, string> = { all: 'All', passed: 'Passed', failed: 'Failed' }
 
 export function VerdictChip({ verdict }: { verdict: BacktestVerdict }) {
   return (
@@ -23,6 +25,12 @@ export function VerdictChip({ verdict }: { verdict: BacktestVerdict }) {
       {VERDICT_WORD[verdict]}
     </span>
   )
+}
+
+/** Why a result was refused or is still pending, shown as a small muted line beside its verdict. Text only. */
+function NoteLine({ note }: { note: string }) {
+  if (!note) return null
+  return <div className="text-[11px] text-ink3 mt-0.5">{note}</div>
 }
 
 /** Whether a row belongs under the all/passed/failed filter. */
@@ -51,6 +59,7 @@ function BestCell({ best }: { best: Backtest | null }) {
         {best.trades == null ? <Missing /> : `${num(best.trades, 0)} trades`}
         {best.avg_trade_pct != null && <> · {pct(best.avg_trade_pct, 2)} / trade</>}
         {best.t_stat != null && <> · t {num(best.t_stat, 2)}</>}
+        {best.note && <> · {best.note}</>}
       </div>
     </div>
   )
@@ -110,14 +119,8 @@ function ResultsPanel({ rows }: { rows: Backtest[] }) {
     <Panel id="backtests-rows" title="Results" subtitle="The newest 200 results" span={12}
       actions={(
         <div className="flex flex-wrap items-center gap-3">
-          <div className="seg" role="group" aria-label="Verdict">
-            {(['all', 'passed', 'failed'] as const).map((f) => (
-              <button key={f} type="button" aria-pressed={f === filter} onClick={() => setFilter(f)}
-                className="capitalize">
-                {f}
-              </button>
-            ))}
-          </div>
+          <Seg label="Verdict" options={ROW_FILTER_OPTIONS} value={filter} onChange={setFilter}
+            labels={ROW_FILTER_LABEL} />
           <input type="search" className="search" placeholder="Search family or name" value={query}
             onChange={(e) => setQuery(e.target.value)} aria-label="Search family or name" />
         </div>
@@ -137,7 +140,7 @@ function ResultsPanel({ rows }: { rows: Backtest[] }) {
                   <td className="font-medium">{b.name}</td>
                   <td className="text-ink2">{b.family || <Missing />}</td>
                   <td className="capitalize text-ink2">{b.window || <Missing />}</td>
-                  <td><VerdictChip verdict={b.verdict} /></td>
+                  <td><VerdictChip verdict={b.verdict} /><NoteLine note={b.note} /></td>
                   <td className="r num">{b.trades == null ? <Missing /> : num(b.trades, 0)}</td>
                   <td className="r num">{b.avg_trade_pct == null ? <Missing /> : pct(b.avg_trade_pct, 2)}</td>
                   <td className="r num">{b.t_stat == null ? <Missing /> : num(b.t_stat, 2)}</td>

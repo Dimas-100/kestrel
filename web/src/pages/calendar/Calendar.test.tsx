@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { CalendarView } from '../../lib/api'
 import { calendarFixture, renderApp } from '../../test/renderApp'
-import { isHttpsUrl, matches } from './Calendar'
+import { eventKey, isHttpsUrl, matches } from './Calendar'
 
 const panel = (name: string) => {
   const title = [...document.querySelectorAll('.panel-title')].find((t) => t.textContent === name)
@@ -20,6 +20,14 @@ describe('Calendar', () => {
     expect(isHttpsUrl('http://www.sec.gov/x')).toBe(false)
     expect(isHttpsUrl('javascript:alert(1)')).toBe(false)
     expect(isHttpsUrl('')).toBe(false)
+  })
+
+  it('keys an event row by its own fields, stably across list re-orders', () => {
+    const a = { date: '2026-10-05', symbol: 'COST', kind: 'earnings' as const, title: 'Quarterly results',
+      detail: '', url: '', held: true }
+    const b = { ...a, symbol: 'KO' } // a different symbol makes a different key
+    expect(eventKey(a)).toBe('2026-10-05|earnings|COST|Quarterly results')
+    expect(eventKey(a)).not.toBe(eventKey(b))
   })
 
   it('shows the counts by kind and both panels', async () => {
