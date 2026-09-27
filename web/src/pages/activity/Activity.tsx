@@ -108,7 +108,10 @@ function SourcesPanel({ sources }: { sources: ActivitySource[] }) {
                 const status = STATUS_ICON[s.status]
                 return (
                   <tr key={s.id}>
-                    <td className="font-medium">{s.label}</td>
+                    <td>
+                      <div className="font-medium">{s.label}</div>
+                      {s.detail && <div className="text-[11px] text-ink3 mt-0.5">{s.detail}</div>}
+                    </td>
                     <td className="text-ink2">{s.kind}</td>
                     <td>
                       <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: status.color }}>

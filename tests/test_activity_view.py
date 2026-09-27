@@ -75,6 +75,24 @@ def test_a_sub_source_matches_its_profile_entry_by_prefix():
     assert v.sources[0].stale_after == "36h"
 
 
+def test_an_exact_id_match_wins_over_a_shorter_prefix_whatever_the_profile_order():
+    """desk-2 is its own configured source, not a sub-source of desk; the exact match must win regardless of which
+    cfg the profile lists first (a prefix match on "desk" must never pre-empt the exact "desk-2" entry)."""
+    desk = SourceCfg(id="desk", kind="rails", stale_after="15m")
+    desk2 = SourceCfg(id="desk-2", kind="rails", stale_after="5m")
+    src = Source(id="desk-2", label="Desk 2", kind="feed", last_success=NOW)
+    for sources in ([desk, desk2], [desk2, desk]):
+        profile = Profile(sources=sources)
+        v = activity_view(Snapshot(generated_at=NOW, sources=[src]), profile, NOW)
+        assert v.sources[0].stale_after == "5m", sources
+
+    # a genuine sub-source of "desk" (no "desk-2" configured) still falls back to the prefix match
+    only_desk = Profile(sources=[desk])
+    extra = Source(id="desk-extra", label="Desk extra", kind="feed", last_success=NOW)
+    v = activity_view(Snapshot(generated_at=NOW, sources=[extra]), only_desk, NOW)
+    assert v.sources[0].stale_after == "15m"
+
+
 def test_a_source_that_never_synced_has_no_age():
     src = Source(id="desk", label="Trading desk", kind="feed", status="error", last_success=None, detail="boom")
     v = activity_view(Snapshot(generated_at=NOW, sources=[src]), Profile(), NOW)

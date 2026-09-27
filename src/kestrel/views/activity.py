@@ -77,11 +77,17 @@ def _sorted_runs(runs: list[Run]) -> list[Run]:
 def _stale_after(source_id: str, profile: Profile) -> str | None:
     """The `stale_after` of the profile source that produced this row. A connector may report several source rows
     from one profile entry (the demo does, to look like a real multi-source picture): those carry the ids
-    `f"{cfg.id}-..."`, so a row matches its cfg by exact id or by that prefix."""
+    `f"{cfg.id}-..."`, so a row matches its cfg by exact id or by that prefix.
+
+    Exact matches are checked over the whole list before any prefix match, whatever order the profile lists its
+    sources in — otherwise a real, separately-configured source id (say "desk-2") could be shadowed by a shorter
+    cfg's prefix ("desk-") if that cfg happens to come first. Among prefix matches (no exact match found), the
+    longest cfg id wins, as the most specific owner of that sub-source."""
     for cfg in profile.sources:
-        if source_id == cfg.id or source_id.startswith(f"{cfg.id}-"):
+        if source_id == cfg.id:
             return cfg.stale_after
-    return None
+    prefixed = [cfg for cfg in profile.sources if source_id.startswith(f"{cfg.id}-")]
+    return max(prefixed, key=lambda cfg: len(cfg.id)).stale_after if prefixed else None
 
 
 def _sources(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> list[ActivitySource]:

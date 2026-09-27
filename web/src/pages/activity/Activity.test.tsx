@@ -29,6 +29,18 @@ describe('Activity', () => {
     expect(screen.getByText('timed out')).toBeTruthy()
   })
 
+  it('shows a source’s detail, so a failed or stale source’s reason is visible', async () => {
+    const withDetail = {
+      ...activityFixture,
+      sources: [{ id: 'desk', label: 'Trading desk', kind: 'feed', status: 'error' as const, last_success: null,
+                 age_text: null, stale_after: '36h', detail: 'connection refused' }],
+    }
+    renderApp('/activity', { activity: withDetail })
+    const heading = await screen.findByRole('heading', { name: 'Sources' })
+    const sourcesPanel = heading.closest('section') as HTMLElement
+    expect(within(sourcesPanel).getByText('connection refused')).toBeTruthy()
+  })
+
   it('says so when there is no activity yet', async () => {
     renderApp('/activity', { activity: { as_of: activityFixture.as_of, days: [], counts: {}, alerts: [], sources: [] } })
     expect(await screen.findByText('No runs recorded yet. They appear once a scheduled task reports in.')).toBeTruthy()
