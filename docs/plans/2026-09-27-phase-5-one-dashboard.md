@@ -35,7 +35,10 @@ style for views, pages and tests — copy their patterns (`views/strategy.py`, `
 - Numbers go through `web/src/lib/format.ts` (`money`, `signedMoney`, `pct`, `num`); dates as the existing pages show
   them.
 - Generated files are regenerated with the command the failing `tests/test_generated_files.py` prints.
-- Commit trailer on every commit: `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
+- Commit trailer on every commit: `Co-Authored-By: Claude Opus 5.5 (1M context)` followed by the Anthropic noreply
+  address in angle brackets, exactly as the session gives it. The address is left out of this file on purpose:
+  `tests/test_hygiene.py` fails on any email address in a tracked file other than an example.com or GitHub noreply
+  one, and this plan is tracked.
 - Checks before every commit: `.venv/Scripts/python.exe -m pytest -q` · `.venv/Scripts/ruff.exe check .` · in `web/`:
   `npm test` · `npm run lint` · `npx tsc -b` (or `npm run build`).
 
