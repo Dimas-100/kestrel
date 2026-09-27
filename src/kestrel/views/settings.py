@@ -48,8 +48,10 @@ class SettingsView(View):
 
 
 def _program_display(command: list[str]) -> str:
-    """The program's file name — never its folder, which can be a machine path — then its arguments, as configured."""
-    name = ntpath.basename(command[0]) or command[0]
+    """The program's file name — never its folder, which can be a machine path — then its arguments, as configured.
+    A path with no file name of its own (it ends in a slash: a folder, not a program) falls back to a plain word
+    that could never be mistaken for a path — never the configured string itself, which would defeat the point."""
+    name = ntpath.basename(command[0]) or "program"
     return " ".join([name, *command[1:]])
 
 

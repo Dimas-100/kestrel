@@ -56,6 +56,25 @@ def test_a_feed_path_source_does_time_out():
     assert row.reads == "/data/feed.json" and row.timeout == 12.0
 
 
+def test_a_command_with_no_file_name_shows_a_word_that_could_never_be_a_path():
+    # a program path that ends in a slash (a folder, not a file) leaves ntpath.basename empty; the fallback must
+    # never be the configured path itself, or the whole "never a machine path" point is defeated
+    cfg = SourceCfg(id="desk", kind="feed", label="Desk", command=["C:/tools/desk/", "-m", "desk.feed"])
+    source = Source(id="desk", label="Desk", kind="feed", status="ok")
+    row = view(cfg, source).sources[0]
+    assert row.reads == "program -m desk.feed"
+    assert "C:/tools/desk" not in row.reads and "C:\\tools" not in row.reads
+
+
+def test_desk_2_matches_its_own_config_not_desks_whichever_order_they_are_in():
+    desk = SourceCfg(id="desk", kind="feed", label="Desk", url="http://127.0.0.1:9000/feed", stale_after="10m")
+    desk_2 = SourceCfg(id="desk-2", kind="feed", label="Desk 2", url="http://127.0.0.1:9001/feed", stale_after="20m")
+    source = Source(id="desk-2", label="Desk 2", kind="feed", status="ok")
+    for sources in ([desk, desk_2], [desk_2, desk]):
+        row = view(None, source, sources=sources).sources[0]
+        assert row.reads == "http://127.0.0.1:9001/feed" and row.stale_after == "20m"
+
+
 def test_the_demo_profile_says_demo_data():
     view_ = settings_view(Snapshot(generated_at=NOW), DEMO_PROFILE, NOW, "demo data")
     assert view_.profile == "demo data"
