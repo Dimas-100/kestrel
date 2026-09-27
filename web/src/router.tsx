@@ -4,6 +4,7 @@ import { Account } from './pages/account/Account'
 import { Accounts } from './pages/accounts/Accounts'
 import { Home } from './pages/home/Home'
 import { Soon } from './pages/Soon'
+import { Settings } from './pages/settings/Settings'
 import { Strategies } from './pages/strategies/Strategies'
 import { Strategy } from './pages/strategy/Strategy'
 import { Shell } from './shell/Shell'
@@ -58,7 +59,7 @@ const routeTree = root.addChildren([
   strategyRoute,
   later('/backtests', 'Backtests', 'What has been tested and what passed — Phase 5.'),
   later('/activity', 'Activity', 'What ran, what is due, what failed — Phase 5.'),
-  later('/settings', 'Settings', 'Your profile and the status of every source — Phase 5.'),
+  createRoute({ getParentRoute: () => root, path: '/settings', component: Settings }),
 ])
 
 export function createAppRouter(history?: RouterHistory) {

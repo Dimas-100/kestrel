@@ -54,7 +54,10 @@ def _serve(args: argparse.Namespace) -> int:
         print("web/dist is not built yet: run `npm ci && npm run build` in web/ (the API works without it)")
     if not args.no_open:
         threading.Timer(1.0, webbrowser.open, args=(url,)).start()
-    uvicorn.run(create_app(profile), host=HOST, port=args.port, log_level="warning")
+    # Settings shows which profile is in use: the file it was loaded from, or "demo data" when there wasn't one
+    # (--demo, or no profile.toml at all) — never the "built-in demo profile" wording `check`'s banner line uses.
+    settings_origin = "demo data" if profile is DEMO_PROFILE else origin
+    uvicorn.run(create_app(profile, profile_origin=settings_origin), host=HOST, port=args.port, log_level="warning")
     return 0
 
 
@@ -87,6 +90,7 @@ def _demo(args: argparse.Namespace) -> int:
     from .connectors import collect
     from .views.accounts import account_view, accounts_view
     from .views.home import home_view
+    from .views.settings import settings_view
     from .views.shell import shell_view
     from .views.strategy import strategies_view, strategy_view
 
@@ -100,6 +104,8 @@ def _demo(args: argparse.Namespace) -> int:
         _emit(strategies_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view == "accounts":
         _emit(accounts_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "settings":
+        _emit(settings_view(snapshot, DEMO_PROFILE, now, "demo data").model_dump_json(indent=2))
     elif args.view in ("strategy", "account"):
         if not args.id:
             example = "rsi2" if args.view == "strategy" else "roth"
@@ -135,8 +141,8 @@ def main(argv: list[str] | None = None) -> int:
         which.add_argument("--profile", type=Path, help="profile file (default: ./profile.toml, else demo data)")
         which.add_argument("--demo", action="store_true", help="show the demo data, whatever profile.toml says")
     demo = sub.add_parser("demo", help="print the demo data as JSON (an example feed payload)")
-    demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy", "accounts", "account"],
-                      default="snapshot")
+    demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy", "accounts", "account",
+                                        "settings"], default="snapshot")
     demo.add_argument("--id", help="the strategy or account the view shows, e.g. rsi2 or roth")
     demo.add_argument("--book", choices=["real", "paper"], default="real", help="the money --view strategy shows")
     demo.add_argument("--now", help="ISO time with offset, for reproducible output")
