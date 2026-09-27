@@ -185,6 +185,13 @@ def test_a_feed_url_must_be_http_or_https(tmp_path, url):
         load_profile(write(tmp_path, FEED + f"url = {value}\n"))
 
 
+def test_a_malformed_bracketed_url_gets_the_friendly_message(tmp_path):
+    with pytest.raises(ProfileError) as error:
+        load_profile(write(tmp_path, FEED + 'url = "http://[::1/feed"\n'))
+    assert "a feed url must start with http:// or https:// and name a host" in str(error.value)
+    assert "[::1" not in str(error.value)  # the malformed url text is never echoed back
+
+
 def test_a_feed_url_cant_carry_a_user_name_or_password(tmp_path):
     for url in ("http://alex:hunter2@127.0.0.1:8000/api/feed", "https://hunter2@example.com/feed"):
         with pytest.raises(ProfileError) as error:

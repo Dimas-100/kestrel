@@ -107,8 +107,12 @@ class SourceCfg(BaseModel):
             raise ValueError('a feed source needs exactly one of url and path, e.g. url = '
                              '"http://127.0.0.1:8000/api/feed" or path = "../desk/feed.json"')
         if url is not None:
-            parts = urlsplit(url) if isinstance(url, str) else None
-            if parts is None or parts.scheme not in ("http", "https") or not parts.hostname:
+            try:
+                parts = urlsplit(url) if isinstance(url, str) else None
+                valid = parts is not None and parts.scheme in ("http", "https") and bool(parts.hostname)
+            except ValueError:  # e.g. urlsplit("http://[::1/feed") raises its own "Invalid IPv6 URL"
+                valid = False
+            if not valid:
                 raise ValueError("a feed url must start with http:// or https:// and name a host")
             if parts.username is not None or parts.password is not None:
                 raise ValueError("a feed url can't carry a user name or password: put the token in an environment "
