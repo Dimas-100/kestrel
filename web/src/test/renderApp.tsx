@@ -3,11 +3,12 @@ import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { render } from '@testing-library/react'
 import { vi } from 'vitest'
 import type {
-  AccountsView, AccountView, CalendarView, HomeView, Money, ShellView, StrategiesView, StrategyView,
+  AccountsView, AccountView, BacktestsView, CalendarView, HomeView, Money, ShellView, StrategiesView, StrategyView,
 } from '../lib/api'
 import { createAppRouter } from '../router'
 import accountJson from './fixtures/account-roth.json'
 import accountsJson from './fixtures/accounts.json'
+import backtestsJson from './fixtures/backtests.json'
 import calendarJson from './fixtures/calendar.json'
 import homeJson from './fixtures/home.json'
 import shellJson from './fixtures/shell.json'
@@ -29,6 +30,7 @@ export const strategyFixture = (strategyJson satisfies Widen<StrategyView>) as u
 export const accountsFixture = (accountsJson satisfies Widen<AccountsView>) as unknown as AccountsView
 export const accountFixture = (accountJson satisfies Widen<AccountView>) as unknown as AccountView
 export const calendarFixture = (calendarJson satisfies Widen<CalendarView>) as unknown as CalendarView
+export const backtestsFixture = (backtestsJson satisfies Widen<BacktestsView>) as unknown as BacktestsView
 
 interface Data {
   home?: HomeView
@@ -38,6 +40,7 @@ interface Data {
   accounts?: AccountsView | null
   account?: { id: string; view: AccountView }[] // answers for GET /api/accounts/{id}
   calendar?: CalendarView | null
+  backtests?: BacktestsView | null
 }
 
 /** The whole app at `path`, with the API answered from fixtures. Any other network call goes to `fetchImpl`, which
@@ -56,6 +59,7 @@ export function renderApp(path = '/', data: Data = {}, fetchImpl?: (url: string)
     client.setQueryData(['account', id], view)
   }
   if (data.calendar !== null) client.setQueryData(['calendar'], data.calendar ?? calendarFixture)
+  if (data.backtests !== null) client.setQueryData(['backtests'], data.backtests ?? backtestsFixture)
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
   const view = render(
     <QueryClientProvider client={client}>

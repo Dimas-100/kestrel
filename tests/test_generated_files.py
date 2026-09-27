@@ -21,6 +21,7 @@ GENERATED = [
     (ROOT / "web" / "src" / "test" / "fixtures" / "account-roth.json",
      ["demo", "--view", "account", "--id", "roth", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "calendar.json", ["demo", "--view", "calendar", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "backtests.json", ["demo", "--view", "backtests", "--now", NOW]),
 ]
 
 

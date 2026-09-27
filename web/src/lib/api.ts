@@ -481,6 +481,49 @@ export interface CalendarView {
   counts: Record<EventKind, number>
 }
 
+// --- the Backtests page (src/kestrel/views/backtests.py) ---------------------------------------------------------
+
+export type BacktestVerdict = 'pass' | 'fail' | 'refused' | 'pending'
+
+export interface Backtest {
+  id: string
+  name: string
+  family: string
+  window: string
+  verdict: BacktestVerdict
+  at: string
+  strategy_id: string | null
+  trades: number | null
+  avg_trade_pct: number | null
+  t_stat: number | null
+  calmar: number | null
+  max_drawdown_pct: number | null
+  note: string
+}
+
+export interface BacktestTotals {
+  results: number
+  candidates: number
+  families: number
+  passes_by_window: Record<string, number>
+}
+
+export interface FamilyRow {
+  family: string
+  candidates: number
+  best: Backtest | null
+  verdicts: Partial<Record<string, BacktestVerdict>> // only the windows this family has a result in
+  last_at: string
+}
+
+export interface BacktestsView {
+  as_of: string
+  totals: BacktestTotals
+  windows: string[]
+  families: FamilyRow[]
+  rows: Backtest[]
+}
+
 /** A non-2xx answer, with its status, so a page can tell "not found" from "the server is down". */
 export class HttpError extends Error {
   readonly status: number
@@ -530,6 +573,12 @@ export function useStrategies() {
 export function useCalendar() {
   return useQuery({
     queryKey: ['calendar'], queryFn: () => getJson<CalendarView>('/api/calendar'), refetchInterval: MINUTE,
+  })
+}
+
+export function useBacktests() {
+  return useQuery({
+    queryKey: ['backtests'], queryFn: () => getJson<BacktestsView>('/api/backtests'), refetchInterval: MINUTE,
   })
 }
 
