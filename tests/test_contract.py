@@ -245,6 +245,25 @@ def test_backtest_verdicts():
         Snapshot.model_validate(minimal(backtests=[{**BACKTEST, "at": "2026-09-10T22:00:00"}]))
 
 
+def test_goal_account_ids_and_measure_round_trip():
+    snap = Snapshot.model_validate(minimal(
+        goals=[{**GOAL, "category": None, "account_ids": ["roth", "brokerage"], "measure": "deposits"}]))
+    assert snap.goals[0].account_ids == ["roth", "brokerage"] and snap.goals[0].measure == "deposits"
+    assert Snapshot.model_validate_json(snap.model_dump_json()) == snap
+    bare = Snapshot.model_validate(minimal(goals=[GOAL])).goals[0]
+    assert bare.account_ids == [] and bare.measure == "value"  # unchanged by default
+
+
+@pytest.mark.parametrize("extra", [
+    {"account_id": "roth", "account_ids": ["brokerage"], "category": None},
+    {"account_id": "roth", "category": "cash", "account_ids": []},
+    {"account_ids": ["roth", "brokerage"], "category": "cash"},
+])
+def test_goal_scope_is_at_most_one_of_account_accounts_or_category(extra):
+    with pytest.raises(ValidationError, match="pick only one"):
+        Snapshot.model_validate(minimal(goals=[{**GOAL, **extra}]))
+
+
 def test_merge_keeps_every_new_block():
     a = Snapshot.model_validate(minimal(**{name: [item] for name, item in NEW_BLOCKS.items()}))
     b = Snapshot.model_validate(minimal(

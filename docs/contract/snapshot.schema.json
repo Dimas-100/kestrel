@@ -550,7 +550,7 @@
       "type": "object"
     },
     "Goal": {
-      "description": "An amount to reach. It measures an account, or a category, or, with neither, net worth; kestrel works out the\ncurrent value and the progress.",
+      "description": "An amount to reach. It measures an account, several accounts, a category, or, with none of those, net worth;\nkestrel works out the current value and the progress.",
       "properties": {
         "id": {
           "title": "Id",
@@ -576,6 +576,14 @@
           "default": null,
           "title": "Account Id"
         },
+        "account_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Account Ids",
+          "type": "array"
+        },
         "category": {
           "anyOf": [
             {
@@ -594,6 +602,15 @@
           ],
           "default": null,
           "title": "Category"
+        },
+        "measure": {
+          "default": "value",
+          "enum": [
+            "value",
+            "deposits"
+          ],
+          "title": "Measure",
+          "type": "string"
         },
         "by": {
           "anyOf": [
