@@ -56,7 +56,7 @@ def test_serve_only_ever_listens_on_this_computer(capsys):
 
 def test_check_fails_when_a_source_cannot_be_read(capsysbinary, tmp_path):
     profile = tmp_path / "p.toml"
-    profile.write_text('[[sources]]\nid = "desk"\nkind = "feed"\n', encoding="utf-8")
+    profile.write_text('[[sources]]\nid = "paper"\nkind = "rails"\n', encoding="utf-8")
     code, out, _ = run(capsysbinary, "check", "--profile", str(profile))
     assert code == 1 and "error" in out
 
@@ -92,7 +92,7 @@ def test_check_lists_each_sources_accounts_but_never_a_balance(capsysbinary, tmp
 
 def test_the_demo_flag_shows_the_demo_whatever_profile_toml_says(capsysbinary, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "profile.toml").write_text('[you]\nname = "Sam"\n[[sources]]\nid = "desk"\nkind = "feed"\n',
+    (tmp_path / "profile.toml").write_text('[you]\nname = "Sam"\n[[sources]]\nid = "paper"\nkind = "rails"\n',
                                            encoding="utf-8")
     code, out, _ = run(capsysbinary, "check")
     assert code == 1 and "hello, Sam" in out

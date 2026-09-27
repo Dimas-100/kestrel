@@ -153,3 +153,66 @@ def test_a_tilde_that_cant_be_expanded_is_a_profile_problem(tmp_path, monkeypatc
     path = write(tmp_path, '[[sources]]\nid = "portfolio"\nkind = "fdc"\npath = "~nosuchuser/warehouse.db"\n')
     with pytest.raises(ProfileError, match=r"sources\.0: can't expand ~ in '~nosuchuser/warehouse\.db'"):
         load_profile(path)
+
+
+FEED = '[[sources]]\nid = "desk"\nkind = "feed"\nlabel = "Trading desk"\n'
+
+
+def test_a_feed_source_takes_a_url_or_a_path_and_its_options(tmp_path):
+    profile, _ = load_profile(write(tmp_path, FEED + 'url = "https://desk.example.com/api/feed"\n'
+                                                     'token_env = "KESTREL_DESK_TOKEN"\ntimeout = 30\n'))
+    source = profile.sources[0]
+    assert (getattr(source, "url"), getattr(source, "token_env"), getattr(source, "timeout")) == (
+        "https://desk.example.com/api/feed", "KESTREL_DESK_TOKEN", 30)
+    profile, _ = load_profile(write(tmp_path, FEED + 'path = "../desk/feed.json"\ntimeout = 2.5\n'))
+    assert Path(getattr(profile.sources[0], "path")) == (tmp_path.parent / "desk" / "feed.json").resolve()
+    with pytest.raises(ProfileError, match="a feed path is a file name in quotes"):
+        load_profile(write(tmp_path, FEED + "path = 5\n"))
+
+
+@pytest.mark.parametrize("lines", ["", 'url = "http://127.0.0.1:8000/api/feed"\npath = "feed.json"\n'],
+                         ids=["neither", "both"])
+def test_a_feed_source_needs_exactly_one_of_url_and_path(tmp_path, lines):
+    with pytest.raises(ProfileError, match=r"sources\.0: Value error, a feed source needs exactly one of url and path"):
+        load_profile(write(tmp_path, FEED + lines))
+
+
+@pytest.mark.parametrize("url", ["ftp://desk.example.com/feed", "file:///srv/feed.json", "127.0.0.1:8000/api/feed",
+                                 "http://", 8000])
+def test_a_feed_url_must_be_http_or_https(tmp_path, url):
+    value = f'"{url}"' if isinstance(url, str) else url
+    with pytest.raises(ProfileError, match="a feed url must start with http:// or https:// and name a host"):
+        load_profile(write(tmp_path, FEED + f"url = {value}\n"))
+
+
+def test_a_feed_url_cant_carry_a_user_name_or_password(tmp_path):
+    for url in ("http://alex:hunter2@127.0.0.1:8000/api/feed", "https://hunter2@example.com/feed"):
+        with pytest.raises(ProfileError) as error:
+            load_profile(write(tmp_path, FEED + f'url = "{url}"\n'))
+        assert "a feed url can't carry a user name or password: put the token in an environment variable" in str(
+            error.value)
+        assert "hunter2" not in str(error.value)  # the secret is never repeated back
+
+
+@pytest.mark.parametrize("name", ["sk_live_4f9a2b7c1d", "Bearer 4F9A2B7C", "", "1TOKEN", 42])
+def test_token_env_is_the_name_of_a_variable_never_the_token(tmp_path, name):
+    value = f'"{name}"' if isinstance(name, str) else name
+    with pytest.raises(ProfileError) as error:
+        load_profile(write(tmp_path, FEED + f'url = "http://127.0.0.1:8000/api/feed"\ntoken_env = {value}\n'))
+    assert "token_env is the name of an environment variable in capitals, such as KESTREL_DESK_TOKEN" in str(
+        error.value)
+    assert not name or str(name) not in str(error.value)
+
+
+def test_a_feed_file_takes_no_token(tmp_path):
+    with pytest.raises(ProfileError, match="token_env goes with a url: a feed file is read without a token"):
+        load_profile(write(tmp_path, FEED + 'path = "feed.json"\ntoken_env = "KESTREL_DESK_TOKEN"\n'))
+
+
+@pytest.mark.parametrize("timeout", ["0", "0.5", "61", '"5"', "true"])
+def test_a_feed_timeout_is_1_to_60_seconds(tmp_path, timeout):
+    with pytest.raises(ProfileError, match="timeout is in seconds, from 1 to 60"):
+        load_profile(write(tmp_path, FEED + f'url = "http://127.0.0.1:8000/api/feed"\ntimeout = {timeout}\n'))
+    for fine in ("1", "60"):
+        profile, _ = load_profile(write(tmp_path, FEED + f'url = "http://127.0.0.1:8000/api/feed"\ntimeout = {fine}\n'))
+        assert getattr(profile.sources[0], "timeout") == int(fine)

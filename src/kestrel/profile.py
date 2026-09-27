@@ -10,6 +10,7 @@ import tomllib
 from datetime import timedelta
 from pathlib import Path
 from typing import Literal, get_args
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -22,6 +23,8 @@ class ProfileError(Exception):
 
 
 _DURATION = re.compile(r"^\s*(\d+)\s*([mhd])\s*$")
+# an environment variable's name in capitals: a token pasted in by mistake almost never looks like one
+_ENV_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
 
 def parse_duration(text: str) -> timedelta:
@@ -91,6 +94,37 @@ class SourceCfg(BaseModel):
         for key, value in categories.items():
             if value not in known:
                 raise ValueError(f"unknown category {value!r} for {key!r} (use {', '.join(known[:-1])} or {known[-1]})")
+        return self
+
+    @model_validator(mode="after")
+    def _feed_shape(self) -> SourceCfg:
+        # a feed's shape is checked when the profile loads, and no message repeats a value back: a url or a
+        # token_env can hold a secret written in the wrong place
+        if self.kind != "feed":
+            return self
+        url, path = getattr(self, "url", None), getattr(self, "path", None)
+        if (url is None) == (path is None):
+            raise ValueError('a feed source needs exactly one of url and path, e.g. url = '
+                             '"http://127.0.0.1:8000/api/feed" or path = "../desk/feed.json"')
+        if url is not None:
+            parts = urlsplit(url) if isinstance(url, str) else None
+            if parts is None or parts.scheme not in ("http", "https") or not parts.hostname:
+                raise ValueError("a feed url must start with http:// or https:// and name a host")
+            if parts.username is not None or parts.password is not None:
+                raise ValueError("a feed url can't carry a user name or password: put the token in an environment "
+                                 "variable and name it in token_env")
+        elif not isinstance(path, str) or not path:
+            raise ValueError('a feed path is a file name in quotes, e.g. path = "../desk/feed.json"')
+        token_env = getattr(self, "token_env", None)
+        if token_env is not None:
+            if path is not None:
+                raise ValueError("token_env goes with a url: a feed file is read without a token")
+            if not isinstance(token_env, str) or not _ENV_NAME.match(token_env):
+                raise ValueError("token_env is the name of an environment variable in capitals, such as "
+                                 "KESTREL_DESK_TOKEN, never the token itself")
+        timeout = getattr(self, "timeout", 5)
+        if isinstance(timeout, bool) or not isinstance(timeout, int | float) or not 1 <= timeout <= 60:
+            raise ValueError("timeout is in seconds, from 1 to 60")
         return self
 
     @property

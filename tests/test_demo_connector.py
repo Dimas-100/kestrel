@@ -57,10 +57,10 @@ def test_runs_follow_the_clock_and_a_weekend_has_none():
 
 
 def test_collect_marks_an_unknown_connector_as_an_error_and_keeps_going():
-    profile = Profile(sources=[SourceCfg(id="demo", kind="demo"), SourceCfg(id="desk", kind="feed", label="Desk")])
+    profile = Profile(sources=[SourceCfg(id="demo", kind="demo"), SourceCfg(id="paper", kind="rails", label="Paper")])
     snap = collect(profile, FRIDAY_EVENING)
-    desk = next(s for s in snap.sources if s.id == "desk")
-    assert desk.status == "error" and "not available" in desk.detail
+    paper = next(s for s in snap.sources if s.id == "paper")
+    assert paper.status == "error" and "not available" in paper.detail
     assert len(snap.accounts) == 4  # the demo still arrived
 
 
