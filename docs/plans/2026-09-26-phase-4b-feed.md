@@ -2933,3 +2933,25 @@ done, each test-first:
   `_dedupe_within` now keeps the first and drops the later item itself, before the cross-source check runs.
 - **H5:** a malformed bracketed URL (`http://[::1/feed`) made `urlsplit` raise its own "Invalid IPv6 URL" past the
   feed shape check instead of the profile's friendly message; that check now catches it.
+
+The final whole-branch review (brief: `.superpowers/sdd/2026-09-26-phase-4b-feed/final-fix-brief.md`) found eight
+more, each fixed test-first:
+
+- **F1:** the watchdog stood down once the headers were in, so a chunk-size or trailer line trickled a byte at a time
+  could block one body read for as long as the feed kept it up; it now stays armed against one deadline, from the
+  start of the fetch until the body is in, and a read it cuts reports the timeout.
+- **F2:** pydantic keeps every problem until a validation returns (1.3 million empty books took 7.5 GB); more than
+  1,000,000 list items, counted at any depth, is refused up front, and the rest is checked in batches of at most
+  2,000 list items, reading only the first three problems and counting the others.
+- **F3:** a payload that passed the contract could still take a page down (Go's zero time, `1e999`, numbers near
+  1e308); `parse_float` refuses a number that isn't finite, and a walk of the Snapshot refuses a date outside
+  1970–2200 or a number over 1e15, naming the field.
+- **M1:** within one source a dropped duplicate's dependents stay with the item kept (the guide said they went), and
+  histories are deduplicated by id, first wins, within a source and across sources.
+- **M2:** a body that breaks off reads "the feed couldn't be read (<class name>)" or "the feed stopped partway",
+  never the exception's text; the size check uses http.client's own Content-Length; a malformed redirect isn't
+  repeated.
+- **M3:** a feed url with a space or a control character, or a port that isn't 1 to 65535, is a profile error that
+  never echoes the url.
+- **M4:** a `token_env` goes only with `https://`, or with `http://` to this computer.
+- **M5:** every request says `User-Agent: kestrel/<version>`.

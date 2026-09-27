@@ -66,7 +66,7 @@ The later source's `detail` gains "ignored duplicate ids: brokerage, rsi2" (ids 
 - **Connector** (`tests/test_feed_connector.py`), with a local HTTP server in a thread and temp files: a valid payload over HTTP and from a file; the token sent when set and the error when its variable is missing; a redirect refused; a timeout; a non-200; more than 20 MB; not JSON; another major version; a validation error listing three problems and "and N more"; the source row replaced (kind, last_success, detail); alerts passed through.
 - **Profile:** `url`/`path` exclusivity, the scheme, the timeout range.
 - **Duplicates** (`tests/test_connectors.py` or similar): account, book and strategy duplicates dropped with their dependents; the note on the later source; profile order wins.
-- **Hygiene and read-only guard:** unchanged, still passing (the connector imports no broker code; `urllib` is the standard library).
+- **Hygiene and read-only guard:** unchanged, still passing (the connector imports no broker code; `http.client` is the standard library).
 
 ## 6. Out of scope
 
