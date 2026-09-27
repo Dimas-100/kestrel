@@ -9,7 +9,7 @@ source's data.
 |---|---|---|
 | `demo` | nothing: a fictional year for "Alex" | Phase 2; the default when there is no `profile.toml` |
 | `fdc` | [financial-data-collector](https://github.com/Dimas-100/financial-data-collector)'s SQLite warehouse | Phase 4a |
-| `feed` | any system that serves the contract as JSON, at a URL or in a file (your trading desk) | Phase 4b |
+| `feed` | any system that serves the contract as JSON: at a URL, in a file, or printed by a command kestrel runs (your trading desk) | Phase 4b; commands Phase 5 |
 | `rails` | a trading-rails install: paper books, the run log, backtests | later |
 
 `kestrel check` tries every source and prints what it found; `kestrel serve --demo` and `kestrel check --demo` show
@@ -132,25 +132,73 @@ timeout = 5                               # optional: seconds, 1 to 60 (default 
 stale_after = "15m"
 ```
 
-A feed is one JSON document in the contract's own format, a Snapshot ([`data-contract.md`](data-contract.md)), served
-at a URL or saved in a file. It is how a system of your own, such as a trading desk, shows its books, strategies,
-trades, runs and alerts (and its accounts, if it has any) without kestrel knowing anything else about it.
+or, with no server at all, a program kestrel runs itself ([below](#a-command)):
 
-- **Exactly one of `url` and `path`.** A `url` starts with `http://` or `https://`. A relative `path` is relative to
-  the folder `profile.toml` is in.
+```toml
+[[sources]]
+id = "desk"
+kind = "feed"
+label = "Trading desk"
+command = ["../desk/.venv/Scripts/python.exe", "-m", "desk.feed_export"]  # the program, then its arguments
+cwd = "../desk"             # optional: the folder it runs in (default: this profile's folder)
+timeout = 30                # optional: seconds, 1 to 120 (default 30)
+refresh = "1m"              # optional: how long one run's output is reused, 5s to 1h (default 1m)
+stale_after = "15m"
+```
+
+A feed is one JSON document in the contract's own format, a Snapshot ([`data-contract.md`](data-contract.md)), served
+at a URL, saved in a file, or printed by a command. It is how a system of your own, such as a trading desk, shows its
+books, strategies, trades, runs and alerts (and its accounts, if it has any) without kestrel knowing anything else
+about it.
+
+- **Exactly one of `url`, `path` and `command`.** A `url` starts with `http://` or `https://`. A relative `path` is
+  relative to the folder `profile.toml` is in.
 - **`token_env`** names an environment variable, in capitals; the token itself never goes in the profile. kestrel
   reads it each time it asks the feed and sends it as `Authorization: Bearer …` to the configured URL and nowhere
   else: it doesn't follow redirects and doesn't use a proxy, and it never prints or logs the token. A token goes only
   over `https://`, or over `http://` to this computer (`127.0.0.1`, `::1` or `localhost`). A URL can't carry a user
   name or password (`http://name:secret@…`); use `token_env`.
 - **Read-only, and asked each time a page loads.** One GET, with `Accept: application/json`,
-  `User-Agent: kestrel/<version>` and no cookies, or one file read. Nothing is cached.
+  `User-Agent: kestrel/<version>` and no cookies, or one file read. Nothing is cached. (A command's output is reused
+  for `refresh`: see below.)
 
-A feed's shape is checked when the profile loads: a source with both `url` and `path` (or neither), another scheme,
-a space or control character in the URL (write a space as `%20`), a port that isn't 1 to 65535, a user name in the
-URL, a `token_env` that isn't a variable's name (or that goes with a `path`, or with plain `http://` to another
-computer), or a `timeout` outside 1 to 60 stops `kestrel check` with `profile problem: …` and exit status 2, before
-any source is read. No message repeats the URL back.
+A feed's shape is checked when the profile loads: a source with more than one of `url`, `path` and `command` (or
+none), another scheme, a space or control character in the URL (write a space as `%20`), a port that isn't 1 to
+65535, a user name in the URL, a `token_env` that isn't a variable's name (or that goes with a `path` or a `command`,
+or with plain `http://` to another computer), a `command` that isn't a list of words in quotes, a `cwd` or `refresh`
+without a `command`, a `refresh` outside 5s to 1h, or a `timeout` outside 1 to 60 (1 to 120 for a command) stops
+`kestrel check` with `profile problem: …` and exit status 2, before any source is read. No message repeats the URL or
+the command's arguments back.
+
+### A command
+
+With `command`, kestrel runs your system's export itself and reads what it prints, so the system needs no web server
+of its own. The program prints the payload (the same JSON a URL would serve) on standard output and exits with 0.
+
+- **The command is a list:** the program, then its arguments, each in quotes. kestrel starts the program directly,
+  never through a shell, so nothing in it is read as a pipe, a wildcard or a second command. A program path with a
+  slash in it (`../desk/.venv/Scripts/python.exe`, or `~/desk/run`) is relative to the folder `profile.toml` is in; a
+  bare name (`python`) is looked up on `PATH`, as a shell would. Arguments are passed exactly as written. On Windows,
+  a batch file (`.bat` or `.cmd`) is refused: Windows runs one through `cmd.exe`, a shell; name the program it runs
+  instead.
+- **Where and how it runs:** in `cwd` (relative to the profile's folder; by default the profile's folder itself), with
+  no standard input, a copy of kestrel's environment (so a program that needs a token reads its own variable; there
+  is no `token_env` here), and on Windows no console window.
+- **Reading it:** standard output, up to 20 MB, as UTF-8, through every check below. Standard error is kept only for
+  the error message: its last line.
+- **Time:** a program still running after `timeout` seconds is stopped, and so is one that prints more than 20 MB;
+  the page doesn't wait for it. Only the program itself is stopped: if it started programs of its own, they may run
+  on.
+- **Reuse:** one source runs its command at most once at a time. A run's result, good or bad, is reused for
+  `refresh`; the first page load after that runs it again, and loads that arrive meanwhile wait for that run instead
+  of starting their own.
+- **Freshness** is still the payload's `generated_at`, so `stale_after` means how old the desk's data may be, however
+  often the command runs.
+- **Safety.** The command is your own configuration, like a shell alias: kestrel runs only what `profile.toml` names,
+  with your permissions, so keep `profile.toml` where only you can change it. kestrel itself stays read-only: the
+  program is a separate process whose code kestrel never imports, and a guard test fails if anything but the command
+  runner starts a program, or if anything passes `shell=True`. No message shows the command's arguments or
+  environment, only the program's file name.
 
 ### What is checked
 
@@ -160,7 +208,8 @@ In this order; the first check that fails is the source's error, and the rest of
 2. **The answer:** status 200 only, at most 20 MB, and all of it inside `timeout`, counted from when kestrel starts
    asking: connecting, the headers and the body, chunked or not, however slowly the feed trickles them. The one step
    `timeout` can't cut short is looking up the host's address, which comes first (a local desk resolves at once). A
-   body that ends before its `Content-Length` is refused. A file must exist and be at most 20 MB.
+   body that ends before its `Content-Length` is refused. A file must exist and be at most 20 MB. A command must
+   start, finish inside `timeout`, exit with 0, and print at most 20 MB.
 3. **JSON:** UTF-8 text (a byte-order mark is fine), not a web page, no `NaN`, `Infinity` or `-Infinity` (not
    valid JSON, though a lenient writer can produce them), and no number too large to use (`1e999`, or an integer
    thousands of digits long).
@@ -210,8 +259,15 @@ Serve it at any address on this computer, or save it to a file, and point a `fee
 | `the feed didn't answer within 5 s` or `the feed was still sending after 5 s` | Make the feed faster, or raise `timeout` (up to 60). |
 | `the feed sent more than 20 MB` or `the feed file is more than 20 MB` | Send less: a feed carries what the pages show, not raw history. |
 | `no feed file at …` | Check `path`: it is relative to the folder `profile.toml` is in. |
+| `no such program: python3` | Check the command's first word: a path is relative to the folder `profile.toml` is in; a bare name must be on `PATH` where kestrel runs. |
+| `the command's folder doesn't exist: …` | Check `cwd`: it is relative to the folder `profile.toml` is in. |
+| `the command couldn't start … (…)` | The first word isn't a program this computer can run (a folder, or a script with no program to run it): name the program, then the script, e.g. `["python", "export.py"]`. |
+| `export.cmd is a batch file, which Windows runs through cmd.exe …` | Name the program the batch file runs, with its arguments, instead. |
+| `the command took longer than 30 s` | Make the export faster, or raise `timeout` (up to 120). |
+| `the command failed (exit 2): …` | The program's own last line on standard error, at most 160 characters. Run the command yourself, in `cwd`, to see the rest. |
+| `the command printed more than 20 MB` | Print less: a feed carries what the pages show, not raw history. |
 | `the feed sent something that isn't JSON: a web page …` | The address answers with a page, often a sign-in page: point `url` at the feed itself. |
-| `the feed sent something that isn't JSON (…)` | Compare the feed with `kestrel demo`'s output. |
+| `the feed sent something that isn't JSON (…)` | Compare the feed with `kestrel demo`'s output. A command prints only the JSON on standard output: send progress lines and warnings to standard error. |
 | `the feed sent NaN, which JSON doesn't allow` (or `Infinity`, `-Infinity`) | Send a number, or leave the field out; standard JSON has no way to write "not a number" or "infinite". |
 | `the feed sent a number too large to use` | A number beyond what a float can hold (`1e999`), or an integer thousands of digits long: send the real value. |
 | `the feed sent more than 1,000,000 items` | Send less: a feed carries what the pages show, not raw history. |

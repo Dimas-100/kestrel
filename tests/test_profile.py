@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -170,10 +171,13 @@ def test_a_feed_source_takes_a_url_or_a_path_and_its_options(tmp_path):
         load_profile(write(tmp_path, FEED + "path = 5\n"))
 
 
-@pytest.mark.parametrize("lines", ["", 'url = "http://127.0.0.1:8000/api/feed"\npath = "feed.json"\n'],
-                         ids=["neither", "both"])
-def test_a_feed_source_needs_exactly_one_of_url_and_path(tmp_path, lines):
-    with pytest.raises(ProfileError, match=r"sources\.0: Value error, a feed source needs exactly one of url and path"):
+@pytest.mark.parametrize("lines", ["", 'url = "http://127.0.0.1:8000/api/feed"\npath = "feed.json"\n',
+                                   'url = "http://127.0.0.1:8000/api/feed"\ncommand = ["python", "-m", "desk.feed"]\n',
+                                   'path = "feed.json"\ncommand = ["python", "-m", "desk.feed"]\n'],
+                         ids=["neither", "url and path", "url and command", "path and command"])
+def test_a_feed_source_needs_exactly_one_of_url_path_and_command(tmp_path, lines):
+    with pytest.raises(ProfileError, match=r"sources\.0: Value error, a feed source needs exactly one of url, path "
+                                           "and command"):
         load_profile(write(tmp_path, FEED + lines))
 
 
@@ -260,3 +264,101 @@ def test_a_feed_timeout_is_1_to_60_seconds(tmp_path, timeout):
     for fine in ("1", "60"):
         profile, _ = load_profile(write(tmp_path, FEED + f'url = "http://127.0.0.1:8000/api/feed"\ntimeout = {fine}\n'))
         assert getattr(profile.sources[0], "timeout") == int(fine)
+
+
+def test_durations_can_be_seconds_too():
+    assert parse_duration("30s") == timedelta(seconds=30)
+    with pytest.raises(ValueError, match=r"use a number and s, m, h or d"):
+        parse_duration("30 sec")
+
+
+COMMAND = 'command = ["python", "-m", "desk.feed"]\n'
+
+
+def test_a_feed_source_can_be_a_command_with_its_options(tmp_path):
+    profile, _ = load_profile(write(tmp_path, FEED + COMMAND + 'cwd = "../desk"\ntimeout = 120\nrefresh = "30s"\n'))
+    source = profile.sources[0]
+    assert getattr(source, "command") == ["python", "-m", "desk.feed"]  # a bare name is looked up on PATH
+    assert Path(getattr(source, "cwd")) == (tmp_path.parent / "desk").resolve()
+    assert (getattr(source, "timeout"), getattr(source, "refresh")) == (120, "30s")
+
+
+def test_a_commands_program_path_and_folder_are_relative_to_the_profile(tmp_path, monkeypatch):
+    home, elsewhere = tmp_path / "kestrel", tmp_path / "elsewhere"
+    home.mkdir()
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    profile, _ = load_profile(write(home, FEED + 'command = ["./tools/x.py", "--out", "./feed.json"]\n'
+                                                 'cwd = "../desk"\n'))
+    source = profile.sources[0]
+    # the program's own path, not where a link points: a virtual environment's python is often a link
+    assert getattr(source, "command") == [os.path.abspath(home / "tools" / "x.py"), "--out", "./feed.json"]
+    assert Path(getattr(source, "cwd")) == (tmp_path / "desk").resolve()
+    profile, _ = load_profile(write(home, FEED + r'command = ["..\\desk\\export.exe"]' + "\n"))  # Windows style
+    assert getattr(profile.sources[0], "command") == [os.path.abspath(home / r"..\desk\export.exe")]
+
+
+def test_a_command_runs_in_the_profiles_folder_unless_it_says_otherwise(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path.parent)
+    profile, _ = load_profile(write(tmp_path, FEED + COMMAND))
+    assert Path(getattr(profile.sources[0], "cwd")) == tmp_path.resolve()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="a link needs extra rights on Windows")
+def test_a_program_that_is_a_link_is_run_by_its_own_path(tmp_path):
+    (tmp_path / "venv").mkdir()
+    (tmp_path / "venv" / "python").symlink_to(Path(sys.executable))
+    profile, _ = load_profile(write(tmp_path, FEED + 'command = ["./venv/python", "-m", "desk.feed"]\n'))
+    assert getattr(profile.sources[0], "command")[0] == str(tmp_path / "venv" / "python")
+
+
+@pytest.mark.parametrize("value", ['"python -m desk.feed"', "[]", '[""]', '["python", ""]', '["python", 5]', "5"],
+                         ids=["a string", "empty", "an empty program", "an empty argument", "a number argument",
+                              "a number"])
+def test_a_command_is_a_list_of_strings(tmp_path, value):
+    with pytest.raises(ProfileError) as error:
+        load_profile(write(tmp_path, FEED + f"command = {value}\n"))
+    assert 'a command is a list: the program, then its arguments, e.g. command = ["python", "-m", "desk.feed"]' in str(
+        error.value)
+
+
+def test_a_command_cant_hold_a_nul_character(tmp_path):
+    with pytest.raises(ProfileError, match="a command can't hold a NUL character"):
+        load_profile(write(tmp_path, FEED + r'command = ["python", "desk\u0000feed"]' + "\n"))  # a TOML escape
+
+
+def test_a_command_takes_no_token(tmp_path):
+    with pytest.raises(ProfileError, match="token_env goes with a url: a command gets kestrel's environment"):
+        load_profile(write(tmp_path, FEED + COMMAND + 'token_env = "KESTREL_DESK_TOKEN"\n'))
+
+
+@pytest.mark.parametrize("value", ['""', "5", '["../desk"]'])
+def test_a_commands_folder_is_a_name_in_quotes(tmp_path, value):
+    with pytest.raises(ProfileError, match='cwd is a folder name in quotes, e.g. cwd = "../desk"'):
+        load_profile(write(tmp_path, FEED + COMMAND + f"cwd = {value}\n"))
+
+
+@pytest.mark.parametrize("refresh", ['"1s"', '"4s"', '"61m"', '"2h"', '"soon"', "60", '"0m"'])
+def test_a_commands_refresh_is_5_seconds_to_an_hour(tmp_path, refresh):
+    with pytest.raises(ProfileError, match="refresh is how long one run's output is reused, from 5s to 1h"):
+        load_profile(write(tmp_path, FEED + COMMAND + f"refresh = {refresh}\n"))
+    for fine in ("5s", "90s", "1h", "60m"):
+        profile, _ = load_profile(write(tmp_path, FEED + COMMAND + f'refresh = "{fine}"\n'))
+        assert getattr(profile.sources[0], "refresh") == fine
+
+
+@pytest.mark.parametrize("timeout", ["0", "0.5", "121", '"30"', "true"])
+def test_a_commands_timeout_is_1_to_120_seconds(tmp_path, timeout):
+    with pytest.raises(ProfileError, match="timeout is in seconds, from 1 to 120"):
+        load_profile(write(tmp_path, FEED + COMMAND + f"timeout = {timeout}\n"))
+    for fine in ("1", "61", "120"):
+        profile, _ = load_profile(write(tmp_path, FEED + COMMAND + f"timeout = {fine}\n"))
+        assert getattr(profile.sources[0], "timeout") == int(fine)
+
+
+@pytest.mark.parametrize("line,message", [('refresh = "1m"\n', "refresh goes with a command"),
+                                          ('cwd = "../desk"\n', "cwd goes with a command")])
+def test_refresh_and_cwd_go_only_with_a_command(tmp_path, line, message):
+    for where in ('url = "http://127.0.0.1:8000/api/feed"\n', 'path = "feed.json"\n'):
+        with pytest.raises(ProfileError, match=message):
+            load_profile(write(tmp_path, FEED + where + line))

@@ -5,6 +5,7 @@ profile.toml is gitignored. It never holds secrets: a source names the environme
 
 from __future__ import annotations
 
+import os
 import re
 import tomllib
 from datetime import timedelta
@@ -22,18 +23,21 @@ class ProfileError(Exception):
     """A profile problem, worded so a person can fix it."""
 
 
-_DURATION = re.compile(r"^\s*(\d+)\s*([mhd])\s*$")
+_DURATION = re.compile(r"^\s*(\d+)\s*([smhd])\s*$")
 # an environment variable's name in capitals: a token pasted in by mistake almost never looks like one
 _ENV_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _THIS_COMPUTER = ("127.0.0.1", "::1", "localhost")  # the hosts a token may go to over plain http
+_COMMAND_EXAMPLE = 'command = ["python", "-m", "desk.feed"]'
+_REFRESH = (timedelta(seconds=5), timedelta(hours=1))  # how long a command's output may be reused
 
 
 def parse_duration(text: str) -> timedelta:
     match = _DURATION.match(text)
     if not match:
-        raise ValueError(f"not a duration: {text!r} (use a number and m, h or d, e.g. 15m, 36h, 2d)")
+        raise ValueError(f"not a duration: {text!r} (use a number and s, m, h or d, e.g. 30s, 15m, 36h, 2d)")
     amount, unit = int(match.group(1)), match.group(2)
-    return {"m": timedelta(minutes=amount), "h": timedelta(hours=amount), "d": timedelta(days=amount)}[unit]
+    return {"s": timedelta(seconds=amount), "m": timedelta(minutes=amount), "h": timedelta(hours=amount),
+            "d": timedelta(days=amount)}[unit]
 
 
 class _Strict(BaseModel):
@@ -103,10 +107,16 @@ class SourceCfg(BaseModel):
         # token_env can hold a secret written in the wrong place
         if self.kind != "feed":
             return self
-        url, path = getattr(self, "url", None), getattr(self, "path", None)
-        if (url is None) == (path is None):
-            raise ValueError('a feed source needs exactly one of url and path, e.g. url = '
-                             '"http://127.0.0.1:8000/api/feed" or path = "../desk/feed.json"')
+        url, path, command = getattr(self, "url", None), getattr(self, "path", None), getattr(self, "command", None)
+        if [url, path, command].count(None) != 2:
+            raise ValueError('a feed source needs exactly one of url, path and command, e.g. url = '
+                             f'"http://127.0.0.1:8000/api/feed", path = "../desk/feed.json" or {_COMMAND_EXAMPLE}')
+        if command is not None:
+            self._command_shape(command)
+            return self
+        for key in ("cwd", "refresh"):
+            if getattr(self, key, None) is not None:
+                raise ValueError(f"{key} goes with a command: a url or a file is read afresh each time a page loads")
         if url is not None:
             if isinstance(url, str) and any(c.isspace() or not c.isprintable() for c in url):
                 # urllib quietly drops tabs and line breaks, and http.client refuses a space with the path and
@@ -137,14 +147,40 @@ class SourceCfg(BaseModel):
             if parts.scheme == "http" and parts.hostname not in _THIS_COMPUTER:
                 # plain http shows the token to anything on the way; to this computer, nothing is on the way
                 raise ValueError("a token goes only over https, or to this computer")
-        timeout = getattr(self, "timeout", 5)
-        if isinstance(timeout, bool) or not isinstance(timeout, int | float) or not 1 <= timeout <= 60:
-            raise ValueError("timeout is in seconds, from 1 to 60")
+        _check_timeout(getattr(self, "timeout", 5), 60)
         return self
+
+    def _command_shape(self, command: object) -> None:
+        # the program and its arguments are the owner's own, like a shell alias: their shape is checked, never what
+        # they say, and no message repeats them (an argument can carry a secret)
+        if not (isinstance(command, list) and command and all(isinstance(a, str) and a for a in command)):
+            raise ValueError(f"a command is a list: the program, then its arguments, e.g. {_COMMAND_EXAMPLE}")
+        if any("\0" in a for a in command):
+            raise ValueError("a command can't hold a NUL character: no program can be given one")
+        if getattr(self, "token_env", None) is not None:
+            raise ValueError("token_env goes with a url: a command gets kestrel's environment, so the program can "
+                             "read the variable itself")
+        cwd = getattr(self, "cwd", None)
+        if cwd is not None and not (isinstance(cwd, str) and cwd):
+            raise ValueError('cwd is a folder name in quotes, e.g. cwd = "../desk"')
+        _check_timeout(getattr(self, "timeout", 30), 120)
+        refresh = getattr(self, "refresh", None)
+        if refresh is not None:
+            try:
+                fits = isinstance(refresh, str) and _REFRESH[0] <= parse_duration(refresh) <= _REFRESH[1]
+            except ValueError:
+                fits = False
+            if not fits:
+                raise ValueError("refresh is how long one run's output is reused, from 5s to 1h (e.g. 30s, 1m, 15m)")
 
     @property
     def stale_delta(self) -> timedelta:
         return parse_duration(self.stale_after)
+
+
+def _check_timeout(timeout: object, most: int) -> None:
+    if isinstance(timeout, bool) or not isinstance(timeout, int | float) or not 1 <= timeout <= most:
+        raise ValueError(f"timeout is in seconds, from 1 to {most}")
 
 
 def _demo_sources() -> list[SourceCfg]:
@@ -173,17 +209,37 @@ class Profile(_Strict):
 DEMO_PROFILE = Profile(you=You(name="Alex"))
 
 
+def _expanded(text: str, where: str) -> Path:
+    try:
+        return Path(text).expanduser()
+    except RuntimeError:  # an unknown ~user, or no home folder to put in place of ~
+        raise ValueError(f"{where}: can't expand ~ in {text!r} (write the full path)") from None
+
+
 def _resolve_paths(raw: dict, folder: Path) -> None:
-    """A `path` in a source may start with ~ (your home folder); a relative one is relative to the profile's own
-    folder, not to wherever kestrel was started."""
+    """A `path` or `cwd` in a source, or a feed command's program when it is a path (it has a slash in it), may start
+    with ~ (your home folder); a relative one is relative to the profile's own folder, not to wherever kestrel was
+    started. A command runs in the profile's folder unless its source names a `cwd`. A program named without a slash
+    (python) is left as it is, to be looked up on PATH."""
     sources = raw.get("sources")
     for i, source in enumerate(sources if isinstance(sources, list) else []):
-        if isinstance(source, dict) and isinstance(source.get("path"), str):
-            try:
-                path = Path(source["path"]).expanduser()
-            except RuntimeError:  # an unknown ~user, or no home folder to put in place of ~
-                raise ValueError(f"sources.{i}: can't expand ~ in {source['path']!r} (write the full path)") from None
-            source["path"] = str(path if path.is_absolute() else (folder / path).resolve())
+        if not isinstance(source, dict):
+            continue
+        for key in ("path", "cwd"):
+            if isinstance(source.get(key), str) and source[key]:
+                path = _expanded(source[key], f"sources.{i}")
+                source[key] = str(path if path.is_absolute() else (folder / path).resolve())
+        command = source.get("command")
+        if source.get("kind") != "feed" or not (isinstance(command, list) and command):
+            continue
+        program = command[0]
+        if isinstance(program, str) and ("/" in program or "\\" in program):
+            path = _expanded(program, f"sources.{i}")
+            # abspath, not resolve: a virtual environment's python is often a link, and only run by its own path does
+            # it find the environment's packages
+            command[0] = str(path if path.is_absolute() else os.path.abspath(folder / path))
+        if "cwd" not in source:
+            source["cwd"] = str(folder.resolve())
 
 
 def load_profile(path: Path | None = None) -> tuple[Profile, str]:
