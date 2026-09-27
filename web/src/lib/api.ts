@@ -367,6 +367,96 @@ export interface StrategyView {
   trades: TradeRow[]
 }
 
+// --- the Books pages (src/kestrel/views/books.py) ---------------------------------------------------------------
+
+export interface BooksRow extends BookRow {
+  spark: number[] // the last 60 values of the book's history, oldest first
+}
+
+export interface BooksView {
+  as_of: string
+  real_value: number
+  paper_value: number
+  rows: BooksRow[] // every book, real first then paper
+}
+
+export interface EquitySeries {
+  dates: string[]
+  values: number[] // growth index (%) since the book's first point
+  benchmark: (number | null)[] // the benchmark over the same dates, indexed from the same start day
+  return_pct: number
+  max_drop_pct: number
+}
+
+export interface DrawdownSeries {
+  dates: string[]
+  values: number[] // percent below the running peak, always <= 0
+}
+
+export interface BookScorecard {
+  trades: number
+  win_rate: number | null
+  avg_trade_pct: number | null
+  avg_win_pct: number | null
+  avg_loss_pct: number | null
+  total_pnl: number
+  best_pct: number | null
+  worst_pct: number | null
+  band_lo: number | null
+  band_hi: number | null
+  verdict: Verdict
+}
+
+export interface BookPosition {
+  symbol: string
+  quantity: number
+  entry_price: number
+  last_price: number
+  stop_price: number | null
+  room_pct: number | null
+  pnl: number
+  pnl_pct: number | null
+  opened: string
+  days: number
+  flag: 'no_stop' | null
+}
+
+export interface BookTrade {
+  book_id: string
+  symbol: string
+  opened: string
+  closed: string
+  entry_price: number
+  exit_price: number
+  quantity: number
+  pnl: number
+  return_pct: number
+  r_multiple: number | null
+  exit_reason: string
+}
+
+export interface BookRun {
+  time: string
+  label: string
+  book_id: string | null
+  status: 'done' | 'due' | 'late' | 'failed' | 'paused'
+  detail: string
+}
+
+export interface BookView {
+  as_of: string
+  book: BooksRow
+  strategy_id: string
+  strategy_name: string
+  account_id: string | null
+  equity: EquitySeries
+  drawdown: DrawdownSeries
+  scorecard: BookScorecard
+  positions: BookPosition[]
+  trades: BookTrade[] // newest first
+  runs: BookRun[] // this book's, next first then newest
+}
+
 // --- the Accounts pages (src/kestrel/views/accounts.py) ---------------------------------------------------------
 
 export type Window = 'ytd' | '1y' | 'all'
@@ -490,6 +580,18 @@ export function useAccount(id: string) {
   return useQuery({
     queryKey: ['account', id],
     queryFn: () => getJson<AccountView>(`/api/accounts/${encodeURIComponent(id)}`),
+    refetchInterval: MINUTE,
+  })
+}
+
+export function useBooks() {
+  return useQuery({ queryKey: ['books'], queryFn: () => getJson<BooksView>('/api/books'), refetchInterval: MINUTE })
+}
+
+export function useBook(id: string) {
+  return useQuery({
+    queryKey: ['book', id],
+    queryFn: () => getJson<BookView>(`/api/books/${encodeURIComponent(id)}`),
     refetchInterval: MINUTE,
   })
 }

@@ -5,7 +5,7 @@ import { Icon, type IconName } from '../../components/Icon'
 import type { PositionRow, TodayRun } from '../../lib/api'
 import { num, shortDate, signedMoney, timeHM } from '../../lib/format'
 
-const RUN_ICON: Record<TodayRun['status'], { name: IconName; color: string }> = {
+export const RUN_ICON: Record<TodayRun['status'], { name: IconName; color: string }> = {
   done: { name: 'checkCircle', color: 'var(--good)' },
   due: { name: 'circle', color: 'var(--ink3)' },
   late: { name: 'clock', color: 'var(--warn)' },

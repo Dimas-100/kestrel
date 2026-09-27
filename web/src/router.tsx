@@ -2,6 +2,8 @@ import { createRootRoute, createRoute, createRouter, type RouterHistory, useNavi
 import type { Money } from './lib/api'
 import { Account } from './pages/account/Account'
 import { Accounts } from './pages/accounts/Accounts'
+import { Book } from './pages/book/Book'
+import { Books } from './pages/books/Books'
 import { Home } from './pages/home/Home'
 import { Soon } from './pages/Soon'
 import { Strategies } from './pages/strategies/Strategies'
@@ -32,6 +34,17 @@ function AccountRoute() {
   return <Account key={accountId} id={accountId} /> // another account starts on its own default window
 }
 
+const bookRoute = createRoute({
+  getParentRoute: () => root,
+  path: '/books/$bookId',
+  component: BookRoute,
+})
+
+function BookRoute() {
+  const { bookId } = bookRoute.useParams()
+  return <Book key={bookId} id={bookId} />
+}
+
 const strategyRoute = createRoute({
   getParentRoute: () => root,
   path: '/strategies/$strategyId',
@@ -53,7 +66,8 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/', component: Home }),
   createRoute({ getParentRoute: () => root, path: '/accounts', component: Accounts }),
   accountRoute,
-  later('/books', 'Books', 'Each book, real or paper: equity against its benchmark, drawdown, trades — Phase 3.'),
+  createRoute({ getParentRoute: () => root, path: '/books', component: Books }),
+  bookRoute,
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
   strategyRoute,
   later('/backtests', 'Backtests', 'What has been tested and what passed — Phase 5.'),
