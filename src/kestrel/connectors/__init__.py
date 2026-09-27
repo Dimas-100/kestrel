@@ -43,8 +43,55 @@ def _with_staleness(sources: list[Source], cfg: SourceCfg, now: datetime) -> lis
     return out
 
 
+def _noted(sources: list[Source], ignored: list[str]) -> list[Source]:
+    """The part's first source row, its detail naming the ids it lost (at most five), then the rest unchanged."""
+    if not sources:
+        return sources
+    names = ", ".join(ignored[:5]) + (f", and {len(ignored) - 5} more" if len(ignored) > 5 else "")
+    first = sources[0]
+    detail = " · ".join(text for text in (first.detail, f"ignored duplicate ids: {names}") if text)
+    return [first.model_copy(update={"detail": detail}), *sources[1:]]
+
+
+def _without_duplicates(parts: list[Snapshot]) -> list[Snapshot]:
+    """When a later source uses an account, book or strategy id an earlier one already has, the earlier one's item
+    stays and the later one's goes, with everything that hangs off it: an account's holdings and history; a book's
+    history, positions, trades, trade charts and runs. Books keep pointing at the first strategy of their id."""
+    seen_accounts: set[str] = set()
+    seen_books: set[str] = set()
+    seen_strategies: set[str] = set()
+    out = []
+    for part in parts:
+        accounts = {a.id for a in part.accounts} & seen_accounts
+        books = {b.id for b in part.books} & seen_books
+        strategies = {s.id for s in part.strategies} & seen_strategies
+        seen_accounts |= {a.id for a in part.accounts}
+        seen_books |= {b.id for b in part.books}
+        seen_strategies |= {s.id for s in part.strategies}
+        if not (accounts or books or strategies):
+            out.append(part)
+            continue
+        ignored = [*(a.id for a in part.accounts if a.id in accounts), *(b.id for b in part.books if b.id in books),
+                   *(s.id for s in part.strategies if s.id in strategies)]
+        out.append(part.model_copy(update={
+            "accounts": [a for a in part.accounts if a.id not in accounts],
+            "holdings": [h for h in part.holdings if h.account_id not in accounts],
+            "account_history": [s for s in part.account_history if s.id not in accounts],
+            "books": [b for b in part.books if b.id not in books],
+            "book_history": [s for s in part.book_history if s.id not in books],
+            "positions": [p for p in part.positions if p.book_id not in books],
+            "trades": [t for t in part.trades if t.book_id not in books],
+            "trade_charts": [c for c in part.trade_charts if c.book_id not in books],
+            "runs": [r for r in part.runs if r.book_id not in books],
+            "strategies": [s for s in part.strategies if s.id not in strategies],
+            "sources": _noted(list(part.sources), list(dict.fromkeys(ignored))),  # an id named once, in order
+        }))
+    return out
+
+
 def collect(profile: Profile, now: datetime) -> Snapshot:
-    """Ask every source for its snapshot. One broken source shows as an error; it never takes the page down."""
+    """Ask every source for its snapshot. One broken source shows as an error; it never takes the page down. When
+    two sources use the same id, the one earlier in the profile wins (`_without_duplicates`)."""
     parts: list[Snapshot] = []
     failed: list[Source] = []
     for cfg in profile.sources:
@@ -55,5 +102,5 @@ def collect(profile: Profile, now: datetime) -> Snapshot:
                                  detail=str(exc)[:DETAIL_LIMIT]))
             continue
         parts.append(part.model_copy(update={"sources": _with_staleness(list(part.sources), cfg, now)}))
-    snapshot = merge(parts, generated_at=now)
+    snapshot = merge(_without_duplicates(parts), generated_at=now)
     return snapshot.model_copy(update={"sources": [*snapshot.sources, *failed]})

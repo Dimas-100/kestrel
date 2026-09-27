@@ -1,0 +1,120 @@
+"""collect() and ids that two sources share: the first source in the profile keeps its item."""
+
+import datetime as dt
+
+from feed_fixture import desk, feed_file
+
+from kestrel.cli import main
+from kestrel.connectors import collect
+from kestrel.profile import DEMO_PROFILE, Profile, SourceCfg
+
+NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
+DAY = {"date": "2026-09-25", "value": 100.0}
+
+
+def with_account(payload: dict) -> dict:
+    """The desk's payload plus a brokerage account with one holding and a day of history."""
+    return {**payload,
+            "accounts": [{"id": "brokerage", "name": "Brokerage", "category": "long_term", "value": 5000.0,
+                          "as_of": "2026-09-25T20:00:00+00:00"}],
+            "holdings": [{"account_id": "brokerage", "symbol": "VTI", "quantity": 10, "price": 300.0,
+                          "value": 3000.0}],
+            "account_history": [{"id": "brokerage", "points": [{"date": "2026-09-25", "value": 5000.0}]}]}
+
+
+def household() -> dict:
+    """A second fictional source that reuses the desk's account, book and strategy ids, and has its own too."""
+    return desk(
+        accounts=[{"id": "brokerage", "name": "Joint brokerage", "category": "long_term", "value": 9999.0,
+                   "as_of": "2026-09-25T20:00:00+00:00"},
+                  {"id": "hsa", "name": "HSA", "category": "long_term", "value": 1200.0,
+                   "as_of": "2026-09-25T20:00:00+00:00"}],
+        holdings=[{"account_id": "brokerage", "symbol": "BND", "quantity": 1, "price": 72.0, "value": 72.0},
+                  {"account_id": "hsa", "symbol": "VXUS", "quantity": 2, "price": 70.0, "value": 140.0}],
+        account_history=[{"id": "brokerage", "points": [DAY]}, {"id": "hsa", "points": [DAY]}],
+        books=[{"id": "swing-real", "name": "Other swing", "money": "real", "strategy_id": "swing",
+                "status": "paused", "started": "2025-01-02", "value": 1.0},
+               {"id": "ibs-paper", "name": "IBS (paper)", "money": "paper", "strategy_id": "ibs",
+                "status": "running", "started": "2026-02-02", "value": 3200.0}],
+        book_history=[{"id": "swing-real", "points": [DAY]}, {"id": "ibs-paper", "points": [DAY]}],
+        positions=[{"book_id": "swing-real", "symbol": "XOM", "quantity": 1, "entry_price": 110.0,
+                    "last_price": 111.0, "opened": "2026-09-23"}],
+        trades=[{"book_id": "swing-real", "symbol": "CVX", "opened": "2026-09-01", "closed": "2026-09-02",
+                 "entry_price": 150.0, "exit_price": 151.0, "quantity": 1, "pnl": 1.0, "return_pct": 0.67},
+                {"book_id": "ibs-paper", "symbol": "SPY", "opened": "2026-09-21", "closed": "2026-09-22",
+                 "entry_price": 650.0, "exit_price": 653.0, "quantity": 2, "pnl": 6.0, "return_pct": 0.46}],
+        trade_charts=[{"book_id": "swing-real", "symbol": "CVX", "opened": "2026-09-01",
+                       "bars": [{"date": "2026-09-01", "open": 150.0, "high": 151.5, "low": 149.2, "close": 150.4}]}],
+        strategies=[{"id": "swing", "name": "Someone else's swing"}, {"id": "ibs", "name": "Weak close"}],
+        runs=[{"time": "2026-09-25T13:31:00+00:00", "label": "Other morning", "book_id": "swing-real",
+               "status": "done"},
+              {"time": "2026-09-25T19:56:00+00:00", "label": "Close entries", "book_id": "ibs-paper",
+               "status": "done"},
+              {"time": "2026-09-25T23:00:00+00:00", "label": "Backup", "status": "due"}],
+        alerts=[{"level": "note", "title": "IBS book opened a trade"}],
+    )
+
+
+def profile_of(*paths) -> Profile:
+    return Profile(sources=[SourceCfg(id=path.stem, kind="feed", label=path.stem.title(), path=str(path))
+                            for path in paths])
+
+
+def test_a_later_sources_duplicate_ids_are_dropped_with_everything_that_hangs_off_them(tmp_path):
+    first = feed_file(tmp_path, with_account(desk()), "desk.json")
+    later = feed_file(tmp_path, household(), "household.json")
+    snap = collect(profile_of(first, later), NOW)
+    assert [(a.id, a.name) for a in snap.accounts] == [("brokerage", "Brokerage"), ("hsa", "HSA")]
+    assert [h.symbol for h in snap.holdings] == ["VTI", "VXUS"]
+    assert [(s.id, s.points[0].value) for s in snap.account_history] == [("brokerage", 5000.0), ("hsa", 100.0)]
+    assert [(b.id, b.name) for b in snap.books] == [("swing-real", "Swing"), ("swing-paper", "Swing (paper)"),
+                                                   ("ibs-paper", "IBS (paper)")]
+    assert [(s.id, s.points[-1].value) for s in snap.book_history] == [("swing-real", 2150.0), ("ibs-paper", 100.0)]
+    assert [p.symbol for p in snap.positions] == ["KO"]
+    assert [t.symbol for t in snap.trades] == ["PG", "JNJ", "SPY"]
+    assert snap.trade_charts == []
+    assert [(s.id, s.name) for s in snap.strategies] == [("swing", "Swing pullbacks"), ("ibs", "Weak close")]
+    assert [r.label for r in snap.runs] == ["Evening run", "Close entries", "Backup"]  # a run with no book stays
+    assert [a.title for a in snap.alerts] == ["KO is near its stop", "IBS book opened a trade"]
+    assert {s.id: s.detail for s in snap.sources} == {
+        "desk": "1 account · 2 books · 1 strategy · 2 trades",
+        "household": "2 accounts · 2 books · 2 strategies · 2 trades · ignored duplicate ids: brokerage, swing-real, "
+                     "swing",
+    }
+
+
+def test_profile_order_decides_which_source_is_first(tmp_path):
+    desk_path = feed_file(tmp_path, with_account(desk()), "desk.json")
+    household_path = feed_file(tmp_path, household(), "household.json")
+    snap = collect(profile_of(household_path, desk_path), NOW)
+    assert [(a.id, a.name) for a in snap.accounts] == [("brokerage", "Joint brokerage"), ("hsa", "HSA")]
+    assert [h.symbol for h in snap.holdings] == ["BND", "VXUS"]
+    assert [(b.id, b.name) for b in snap.books] == [("swing-real", "Other swing"), ("ibs-paper", "IBS (paper)"),
+                                                   ("swing-paper", "Swing (paper)")]
+    assert [p.symbol for p in snap.positions] == ["XOM"]
+    assert [t.symbol for t in snap.trades] == ["CVX", "SPY", "JNJ"]
+    assert [c.symbol for c in snap.trade_charts] == ["CVX"]
+    assert [r.label for r in snap.runs] == ["Other morning", "Close entries", "Backup"]
+    assert [s.name for s in snap.strategies] == ["Someone else's swing", "Weak close"]
+    assert {s.id: s.detail for s in snap.sources}["desk"] == (
+        "1 account · 2 books · 1 strategy · 2 trades · ignored duplicate ids: brokerage, swing-real, swing")
+
+
+def test_the_demo_left_in_next_to_a_feed_of_the_same_data_counts_once(tmp_path, capsysbinary):
+    main(["demo", "--now", NOW.isoformat()])
+    path = tmp_path / "copy.json"
+    path.write_bytes(capsysbinary.readouterr().out)
+    demo = collect(DEMO_PROFILE, NOW)
+    feed = SourceCfg(id="copy", kind="feed", label="Copy", path=str(path))
+    snap = collect(Profile(sources=[*DEMO_PROFILE.sources, feed]), NOW)
+    for field in ("accounts", "holdings", "account_history", "books", "book_history", "positions", "trades",
+                  "trade_charts", "strategies"):
+        assert getattr(snap, field) == getattr(demo, field), field
+    assert len(snap.runs) == len(demo.runs) + 2  # the two runs that belong to no book
+    assert snap.sources[-1].detail == ("4 accounts · 5 books · 4 strategies · 136 trades · ignored duplicate ids: "
+                                       "roth, brokerage, trading, savings, rsi2-real, and 8 more")
+    reversed_order = collect(Profile(sources=[feed, *DEMO_PROFILE.sources]), NOW)
+    assert [(s.id, s.detail) for s in reversed_order.sources][:2] == [
+        ("copy", "4 accounts · 5 books · 4 strategies · 136 trades"),
+        ("demo-portfolio", "ignored duplicate ids: roth, brokerage, trading, savings, rsi2-real, and 8 more"),
+    ]  # the note goes on the later source's first row
