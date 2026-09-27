@@ -1,4 +1,5 @@
-"""A small fictional feed payload for the feed connector's tests: a trading desk with two books on one strategy.
+"""A small fictional feed payload for the feed connector's tests (a trading desk with two books on one strategy),
+and a feed server on 127.0.0.1 in a thread, so no test ever needs the network.
 
 Every name and number here is made up.
 """
@@ -6,7 +7,12 @@ Every name and number here is made up.
 from __future__ import annotations
 
 import json
+import threading
+from collections.abc import Callable
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+
+Reply = Callable[[BaseHTTPRequestHandler], None]
 
 MADE = "2026-09-25T21:05:00+00:00"  # three minutes before the tests' NOW
 
@@ -57,3 +63,74 @@ def feed_file(folder: Path, payload: dict | None = None, name: str = "feed.json"
     path = folder / name
     path.write_text(json.dumps(desk() if payload is None else payload), encoding="utf-8")
     return path
+
+
+class FeedServer:
+    """A feed answered from a thread: `reply(handler)` writes each answer; `requests` keeps each request's method,
+    path and headers (names in lower case)."""
+
+    def __init__(self, reply: Reply) -> None:
+        self.requests: list[dict[str, str]] = []
+        feed = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                feed.requests.append({"method": self.command, "path": self.path,
+                                      **{name.lower(): value for name, value in self.headers.items()}})
+                try:
+                    reply(self)
+                except ConnectionError:
+                    pass  # kestrel hung up first, as it should on a slow or huge answer
+
+            def log_message(self, *args) -> None:
+                pass  # keep the test output quiet
+
+        self.httpd = HTTPServer(("127.0.0.1", 0), Handler)
+        self.httpd.stop = threading.Event()  # set when the test ends, so a reply that waits returns
+        self.url = f"http://127.0.0.1:{self.httpd.server_port}"
+        # a short poll, so closing the server at the end of a test doesn't wait half a second
+        self.thread = threading.Thread(target=self.httpd.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True)
+        self.thread.start()
+
+    def close(self) -> None:
+        self.httpd.stop.set()
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+
+def answer(body: bytes | dict | list, status: int = 200, headers: dict[str, str] | None = None,
+           length: bool = True) -> Reply:
+    """One answer: data goes as JSON; `length=False` leaves out Content-Length, so the body ends when the connection
+    closes."""
+    data = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
+
+    def reply(handler: BaseHTTPRequestHandler) -> None:
+        handler.send_response(status)
+        for name, value in (headers or {"Content-Type": "application/json"}).items():
+            handler.send_header(name, value)
+        if length:
+            handler.send_header("Content-Length", str(len(data)))
+        handler.end_headers()
+        handler.wfile.write(data)
+
+    return reply
+
+
+def hang(handler: BaseHTTPRequestHandler) -> None:
+    """Never answer (until the test ends)."""
+    handler.server.stop.wait(10)
+
+
+def trickle(handler: BaseHTTPRequestHandler) -> None:
+    """Answer at once, then send the body a byte every 50 ms, forever: each read on the socket gets something."""
+    handler.send_response(200)
+    handler.send_header("Content-Type", "application/json")
+    handler.end_headers()
+    handler.wfile.write(f'{{"contract_version": "1", "generated_at": "{MADE}", "note": "'.encode("utf-8"))
+    while not handler.server.stop.wait(0.05):
+        handler.wfile.write(b"z")
+
+
+def hang_up(handler: BaseHTTPRequestHandler) -> None:
+    """Close the connection without a word."""
+    handler.close_connection = True

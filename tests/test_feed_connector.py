@@ -1,16 +1,35 @@
 import datetime as dt
 import json
+import logging
 import os
+import time
 
 import pytest
-from feed_fixture import MADE, desk, feed_file
+from feed_fixture import MADE, FeedServer, answer, desk, feed_file, hang, hang_up, trickle
 
 from kestrel.cli import main
+from kestrel.connectors import build, collect
 from kestrel.connectors.base import ConnectorError
 from kestrel.connectors.feed import MAX_BYTES, FeedConnector
 from kestrel.contract import Snapshot
+from kestrel.profile import Profile, SourceCfg, load_profile
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
+TOKEN = "kst_9f8e7d6c5b4a3210"  # a made-up token
+
+
+@pytest.fixture
+def serve():
+    servers = []
+
+    def start(reply):
+        server = FeedServer(reply)
+        servers.append(server)
+        return server
+
+    yield start
+    for server in servers:
+        server.close()
 
 
 def from_file(path):
@@ -147,3 +166,165 @@ def test_a_payload_from_the_future_is_refused_beyond_five_minutes_of_clock_drift
     assert refused(feed_file(tmp_path, ahead)) == (
         "the feed's generated_at is 4 hours ahead of this computer's clock: "
         "check the clock and time zone where the feed is made")
+
+
+def over_http(url, **options):
+    return FeedConnector("desk", "Trading desk", url=url, **options).snapshot(NOW)
+
+
+def refused_over_http(url, **options) -> str:
+    with pytest.raises(ConnectorError) as error:
+        over_http(url, **options)
+    return str(error.value)
+
+
+def test_a_valid_payload_over_http_is_one_plain_get_and_matches_the_file(tmp_path, serve):
+    server = serve(answer(desk()))
+    snap = over_http(server.url + "/api/feed")
+    assert snap.model_dump() == from_file(feed_file(tmp_path)).model_dump()
+    [request] = server.requests
+    assert (request["method"], request["path"], request["accept"]) == ("GET", "/api/feed", "application/json")
+    assert "authorization" not in request and "cookie" not in request
+
+
+def test_the_token_goes_in_a_bearer_header_when_token_env_is_set(serve, monkeypatch):
+    monkeypatch.setenv("KESTREL_TEST_TOKEN", f"  {TOKEN}\n")  # the spaces and newline a .env line can leave
+    server = serve(answer(desk()))
+    over_http(server.url, token_env="KESTREL_TEST_TOKEN")
+    assert server.requests[0]["authorization"] == f"Bearer {TOKEN}"
+
+
+def test_a_missing_or_empty_token_variable_is_an_error_that_names_it(serve, monkeypatch):
+    server = serve(answer(desk()))
+    monkeypatch.delenv("KESTREL_TEST_TOKEN", raising=False)
+    assert refused_over_http(server.url, token_env="KESTREL_TEST_TOKEN") == (
+        "set KESTREL_TEST_TOKEN in the environment (token_env)")
+    monkeypatch.setenv("KESTREL_TEST_TOKEN", "   ")
+    assert refused_over_http(server.url, token_env="KESTREL_TEST_TOKEN") == (
+        "set KESTREL_TEST_TOKEN in the environment (token_env)")
+    assert server.requests == []  # nothing is sent without it
+
+
+def test_a_token_a_header_cant_carry_is_refused_without_showing_it(serve, monkeypatch):
+    monkeypatch.setenv("KESTREL_TEST_TOKEN", f"{TOKEN}\r\nX-Extra: 1")
+    server = serve(answer(desk()))
+    message = refused_over_http(server.url, token_env="KESTREL_TEST_TOKEN")
+    assert message == ("the token in KESTREL_TEST_TOKEN has a character a header can't carry "
+                       "(a space or a line break?)")
+    assert server.requests == []
+
+
+@pytest.mark.parametrize("code", [301, 302, 303, 307, 308])
+def test_a_redirect_is_refused_and_the_token_never_follows_it(serve, monkeypatch, code):
+    monkeypatch.setenv("KESTREL_TEST_TOKEN", TOKEN)
+    elsewhere = serve(answer(desk()))
+    server = serve(answer(b"", status=code, headers={"Location": f"{elsewhere.url}/login?session=a1b2c3"}))
+    message = refused_over_http(server.url + "/api/feed", token_env="KESTREL_TEST_TOKEN")
+    assert message == (f"the feed redirected to {elsewhere.url}/login; "
+                       "kestrel doesn't follow redirects (set url to the feed's own address)")
+    assert elsewhere.requests == []
+
+
+def test_a_redirect_to_a_path_is_named_in_full(serve):
+    server = serve(answer(b"", status=302, headers={"Location": "/sign-in"}))
+    assert refused_over_http(server.url + "/api/feed").startswith(f"the feed redirected to {server.url}/sign-in; ")
+
+
+@pytest.mark.parametrize("code", [503, 404, 401, 204])
+def test_a_status_other_than_200_is_an_error(serve, code):
+    server = serve(answer(b"" if code == 204 else b'{"error": "no"}', status=code))
+    assert refused_over_http(server.url) == f"the feed answered {code}"
+
+
+def test_a_feed_that_doesnt_answer_in_time_is_cut_off(serve):
+    server = serve(hang)
+    started = time.monotonic()
+    assert refused_over_http(server.url, timeout=0.3) == "the feed didn't answer within 0.3 s"
+    assert time.monotonic() - started < 2
+
+
+def test_a_slow_trickle_is_cut_off_at_the_timeout(serve):
+    server = serve(trickle)
+    started = time.monotonic()
+    assert refused_over_http(server.url, timeout=0.5) == "the feed was still sending after 0.5 s"
+    assert time.monotonic() - started < 2  # a byte every 50 ms never trips a per-read timeout
+
+
+def test_more_than_20_mb_in_one_line_is_refused_whether_or_not_the_feed_says_so_up_front(serve):
+    head = f'{{"contract_version": "1", "generated_at": "{MADE}", "note": "'.encode("utf-8")
+    exactly = head + b"z" * (MAX_BYTES - len(head) - 2) + b'"}'
+    assert len(over_http(serve(answer(exactly, length=False)).url).books) == 0
+    one_line = exactly[:-2] + b'z"}'  # one byte over, no newline anywhere, no Content-Length
+    assert refused_over_http(serve(answer(one_line, length=False)).url) == "the feed sent more than 20 MB"
+    declared = serve(answer(b"{}", headers={"Content-Length": str(MAX_BYTES + 1)}, length=False))
+    assert refused_over_http(declared.url) == "the feed sent more than 20 MB"
+
+
+def test_a_sign_in_page_over_http_is_named(serve):
+    page = b"<!doctype html><html><body><h1>Sign in</h1></body></html>"
+    server = serve(answer(page, headers={"Content-Type": "text/html"}))
+    assert refused_over_http(server.url) == ("the feed sent something that isn't JSON: "
+                                             "a web page (a sign-in page, or the wrong address?)")
+
+
+def test_a_feed_that_hangs_up_without_answering_is_an_error(serve):
+    server = serve(hang_up)
+    assert refused_over_http(server.url) == (
+        "the feed couldn't be read (Remote end closed connection without response)")
+
+
+def test_no_proxy_is_used_so_the_token_goes_only_to_the_feed(serve, monkeypatch):
+    proxy = serve(answer(desk(books=[])))
+    for name in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
+        monkeypatch.setenv(name, proxy.url)
+    for name in ("NO_PROXY", "no_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("KESTREL_TEST_TOKEN", TOKEN)
+    server = serve(answer(desk()))
+    assert len(over_http(server.url, token_env="KESTREL_TEST_TOKEN").books) == 2
+    assert proxy.requests == [] and len(server.requests) == 1
+
+
+def test_the_token_never_shows_in_an_error_or_a_log(serve, monkeypatch, caplog, capsys):
+    monkeypatch.setenv("KESTREL_TEST_TOKEN", TOKEN)
+    caplog.set_level(logging.DEBUG)
+    replies = [answer(b"", status=503), answer(b"", status=302, headers={"Location": "/login"}),
+               answer(b"<html></html>"), hang_up, answer(desk(contract_version="2")), answer(desk(books=[{}]))]
+    messages = [refused_over_http(serve(reply).url, token_env="KESTREL_TEST_TOKEN") for reply in replies]
+    out, err = capsys.readouterr()
+    assert len(messages) == 6 and not [m for m in messages if TOKEN in m]
+    assert TOKEN not in caplog.text and TOKEN not in out + err
+
+
+def test_a_feed_url_in_a_profile_is_read_through_collect_with_its_options(serve, monkeypatch):
+    monkeypatch.setenv("KESTREL_TEST_TOKEN", TOKEN)
+    server = serve(answer(desk()))
+    profile = Profile(sources=[SourceCfg(id="desk", kind="feed", label="Trading desk", url=server.url,
+                                         token_env="KESTREL_TEST_TOKEN", timeout=30, stale_after="15m")])
+    assert build(profile.sources[0], profile).timeout == 30.0
+    assert build(SourceCfg(id="desk", kind="feed", url=server.url), profile).timeout == 5.0
+    snap = collect(profile, NOW)
+    assert [(s.id, s.label, s.kind, s.status, s.detail) for s in snap.sources] == [
+        ("desk", "Trading desk", "feed", "ok", "2 books · 1 strategy · 2 trades")]
+    later = collect(profile, NOW + dt.timedelta(minutes=20))  # the payload is 23 minutes old by then
+    assert later.sources[0].status == "stale"
+    assert server.requests[0]["authorization"] == f"Bearer {TOKEN}"
+
+
+def test_a_feed_file_is_found_from_the_profiles_folder_and_a_broken_feed_is_a_red_row(tmp_path, monkeypatch):
+    (tmp_path / "desk").mkdir()
+    feed_file(tmp_path / "desk")
+    (tmp_path / "kestrel").mkdir()
+    (tmp_path / "kestrel" / "profile.toml").write_text(
+        '[[sources]]\nid = "demo"\nkind = "demo"\n'
+        '[[sources]]\nid = "desk"\nkind = "feed"\nlabel = "Trading desk"\npath = "../desk/feed.json"\n'
+        '[[sources]]\nid = "night"\nkind = "feed"\nlabel = "Night desk"\nurl = "http://127.0.0.1:9/feed"\n'
+        'token_env = "KESTREL_NIGHT_TOKEN"\n', encoding="utf-8")
+    monkeypatch.delenv("KESTREL_NIGHT_TOKEN", raising=False)
+    monkeypatch.chdir(tmp_path / "desk")  # anywhere but the profile's folder
+    profile, _ = load_profile(tmp_path / "kestrel" / "profile.toml")
+    snap = collect(profile, NOW)
+    rows = {s.id: (s.status, s.detail) for s in snap.sources}
+    assert rows["desk"] == ("ok", "2 books · 1 strategy · 2 trades")
+    assert rows["night"] == ("error", "set KESTREL_NIGHT_TOKEN in the environment (token_env)")
+    assert len(snap.accounts) == 4 and len(snap.books) == 7  # the demo's and the desk's

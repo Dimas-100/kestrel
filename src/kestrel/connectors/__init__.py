@@ -7,9 +7,11 @@ from pathlib import Path
 
 from ..contract import Snapshot, Source, merge
 from ..profile import Profile, SourceCfg
-from .base import Connector, ConnectorError, ConnectorUnavailable
+from .base import DETAIL_LIMIT, Connector, ConnectorError, ConnectorUnavailable
 from .demo import DemoConnector
 from .fdc import FdcConnector
+from .feed import TIMEOUT as FEED_TIMEOUT
+from .feed import FeedConnector
 
 __all__ = ["Connector", "ConnectorError", "ConnectorUnavailable", "build", "collect"]
 
@@ -24,6 +26,12 @@ def build(cfg: SourceCfg, profile: Profile) -> Connector:
                                  'e.g. path = "../financial-data-collector/data/warehouse.db"')
         return FdcConnector(cfg.id, cfg.label or cfg.id, Path(path), categories=getattr(cfg, "categories", None),
                             benchmark=profile.benchmark)
+    if cfg.kind == "feed":
+        # the profile has already checked the shape: exactly one of url and path, the scheme, token_env, timeout
+        path = getattr(cfg, "path", None)
+        return FeedConnector(cfg.id, cfg.label or cfg.id, url=getattr(cfg, "url", None),
+                             path=Path(path) if path is not None else None, token_env=getattr(cfg, "token_env", None),
+                             timeout=float(getattr(cfg, "timeout", FEED_TIMEOUT)))
     raise ConnectorUnavailable(f"connector kind {cfg.kind!r} is not available in this version of kestrel")
 
 
@@ -44,7 +52,7 @@ def collect(profile: Profile, now: datetime) -> Snapshot:
             part = build(cfg, profile).snapshot(now)
         except Exception as exc:  # noqa: BLE001 - any connector failure becomes a visible source error
             failed.append(Source(id=cfg.id, label=cfg.label or cfg.id, kind=cfg.kind, status="error",
-                                 detail=str(exc)[:200]))
+                                 detail=str(exc)[:DETAIL_LIMIT]))
             continue
         parts.append(part.model_copy(update={"sources": _with_staleness(list(part.sources), cfg, now)}))
     snapshot = merge(parts, generated_at=now)
