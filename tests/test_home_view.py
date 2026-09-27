@@ -96,6 +96,13 @@ def test_attention_is_ordered_serious_warning_note(demo_home):
     assert demo_home.summary.needs_you == 5
 
 
+def test_stale_source_warning_stays_in_the_top_three(demo_home):
+    # source and book items are worked out before the plan's target/thesis items are appended, so a widening set
+    # of off-plan targets or theses can never bump a stale-source warning further down the list than it already was
+    top3 = demo_home.attention[:3]
+    assert any("Savings" in a.title and a.level == "warning" for a in top3)
+
+
 def test_book_verdicts(demo_home):
     verdicts = {b.id: b.verdict for b in demo_home.books}
     assert verdicts["rsi2-real"] == "in_band"

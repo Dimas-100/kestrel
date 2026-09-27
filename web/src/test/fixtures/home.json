@@ -2215,6 +2215,12 @@
     },
     {
       "level": "warning",
+      "title": "Savings hasn't synced in 26 hours",
+      "detail": "bank link · last success Thu 15:08",
+      "link": "/settings"
+    },
+    {
+      "level": "warning",
       "title": "XLV is over plan in Roth IRA",
       "detail": "over the high end",
       "link": "/plan"
@@ -2232,22 +2238,16 @@
       "link": "/plan"
     },
     {
-      "level": "warning",
-      "title": "Savings hasn't synced in 26 hours",
-      "detail": "bank link · last success Thu 15:08",
-      "link": "/settings"
+      "level": "note",
+      "title": "Opening leader is below its expected band",
+      "detail": "11 of 30 paper trades · reviewed at 30",
+      "link": "/strategies/leader"
     },
     {
       "level": "note",
       "title": "XLE: thesis needs a look",
       "detail": "Oil fell for three months in a row",
       "link": "/plan"
-    },
-    {
-      "level": "note",
-      "title": "Opening leader is below its expected band",
-      "detail": "11 of 30 paper trades · reviewed at 30",
-      "link": "/strategies/leader"
     }
   ],
   "books": [

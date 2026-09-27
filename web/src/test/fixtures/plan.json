@@ -4,6 +4,7 @@
     {
       "account_id": "roth",
       "name": "Roth IRA",
+      "known": true,
       "rows": [
         {
           "id": "roth-xlp",
@@ -17,7 +18,8 @@
           "high": 22.0,
           "actual": 16.0,
           "status": "under",
-          "gap": 1357.82,
+          "gap": 1357.86,
+          "gap_unit": "money",
           "gap_text": "under the low end",
           "note": "Staples to soften the drops"
         },
@@ -33,7 +35,8 @@
           "high": 18.0,
           "actual": 21.0,
           "status": "over",
-          "gap": -2036.72,
+          "gap": -2036.71,
+          "gap_unit": "money",
           "gap_text": "over the high end",
           "note": "A health care tilt"
         },
@@ -50,6 +53,7 @@
           "actual": 62.0,
           "status": "on",
           "gap": 0.0,
+          "gap_unit": "money",
           "gap_text": "on plan",
           "note": "The core: the whole market"
         }
@@ -58,6 +62,7 @@
     {
       "account_id": "brokerage",
       "name": "Brokerage",
+      "known": true,
       "rows": [
         {
           "id": "brokerage-ko",
@@ -72,6 +77,7 @@
           "actual": 5.0,
           "status": "on",
           "gap": 0.0,
+          "gap_unit": "money",
           "gap_text": "on plan",
           "note": "A dividend holding"
         },
@@ -88,6 +94,7 @@
           "actual": 38.0,
           "status": "on",
           "gap": 0.0,
+          "gap_unit": "money",
           "gap_text": "on plan",
           "note": "The core: the whole market"
         },
@@ -105,6 +112,7 @@
           "actual": 22.0,
           "status": "on",
           "gap": 0.0,
+          "gap_unit": "money",
           "gap_text": "on plan",
           "note": "Two companies held for the long run"
         },
@@ -121,6 +129,7 @@
           "actual": 22.0,
           "status": "on",
           "gap": 0.0,
+          "gap_unit": "money",
           "gap_text": "on plan",
           "note": "Technology, capped"
         }
@@ -139,6 +148,7 @@
       "actual": 8.8,
       "status": "on",
       "gap": 0.0,
+      "gap_unit": "x",
       "gap_text": "on plan",
       "note": "Months of spending the cash accounts cover"
     }
@@ -430,7 +440,8 @@
       "by": "2030-12-31",
       "months_left": 51,
       "monthly_needed": 629.59,
-      "reached": false
+      "reached": false,
+      "missing_accounts": []
     },
     {
       "id": "cash-year",
@@ -442,7 +453,8 @@
       "by": "2027-12-31",
       "months_left": 15,
       "monthly_needed": 740.27,
-      "reached": false
+      "reached": false,
+      "missing_accounts": []
     },
     {
       "id": "net-worth",
@@ -454,7 +466,8 @@
       "by": "2029-06-30",
       "months_left": 33,
       "monthly_needed": 2476.42,
-      "reached": false
+      "reached": false,
+      "missing_accounts": []
     },
     {
       "id": "long-term-together",
@@ -466,7 +479,8 @@
       "by": "2031-12-31",
       "months_left": 63,
       "monthly_needed": 1276.91,
-      "reached": false
+      "reached": false,
+      "missing_accounts": []
     },
     {
       "id": "save-this-year",
@@ -478,7 +492,8 @@
       "by": "2026-12-31",
       "months_left": 3,
       "monthly_needed": 150.0,
-      "reached": false
+      "reached": false,
+      "missing_accounts": []
     }
   ],
   "counts": {

@@ -71,6 +71,14 @@ export function shortDate(iso: string, timeZone = 'UTC'): string {
   return `${get('weekday')} ${get('day')} ${get('month')}`
 }
 
+/** "31 Dec 2030" for an ISO date (YYYY-MM-DD) — a due date far enough out, or overdue, that its year matters and
+ *  must never be left off */
+export function longDate(iso: string): string {
+  const date = new Date(`${iso.slice(0, 10)}T12:00:00Z`)
+  const month = date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
+  return `${date.getUTCDate()} ${month} ${date.getUTCFullYear()}`
+}
+
 /** "10 Sep" this year, "Sep 2025" before it — for "since" dates */
 export function sinceLabel(iso: string, nowIso: string): string {
   const date = new Date(`${iso.slice(0, 10)}T12:00:00Z`)

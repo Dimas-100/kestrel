@@ -17,17 +17,17 @@ function shape(value: number, unit: TargetRow['unit']): string {
   return unit === '%' ? `${num(value, 1)}%` : `${num(value, 1)}x`
 }
 
-/** The gap, worded for a person. `moneyGap` is true only for a row scoped to a real account (the accounts[] list) —
- *  an unscoped row's gap is in percentage points or ratio units, never money kestrel can't compute. */
-function gapLine(row: TargetRow, moneyGap: boolean): string | null {
-  if (row.gap == null) return null
+/** The gap, worded for a person, formatted strictly by `gap_unit` — never inferred from which list the row came
+ *  from. A zero-value account grouped under a real account still reports points, not a bogus dollar figure. */
+function gapLine(row: TargetRow): string | null {
+  if (row.gap == null || row.gap_unit == null) return null
   if (row.status === 'on') return 'On plan'
-  const amount = row.unit === 'x' ? shape(Math.abs(row.gap), 'x')
-    : moneyGap ? money(Math.abs(row.gap)) : `${num(Math.abs(row.gap), 1)} pts`
+  const amount = row.gap_unit === 'money' ? money(Math.abs(row.gap)) : `${num(Math.abs(row.gap), 1)}${
+    row.gap_unit === 'x' ? 'x' : ' pts'}`
   return `${amount} ${row.gap_text}`
 }
 
-function TargetRows({ rows, moneyGap }: { rows: TargetRow[]; moneyGap: boolean }) {
+function TargetRows({ rows }: { rows: TargetRow[] }) {
   return (
     <ul>
       {rows.map((row) => (
@@ -47,7 +47,7 @@ function TargetRows({ rows, moneyGap }: { rows: TargetRow[]; moneyGap: boolean }
               {row.actual == null ? <Missing /> : shape(row.actual, row.unit)} actual
               {row.target != null && <> · {shape(row.target, row.unit)} aim</>}
             </span>
-            <span className="text-right">{gapLine(row, moneyGap) ?? <Missing />}</span>
+            <span className="text-right">{gapLine(row) ?? <Missing />}</span>
           </div>
           {row.note && <p className="text-xs text-ink3 mt-1">{row.note}</p>}
         </li>
@@ -66,17 +66,21 @@ export function TargetsPanel({ accounts, unscoped }: { accounts: AccountTargets[
         <>
           {accounts.map((a) => (
             <div key={a.account_id} className="mt-3.5 first:mt-2.5">
-              <Link to="/accounts/$accountId" params={{ accountId: a.account_id }}
-                className="label" style={{ color: 'var(--ink2)' }}>
-                {a.name}
-              </Link>
-              <TargetRows rows={a.rows} moneyGap />
+              {a.known ? (
+                <Link to="/accounts/$accountId" params={{ accountId: a.account_id }}
+                  className="label" style={{ color: 'var(--ink2)' }}>
+                  {a.name}
+                </Link>
+              ) : (
+                <div className="label">{a.name} <span className="normal-case text-ink3">· no source sent this account</span></div>
+              )}
+              <TargetRows rows={a.rows} />
             </div>
           ))}
           {unscoped.length > 0 && (
             <div className="mt-3.5 first:mt-2.5">
               <div className="label">Across every account</div>
-              <TargetRows rows={unscoped} moneyGap={false} />
+              <TargetRows rows={unscoped} />
             </div>
           )}
         </>

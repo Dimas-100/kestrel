@@ -128,9 +128,11 @@ describe('Strategy page, trade by trade', { timeout: 15_000 }, () => {
   })
 
   it('links a book below its band on Home to its strategy', async () => {
-    // isolated to this one item: Plan's target/thesis items now also compete for the panel's top few spots
+    // a realistic mix (a serious item ahead of it, as Home always shows one), not isolated to a single item: the
+    // panel only renders its first few, so the item under test must sit inside that visible window
+    const serious = homeFixture.attention.find((a) => a.level === 'serious')!
     const below = homeFixture.attention.find((a) => a.title.includes('below its expected band'))!
-    renderApp('/', { home: { ...homeFixture, attention: [below] } })
+    renderApp('/', { home: { ...homeFixture, attention: [serious, below] } })
     const needs = await findPanel('Needs you')
     const item = within(needs).getAllByRole('listitem').find((li) => li.textContent?.includes('below its expected band'))
     expect(item && within(item).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('/strategies/leader')

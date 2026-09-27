@@ -515,6 +515,7 @@ export function useStrategy(id: string, book: Money) {
 
 export type TargetStatus = 'on' | 'over' | 'under' | 'unknown'
 export type Health = 'ok' | 'watch' | 'alert' | 'none'
+export type GapUnit = 'money' | 'pts' | 'x'
 
 export interface TargetRow {
   id: string
@@ -526,15 +527,16 @@ export interface TargetRow {
   high: number | null
   actual: number | null
   status: TargetStatus
-  // money for a target scoped to an account, percentage points ("%") or ratio units ("x") otherwise; null when unknown
-  gap: number | null
+  gap: number | null // in gap_unit's unit; null when unknown or gap_unit is null
+  gap_unit: GapUnit | null // what `gap` is measured in — never infer money from where the row is grouped
   gap_text: string // "under the low end" / "over the high end" / "on plan" / "" when unknown
   note: string
 }
 
 export interface AccountTargets {
   account_id: string
-  name: string
+  name: string // the account's name, or its bare id when no source ever sent it (see `known`)
+  known: boolean // false: this account_id names no account any source sent — never link to it
   rows: TargetRow[]
 }
 
@@ -558,13 +560,14 @@ export interface GoalRow {
   id: string
   label: string
   scope_text: string
-  current: number
+  current: number | null // null when a scoped account isn't in any source (see missing_accounts)
   target: number
-  progress_pct: number
+  progress_pct: number | null // null when current is unknown
   by: string | null
   months_left: number | null
   monthly_needed: number | null
   reached: boolean
+  missing_accounts: string[] // account id(s) this goal names that no source sent
 }
 
 export interface PlanView {

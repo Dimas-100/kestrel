@@ -45,6 +45,52 @@ describe('Plan', () => {
     expect(within(goals).getAllByText(/a month would reach it/).length).toBeGreaterThan(0)
   })
 
+  it('shows a zero-value known account’s gap in points, never a bogus dollar figure', async () => {
+    // the bug this guards: gap_unit, not the account-known grouping, decides money vs points
+    const v: PlanView = { ...planFixture,
+      accounts: [{ account_id: 'z', name: 'Zero', known: true, rows: [{
+        id: 't3', label: 'VTI', symbols: ['VTI'], unit: '%', target: 60, low: 55, high: 65, actual: 0,
+        status: 'under', gap: 55, gap_unit: 'pts', gap_text: 'under the low end', note: '',
+      }] }] }
+    renderApp('/plan', { plan: v })
+    const targets = await screen.findByRole('region', { name: 'Targets' })
+    expect(within(targets).getByText('55.0 pts under the low end')).toBeTruthy()
+    expect(within(targets).queryByText(/\$55/)).toBeNull()
+  })
+
+  it('groups a target naming an unsent account under its own id, not "Across every account"', async () => {
+    const v: PlanView = { ...planFixture,
+      accounts: [{ account_id: 'gone', name: 'gone', known: false, rows: [{
+        id: 't2', label: 'VTI', symbols: ['VTI'], unit: '%', target: 60, low: 55, high: 65, actual: 40,
+        status: 'under', gap: 15, gap_unit: 'pts', gap_text: 'under the low end', note: '',
+      }] }], unscoped: [] }
+    renderApp('/plan', { plan: v })
+    const targets = await screen.findByRole('region', { name: 'Targets' })
+    expect(within(targets).getByText(/no source sent this account/)).toBeTruthy()
+    expect(within(targets).queryByText('Across every account')).toBeNull()
+    expect(within(targets).queryByRole('link', { name: 'gone' })).toBeNull() // never a link to a nonexistent account
+  })
+
+  it('shows a goal with a missing account as "—" and names the missing id, with no progress bar', async () => {
+    const v: PlanView = { ...planFixture,
+      goals: [{ id: 'g', label: 'Grow', scope_text: 'gone', current: null, target: 100000, progress_pct: null,
+        by: '2030-12-31', months_left: null, monthly_needed: null, reached: false, missing_accounts: ['gone'] }] }
+    renderApp('/plan', { plan: v })
+    const goals = await screen.findByRole('region', { name: 'Goals' })
+    expect(within(goals).getByText(/account not in any source: gone/)).toBeTruthy()
+    expect(within(goals).queryByRole('progressbar')).toBeNull()
+  })
+
+  it('shows an overdue, unreached goal as "was due", never a monthly pace', async () => {
+    const v: PlanView = { ...planFixture,
+      goals: [{ id: 'g4', label: 'Overdue', scope_text: 'A', current: 5000, target: 10000, progress_pct: 50,
+        by: '2025-06-30', months_left: null, monthly_needed: null, reached: false, missing_accounts: [] }] }
+    renderApp('/plan', { plan: v })
+    const goals = await screen.findByRole('region', { name: 'Goals' })
+    expect(within(goals).getByText('was due 30 Jun 2025')).toBeTruthy()
+    expect(within(goals).queryByText(/a month would reach it/)).toBeNull()
+  })
+
   it('names an investing feed in the empty state', async () => {
     const empty: PlanView = { accounts: [], unscoped: [], theses: [], goals: [],
       counts: { off_plan: 0, theses_alert: 0, theses_watch: 0 }, as_of: planFixture.as_of }

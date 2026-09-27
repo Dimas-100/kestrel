@@ -3,8 +3,11 @@ import { bandGeometry } from '../../charts/geometry'
 import type { TargetRow } from '../../lib/api'
 import { num } from '../../lib/format'
 
-/** A domain wide enough to show the band, the aim and the actual, with a little air on each side. */
+/** A "%" target always plots on the same 0–100 scale, so a band's width is comparable across rows (an out-of-range
+ *  actual still clamps to the edge with an arrow, via bandGeometry). A ratio ("x") target has no natural bound, so
+ *  it gets its own domain wide enough to show the band, the aim and the actual, with a little air on each side. */
 function domainFor(row: TargetRow): [number, number] {
+  if (row.unit === '%') return [0, 100]
   const known = [row.low, row.high, row.target, row.actual].filter((v): v is number => v != null)
   if (known.length === 0) return [0, 1]
   const lo = Math.min(...known)

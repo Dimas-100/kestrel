@@ -300,7 +300,7 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
     from .plan import target_attention, thesis_attention  # local: plan.py imports this module at load time
 
     books = {b.id: b for b in snapshot.books}
-    items: list[Attention] = [*target_attention(snapshot), *thesis_attention(snapshot)]
+    items: list[Attention] = []
     for p in snapshot.positions:
         book = books.get(p.book_id)
         if book is not None and book.money == "real" and p.stop_price is None:
@@ -319,6 +319,10 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
             items.append(Attention(level="note", title=f"{row.name} is below its expected band", detail=detail,
                                    link=f"/strategies/{quote(books[row.id].strategy_id, safe='')}"))
     items.extend(Attention(level=a.level, title=a.title, detail=a.detail, link=a.link) for a in snapshot.alerts)
+    # Plan's items are appended last, after every source and book item: a stable sort keeps ties in insertion
+    # order, so a widening set of off-plan targets or theses can never push a source's own warning further down
+    items.extend(target_attention(snapshot))
+    items.extend(thesis_attention(snapshot))
     order = {"serious": 0, "warning": 1, "note": 2}
     return sorted(items, key=lambda a: order[a.level])
 
