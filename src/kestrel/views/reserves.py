@@ -59,14 +59,17 @@ def reserves_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> Res
                  as_of=a.as_of.date()) for a in snapshot.accounts if a.category == "cash"),
         key=lambda c: (-c.value, c.name),
     )
+    # a limit of 0 is treated the same as no limit (there is nothing to divide by): utilization is None, not 0%
     debts = sorted(
         (DebtLine(id=a.id, name=a.name, institution=a.institution, owed=round(a.value, 2), limit=a.limit,
                  utilization_pct=round(max(a.value, 0.0) / a.limit * 100, 2) if a.limit else None,
                  rate_pct=a.rate_pct, as_of=a.as_of.date()) for a in snapshot.accounts if a.category == "debt"),
-        key=lambda d: (-max(d.owed, 0.0), d.name),
+        key=lambda d: (-d.owed, d.name),
     )
     total_cash = round(sum(c.value for c in cash), 2)
-    total_owed = round(sum(max(d.owed, 0.0) for d in debts), 2)
+    # SIGNED: a credit balance (below zero) offsets real debt, exactly as it offsets net worth on Home — only
+    # utilization clamps a line at 0, because a credit balance uses none of a credit line
+    total_owed = round(sum(d.owed for d in debts), 2)
     limited = [d for d in debts if d.limit]
     utilization = (round(sum(max(d.owed, 0.0) for d in limited) / sum(d.limit for d in limited) * 100, 2)
                   if limited else None)

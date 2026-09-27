@@ -56,7 +56,18 @@ def test_a_credit_balance_shows_below_zero_and_is_never_negative_utilization():
     s = snap(account("card", "debt", -50.0, limit=1000.0))  # paid past zero: owed to the owner
     v = reserves_view(s, Profile(), NOW)
     assert v.debts[0].owed == -50.0 and v.debts[0].utilization_pct == 0.0
-    assert v.totals.owed == 0.0  # nothing owed: a credit balance isn't debt
+    # totals.owed is a SIGNED sum (only utilization clamps at 0): a lone credit balance must read the same
+    # negative number Home's net worth does, or the two pages disagree about what is owed
+    assert v.totals.owed == -50.0
+
+
+def test_totals_owed_is_a_signed_sum_a_credit_balance_offsets_real_debt():
+    # non-round values: a card owing 1042.37, a credit balance of 87.65 "owed" to the owner
+    s = snap(account("card", "debt", 1042.37), account("refund", "debt", -87.65),
+            account("savings", "cash", 3210.19))
+    v = reserves_view(s, Profile(), NOW)
+    assert v.totals.owed == pytest.approx(1042.37 - 87.65)  # signed sum, not each line clamped at 0 first
+    assert v.totals.net == pytest.approx(3210.19 - (1042.37 - 87.65))
 
 
 def test_spread_is_none_without_a_rated_debt_balance():
