@@ -2913,3 +2913,23 @@ The private system's own feed is specified and built in its own repo (spec §6: 
   - **The unavailable-kind examples** in `tests/test_cli.py` and `tests/test_demo_connector.py` move from a bare `feed` to `rails`, which is still unavailable.
 - **Placeholders:** none; every step has its file blocks or its exact command and output.
 - **Names and types:** `FeedConnector`'s keyword arguments (`url`, `path`, `token_env`, `timeout`) are the profile's keys, read by `build()` (Task 3); the fixture's `desk()`, `feed_file()`, `FeedServer` and replies keep their names through Tasks 2–4; `DETAIL_LIMIT` (Task 2) is what `problems()` fits under and what `collect()` cuts at (Task 3).
+
+## After the task reviews
+
+The file blocks above show the code as first built, in the Task 1–4 reviews; a later hardening round (brief:
+`.superpowers/sdd/2026-09-26-phase-4b-feed/hardening-brief.md`) found five things worth fixing before this is truly
+done, each test-first:
+
+- **H1:** the `timeout` bounded only the body (`_read`'s own deadline); a peer that trickled bytes without ever
+  finishing its headers could defeat it and block for far longer. `_fetch` now fetches with `http.client` directly
+  (never a redirect, never a proxy — the same guarantees as before, stronger) plus a watchdog thread that shuts the
+  socket down if the headers aren't in within `timeout`; the body keeps its original, unchanged deadline.
+- **H2:** `json.loads` accepts `NaN`, `Infinity` and `-Infinity` (not valid JSON), and so did pydantic's floats;
+  `parse()` now passes `parse_constant` to refuse them by name.
+- **H3:** `_noted`'s duplicate-ids note always named five ids without checking the row's length; `_fit_note` now
+  shrinks the name count (five, then fewer, then none) and, only as a last resort, the source's own detail, the
+  same shrink-until-it-fits idea as `feed.problems()`.
+- **H4:** two items of the same id within one source (not just across sources) passed through untouched;
+  `_dedupe_within` now keeps the first and drops the later item itself, before the cross-source check runs.
+- **H5:** a malformed bracketed URL (`http://[::1/feed`) made `urlsplit` raise its own "Invalid IPv6 URL" past the
+  feed shape check instead of the profile's friendly message; that check now catches it.

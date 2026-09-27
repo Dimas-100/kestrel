@@ -154,9 +154,12 @@ outside 1 to 60 stops `kestrel check` with `profile problem: …` and exit statu
 In this order; the first check that fails is the source's error, and the rest of kestrel keeps working.
 
 1. **The token**, when `token_env` is set: the variable must be set and not empty, and hold only visible characters.
-2. **The answer:** status 200 only; the whole answer inside `timeout`, not just its first byte; at most 20 MB. A
-   file must exist and be at most 20 MB.
-3. **JSON:** UTF-8 text (a byte-order mark is fine), and not a web page.
+2. **The answer:** status 200 only; the whole answer inside `timeout` — connecting, the headers and the body, not
+   just the first byte of the body — and at most 20 MB. Looking up the host's address comes first and isn't itself
+   bounded by `timeout` (a local desk resolves at once); everything after that is, including a peer that trickles
+   bytes without ever finishing its headers. A file must exist and be at most 20 MB.
+3. **JSON:** UTF-8 text (a byte-order mark is fine), not a web page, and no `NaN`, `Infinity` or `-Infinity` (not
+   valid JSON, though a lenient writer can produce them).
 4. **The contract version:** the payload must say `"contract_version"`, and its major version must be 1. A newer
    minor version (`"1.4"`) loads; fields this kestrel doesn't know are ignored.
 5. **The Snapshot:** every field the contract names. The first three problems are listed as `field.path: message`,
@@ -198,6 +201,7 @@ Serve it at any address on this computer, or save it to a file, and point a `fee
 | `no feed file at …` | Check `path`: it is relative to the folder `profile.toml` is in. |
 | `the feed sent something that isn't JSON: a web page …` | The address answers with a page, often a sign-in page: point `url` at the feed itself. |
 | `the feed sent something that isn't JSON (…)` | Compare the feed with `kestrel demo`'s output. |
+| `the feed sent NaN, which JSON doesn't allow` (or `Infinity`, `-Infinity`) | Send a number, or leave the field out; standard JSON has no way to write "not a number" or "infinite". |
 | `the feed doesn't say which contract it speaks …` | Add `"contract_version": "1"` to the payload. |
 | `unsupported contract version '2'; this kestrel reads major version 1` | The feed speaks a newer contract: update kestrel. |
 | `books.0.money: Input should be 'real' or 'paper'; …; and 2 more` | The payload doesn't match the contract: fix those fields in the feed. |
@@ -216,9 +220,14 @@ everything that hangs off it:
 | strategy id | nothing else: books keep pointing at the first source's strategy |
 
 The later source's line in the sidebar then ends with `ignored duplicate ids: brokerage, rsi2` (the ids only, at
-most five, then `and N more`), on its first row when it has several. To show the later source's item instead, move
+most five, then `and N more`, shrinking further — fewer names, then none, then a shortened line — whenever the full
+note wouldn't fit the row), on its first row when it has several. To show the later source's item instead, move
 that source up in the profile. `kestrel check` reads each source on its own, so it lists every source's accounts and
 never shows this note.
+
+The same thing can happen within a single source: a feed that sends two books (or accounts, or strategies) of the
+same id is treated exactly like the cross-source case — the first item is kept, the later one dropped with whatever
+hangs off it, and that source's own line gets the `ignored duplicate ids: …` note.
 
 ## `rails`
 

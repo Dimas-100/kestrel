@@ -33,7 +33,7 @@ stale_after = "15m"
 
 - **HTTP:** one GET with the timeout, `Accept: application/json`. Redirects are refused (an error naming the target), so a token can never follow a redirect elsewhere. A status other than 200 is an error ("the feed answered 503"). The body is read up to 20 MB; more is an error ("the feed sent more than 20 MB").
 - **File:** read up to 20 MB, UTF-8 (a BOM is fine). A missing file is "no feed file at <path>".
-- **Parse and validate:** JSON first ("the feed sent something that isn't JSON"), then `Snapshot` validation. A payload of another major contract version is refused with the contract's own message. Any other validation error lists the first three problems as `field.path: message`, then "and N more".
+- **Parse and validate:** JSON first ("the feed sent something that isn't JSON"), then `Snapshot` validation. `NaN`, `Infinity` and `-Infinity` aren't valid JSON (though a lenient writer can produce them) and are refused. A payload of another major contract version is refused with the contract's own message. Any other validation error lists the first three problems as `field.path: message`, then "and N more".
 - **What kestrel keeps:** every list the payload carries, and its benchmark. The payload's own `sources` are replaced by ONE source row for this feed: `kind = "feed"`, `last_success` = the payload's `generated_at`, `detail` like "5 books · 4 strategies · 61 trades". The payload's `alerts` pass through (their links are already restricted to kestrel pages by the contract).
 - The connector only reads. Nothing is cached: a feed is small and the desk is local.
 
@@ -50,10 +50,10 @@ Two sources can name the same thing (two warehouses with an account called "Brok
 | Kind | Dropped with it |
 |---|---|
 | account id | its holdings and its account history |
-| book id | its book history, positions, trades and trade charts |
+| book id | its book history, positions, trades, trade charts and runs |
 | strategy id | nothing else (books keep pointing at the first strategy) |
 
-The later source's `detail` gains "ignored duplicate ids: brokerage, rsi2" (ids only, at most five, then "and N more"). Profile order decides which source is first.
+The later source's `detail` gains "ignored duplicate ids: brokerage, rsi2" (ids only, at most five, then "and N more", shrinking further if the row is still too small for it). Profile order decides which source is first. Two items of the same id within one source (a feed that sends the same book id twice) are resolved the same way, before the cross-source check.
 
 ## 4. Docs
 
