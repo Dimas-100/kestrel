@@ -77,18 +77,22 @@ def _shown(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc.rpartition("@")[2], parts.path, "", ""))
 
 
+class _TooBig(ConnectorError):
+    """The body passed MAX_BYTES: a fact about the feed, whatever the clock says."""
+
+
 def _read(response: http.client.HTTPResponse, deadline: float, still_sending: str) -> bytes:
     """The body, up to MAX_BYTES. The deadline is checked between reads; a read that blocks inside the chunked
     framing (a chunk-size or trailer line trickled a byte at a time) is ended by `_fetch`'s watchdog instead."""
     if response.length is not None and response.length > MAX_BYTES:  # http.client's own reading of Content-Length
-        raise ConnectorError("the feed sent more than 20 MB")
+        raise _TooBig("the feed sent more than 20 MB")
     chunks: list[bytes] = []
     size = 0
     try:
         while chunk := response.read1(CHUNK):
             size += len(chunk)
             if size > MAX_BYTES:
-                raise ConnectorError("the feed sent more than 20 MB")
+                raise _TooBig("the feed sent more than 20 MB")
             if time.monotonic() > deadline:
                 raise ConnectorError(still_sending)
             chunks.append(chunk)
@@ -472,6 +476,8 @@ class FeedConnector:
                 raise ConnectorError(f"the feed answered {response.status}")
             try:
                 body = _read(response, deadline, still_sending)
+            except _TooBig:
+                raise
             except ConnectorError:
                 if late():  # whatever went wrong, it went wrong because the time ran out
                     raise ConnectorError(still_sending) from None

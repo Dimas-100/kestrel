@@ -31,6 +31,7 @@ from feed_fixture import (
 from kestrel import __version__
 from kestrel.cli import main
 from kestrel.connectors import build, collect
+from kestrel.connectors import feed as feed_module
 from kestrel.connectors.base import ConnectorError
 from kestrel.connectors.feed import MAX_BYTES, FeedConnector
 from kestrel.contract import Snapshot
@@ -494,6 +495,31 @@ def test_more_than_20_mb_in_one_line_is_refused_whether_or_not_the_feed_says_so_
     assert refused_over_http(serve(answer(one_line, length=False)).url) == "the feed sent more than 20 MB"
     declared = serve(answer(b"{}", headers={"Content-Length": str(MAX_BYTES + 1)}, length=False))
     assert refused_over_http(declared.url) == "the feed sent more than 20 MB"
+
+
+def test_the_20_mb_message_wins_over_still_sending_when_the_deadline_has_also_passed(serve, monkeypatch):
+    # a race: the body is too big AND the deadline has already passed by the time _read raises. The size message
+    # must win -- the operator should shrink the feed, not raise the timeout. _fetch used to get this backwards by
+    # rewriting every ConnectorError out of _read into "still sending" once late() was true. Content-Length alone
+    # trips the size check in _read with no monotonic call inside it, so the flip below (set only once the real
+    # _read has finished) is the only thing that makes the deadline look passed -- deterministic, no real race.
+    real_read = feed_module._read
+    real_monotonic = time.monotonic
+    late_now = threading.Event()
+
+    def fake_monotonic():
+        return real_monotonic() + 1e9 if late_now.is_set() else real_monotonic()
+
+    def wrapped_read(response, deadline, still_sending):
+        try:
+            return real_read(response, deadline, still_sending)
+        finally:
+            late_now.set()
+
+    monkeypatch.setattr(feed_module.time, "monotonic", fake_monotonic)
+    monkeypatch.setattr(feed_module, "_read", wrapped_read)
+    server = serve(answer(b"{}", headers={"Content-Length": str(MAX_BYTES + 1)}, length=False))
+    assert refused_over_http(server.url) == "the feed sent more than 20 MB"
 
 
 def test_a_sign_in_page_over_http_is_named(serve):
