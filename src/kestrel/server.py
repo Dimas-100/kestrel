@@ -17,7 +17,9 @@ from .contract import Money
 from .profile import Profile
 from .views.accounts import AccountsView, AccountView, account_view, accounts_view
 from .views.activity import ActivityView, activity_view
+from .views.backtests import BacktestsView, backtests_view
 from .views.books import BooksView, BookView, book_view, books_view
+from .views.calendar import CalendarView, calendar_view
 from .views.home import HomeView, home_view
 from .views.shell import ShellView, shell_view
 from .views.strategy import StrategiesView, StrategyView, strategies_view, strategy_view
@@ -107,6 +109,16 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
     def activity() -> ActivityView:
         now = clock()
         return activity_view(collect(profile, now), profile, now)
+
+    @app.get("/api/calendar", response_model=CalendarView)
+    def calendar() -> CalendarView:
+        now = clock()
+        return calendar_view(collect(profile, now), profile, now)
+
+    @app.get("/api/backtests", response_model=BacktestsView)
+    def backtests() -> BacktestsView:
+        now = clock()
+        return backtests_view(collect(profile, now), profile, now)
 
     @app.get("/api/{rest:path}", include_in_schema=False)
     def unknown_api(rest: str) -> None:

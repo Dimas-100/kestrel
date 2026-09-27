@@ -6,8 +6,10 @@ import type {
   AccountsView,
   AccountView,
   ActivityView,
+  BacktestsView,
   BooksView,
   BookView,
+  CalendarView,
   HomeView,
   Money,
   ShellView,
@@ -18,8 +20,10 @@ import { createAppRouter } from '../router'
 import accountJson from './fixtures/account-roth.json'
 import accountsJson from './fixtures/accounts.json'
 import activityJson from './fixtures/activity.json'
+import backtestsJson from './fixtures/backtests.json'
 import bookJson from './fixtures/book-rsi2-real.json'
 import booksJson from './fixtures/books.json'
+import calendarJson from './fixtures/calendar.json'
 import homeJson from './fixtures/home.json'
 import shellJson from './fixtures/shell.json'
 import strategiesJson from './fixtures/strategies.json'
@@ -42,6 +46,8 @@ export const accountFixture = (accountJson satisfies Widen<AccountView>) as unkn
 export const booksFixture = (booksJson satisfies Widen<BooksView>) as unknown as BooksView
 export const bookFixture = (bookJson satisfies Widen<BookView>) as unknown as BookView
 export const activityFixture = (activityJson satisfies Widen<ActivityView>) as unknown as ActivityView
+export const calendarFixture = (calendarJson satisfies Widen<CalendarView>) as unknown as CalendarView
+export const backtestsFixture = (backtestsJson satisfies Widen<BacktestsView>) as unknown as BacktestsView
 
 interface Data {
   home?: HomeView
@@ -53,6 +59,8 @@ interface Data {
   books?: BooksView | null
   book?: { id: string; view: BookView }[] // answers for GET /api/books/{id}
   activity?: ActivityView | null
+  calendar?: CalendarView | null
+  backtests?: BacktestsView | null
 }
 
 /** The whole app at `path`, with the API answered from fixtures. Any other network call goes to `fetchImpl`, which
@@ -75,6 +83,8 @@ export function renderApp(path = '/', data: Data = {}, fetchImpl?: (url: string)
     client.setQueryData(['book', id], view)
   }
   if (data.activity !== null) client.setQueryData(['activity'], data.activity ?? activityFixture)
+  if (data.calendar !== null) client.setQueryData(['calendar'], data.calendar ?? calendarFixture)
+  if (data.backtests !== null) client.setQueryData(['backtests'], data.backtests ?? backtestsFixture)
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }))
   const view = render(
     <QueryClientProvider client={client}>

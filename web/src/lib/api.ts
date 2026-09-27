@@ -580,6 +580,76 @@ export interface AccountView {
   totals: Totals
 }
 
+// --- the Calendar page (src/kestrel/views/calendar.py) -----------------------------------------------------------
+
+export type EventKind = 'earnings' | 'filing' | 'insider' | 'dividend' | 'other'
+
+export interface EventRow {
+  date: string
+  symbol: string
+  kind: EventKind
+  title: string
+  detail: string
+  url: string
+  held: boolean
+}
+
+export interface WeekGroup {
+  week_start: string
+  items: EventRow[]
+}
+
+export interface CalendarView {
+  as_of: string
+  today: string
+  upcoming: WeekGroup[]
+  recent: EventRow[]
+  counts: Record<EventKind, number>
+}
+
+// --- the Backtests page (src/kestrel/views/backtests.py) ---------------------------------------------------------
+
+export type BacktestVerdict = 'pass' | 'fail' | 'refused' | 'pending'
+
+export interface Backtest {
+  id: string
+  name: string
+  family: string
+  window: string
+  verdict: BacktestVerdict
+  at: string
+  strategy_id: string | null
+  trades: number | null
+  avg_trade_pct: number | null
+  t_stat: number | null
+  calmar: number | null
+  max_drawdown_pct: number | null
+  note: string
+}
+
+export interface BacktestTotals {
+  results: number
+  candidates: number
+  families: number
+  passes_by_window: Record<string, number>
+}
+
+export interface FamilyRow {
+  family: string
+  candidates: number
+  best: Backtest | null
+  verdicts: Partial<Record<string, BacktestVerdict>> // only the windows this family has a result in
+  last_at: string
+}
+
+export interface BacktestsView {
+  as_of: string
+  totals: BacktestTotals
+  windows: string[]
+  families: FamilyRow[]
+  rows: Backtest[]
+}
+
 /** A non-2xx answer, with its status, so a page can tell "not found" from "the server is down". */
 export class HttpError extends Error {
   readonly status: number
@@ -641,6 +711,18 @@ export function useActivity() {
 export function useStrategies() {
   return useQuery({
     queryKey: ['strategies'], queryFn: () => getJson<StrategiesView>('/api/strategies'), refetchInterval: MINUTE,
+  })
+}
+
+export function useCalendar() {
+  return useQuery({
+    queryKey: ['calendar'], queryFn: () => getJson<CalendarView>('/api/calendar'), refetchInterval: MINUTE,
+  })
+}
+
+export function useBacktests() {
+  return useQuery({
+    queryKey: ['backtests'], queryFn: () => getJson<BacktestsView>('/api/backtests'), refetchInterval: MINUTE,
   })
 }
 

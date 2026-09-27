@@ -87,7 +87,9 @@ def _demo(args: argparse.Namespace) -> int:
     from .connectors import collect
     from .views.accounts import account_view, accounts_view
     from .views.activity import activity_view
+    from .views.backtests import backtests_view
     from .views.books import book_view, books_view
+    from .views.calendar import calendar_view
     from .views.home import home_view
     from .views.shell import shell_view
     from .views.strategy import strategies_view, strategy_view
@@ -106,6 +108,10 @@ def _demo(args: argparse.Namespace) -> int:
         _emit(books_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view == "activity":
         _emit(activity_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "calendar":
+        _emit(calendar_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "backtests":
+        _emit(backtests_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view in ("strategy", "account", "book"):
         if not args.id:
             example = {"strategy": "rsi2", "account": "roth", "book": "rsi2-real"}[args.view]
@@ -145,7 +151,7 @@ def main(argv: list[str] | None = None) -> int:
         which.add_argument("--demo", action="store_true", help="show the demo data, whatever profile.toml says")
     demo = sub.add_parser("demo", help="print the demo data as JSON (an example feed payload)")
     demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy", "accounts", "account",
-                                         "books", "book", "activity"], default="snapshot")
+                                         "books", "book", "activity", "calendar", "backtests"], default="snapshot")
     demo.add_argument("--id", help="the strategy, account or book the view shows, e.g. rsi2, roth or rsi2-real")
     demo.add_argument("--book", choices=["real", "paper"], default="real", help="the money --view strategy shows")
     demo.add_argument("--now", help="ISO time with offset, for reproducible output")

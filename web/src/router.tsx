@@ -3,8 +3,10 @@ import type { Money } from './lib/api'
 import { Account } from './pages/account/Account'
 import { Accounts } from './pages/accounts/Accounts'
 import { Activity } from './pages/activity/Activity'
+import { Backtests } from './pages/backtests/Backtests'
 import { Book } from './pages/book/Book'
 import { Books } from './pages/books/Books'
+import { Calendar } from './pages/calendar/Calendar'
 import { Home } from './pages/home/Home'
 import { Soon } from './pages/Soon'
 import { Strategies } from './pages/strategies/Strategies'
@@ -71,7 +73,8 @@ const routeTree = root.addChildren([
   bookRoute,
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
   strategyRoute,
-  later('/backtests', 'Backtests', 'What has been tested and what passed — Phase 5.'),
+  createRoute({ getParentRoute: () => root, path: '/backtests', component: Backtests }),
+  createRoute({ getParentRoute: () => root, path: '/calendar', component: Calendar }),
   createRoute({ getParentRoute: () => root, path: '/activity', component: Activity }),
   later('/settings', 'Settings', 'Your profile and the status of every source — Phase 5.'),
 ])

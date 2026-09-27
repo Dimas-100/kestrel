@@ -111,6 +111,9 @@
 .tbl .r { text-align: right; }
 .tip { position: absolute; z-index: 10; pointer-events: none; background: var(--panel2); border: 1px solid var(--line2);
   border-radius: 7px; padding: 8px 10px; font-size: 12px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.28); min-width: 170px; }
+.search { font: 400 13px/1 var(--k-sans); background: var(--panel2); color: var(--ink1); border: 1px solid var(--line);
+  border-radius: 7px; padding: 8px 10px; min-width: 200px; }
+.search::placeholder { color: var(--ink3); }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; }
 
