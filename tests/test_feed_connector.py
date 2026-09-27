@@ -1,7 +1,10 @@
 import datetime as dt
+import http.client
 import json
 import logging
 import os
+import ssl
+import threading
 import time
 
 import pytest
@@ -437,6 +440,23 @@ def test_a_tls_handshake_that_trickles_is_cut_off(raw):
     message, took = cut_off(f"https://127.0.0.1:{server.port}/api/feed")
     assert took < 2.5, (message, took)
     assert message == "the feed didn't answer within 1 s"
+
+
+def test_an_error_after_the_deadline_is_the_timeout_even_before_the_watchdog_wakes(monkeypatch):
+    # CPython's TLS handshake can end at its own deadline with SSLWantReadError rather than TimeoutError, and the
+    # watchdog thread can wake a timer tick after the deadline (Windows' clock is coarse): seen as a flake of the
+    # test above. Here the watchdog wakes half a second late, on purpose.
+    class LateEvent(threading.Event):
+        def wait(self, timeout=None):
+            return super().wait(None if timeout is None else timeout + 0.5)
+
+    def connect(self):
+        time.sleep(0.35)
+        raise ssl.SSLWantReadError(2, "The operation did not complete (read) (_ssl.c:1006)")
+
+    monkeypatch.setattr(threading, "Event", LateEvent)
+    monkeypatch.setattr(http.client.HTTPConnection, "connect", connect)
+    assert refused_over_http("http://127.0.0.1:9/api/feed", timeout=0.3) == "the feed didn't answer within 0.3 s"
 
 
 @pytest.mark.parametrize("reply,message", [

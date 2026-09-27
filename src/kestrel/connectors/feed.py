@@ -432,15 +432,21 @@ class FeedConnector:
                 except OSError:
                     pass
 
+        def late() -> bool:
+            # past the deadline, whatever failed failed for lack of time, even before the watchdog wakes (on a
+            # coarse clock it can wake a tick late) and even when the error isn't a TimeoutError (a TLS handshake
+            # that runs out of time can end with SSLWantReadError)
+            return timed_out or time.monotonic() >= deadline
+
         watchdog = threading.Thread(target=_watch, daemon=True)
         watchdog.start()
         try:
             try:
                 connection.connect()  # looking up the host's address happens in here, and nothing can cut it short
             except OSError as exc:
-                late = timed_out or isinstance(exc, TimeoutError)
-                raise ConnectorError(no_answer if late else f"the feed couldn't be reached ({_why(exc)})") from None
-            if timed_out:
+                timeout = late() or isinstance(exc, TimeoutError)
+                raise ConnectorError(no_answer if timeout else f"the feed couldn't be reached ({_why(exc)})") from None
+            if late():
                 raise ConnectorError(no_answer)
             try:
                 connection.request("GET", target, headers=headers)
@@ -448,8 +454,8 @@ class FeedConnector:
             except TimeoutError:
                 raise ConnectorError(no_answer) from None
             except (http.client.HTTPException, OSError) as exc:
-                raise ConnectorError(no_answer if timed_out else f"the feed couldn't be read ({exc})") from None
-            if timed_out:
+                raise ConnectorError(no_answer if late() else f"the feed couldn't be read ({exc})") from None
+            if late():
                 # the watchdog cut the connection while the headers were still coming in; whatever getresponse()
                 # pieced together from what was left isn't a real answer
                 raise ConnectorError(no_answer)
@@ -467,10 +473,10 @@ class FeedConnector:
             try:
                 body = _read(response, deadline, still_sending)
             except ConnectorError:
-                if timed_out:  # whatever went wrong, it went wrong because the watchdog cut the connection
+                if late():  # whatever went wrong, it went wrong because the time ran out
                     raise ConnectorError(still_sending) from None
                 raise
-            if timed_out:  # the watchdog ended a read that would otherwise have gone on: what came isn't the answer
+            if late():  # the watchdog ended a read that would otherwise have gone on: what came isn't the answer
                 raise ConnectorError(still_sending)
             return body
         finally:
