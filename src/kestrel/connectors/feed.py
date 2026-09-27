@@ -1,10 +1,11 @@
-"""A feed: one JSON document in the contract's own format (a Snapshot), read from a URL or a file, checked, and
-handed on. This is how a system of your own (a trading desk) shows its books, strategies, trades and runs; kestrel
-knows nothing else about it.
+"""A feed: one JSON document in the contract's own format (a Snapshot), read from a URL, a file or what a command
+prints, checked, and handed on. This is how a system of your own (a trading desk) shows its books, strategies, trades
+and runs; kestrel knows nothing else about it.
 
-The connector only reads: one GET, or one file read, per snapshot, and nothing is cached (a feed is small and its
-system is local). The token, when there is one, goes in that GET's Authorization header and nowhere else: never in a
-message, never in a log, never to a redirect or a proxy.
+The connector only reads: one GET, or one file read, per snapshot, and nothing of those is cached (a feed is small and
+its system is local). A command's output is reused for `refresh` (`command.cached_run`), since running a program is
+slower than reading a file. The token, when there is one, goes in that GET's Authorization header and nowhere else:
+never in a message, never in a log, never to a redirect or a proxy.
 """
 
 from __future__ import annotations
@@ -28,6 +29,8 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from .. import __version__
 from ..contract import Snapshot, Source, check_version
 from .base import DETAIL_LIMIT, ConnectorError
+from .command import DEFAULT_REFRESH, cached_run
+from .command import DEFAULT_TIMEOUT as COMMAND_TIMEOUT
 
 TIMEOUT = 5.0  # seconds, unless the profile says otherwise (1 to 60)
 MAX_BYTES = 20 * 1024 * 1024  # 20 MB: far more than any feed needs, and a stop for one that never ends
@@ -374,20 +377,31 @@ def keep(snapshot: Snapshot, source_id: str, label: str, now: datetime) -> Snaps
 
 
 class FeedConnector:
-    """Reads one feed: `url` (one GET) or `path` (one file). `token_env` names the environment variable that holds a
-    bearer token for the url; it is read each time, so the token lives in no object."""
+    """Reads one feed: `url` (one GET), `path` (one file) or `command` (a program's output, one run reused for
+    `refresh`, run in `cwd`). `token_env` names the environment variable that holds a bearer token for the url; it is
+    read each time, so the token lives in no object. `timeout` defaults to 5 s, or 30 s for a command."""
 
     def __init__(self, source_id: str, label: str, *, url: str | None = None, path: Path | None = None,
-                 token_env: str | None = None, timeout: float = TIMEOUT) -> None:
+                 command: list[str] | None = None, cwd: Path | None = None, token_env: str | None = None,
+                 timeout: float | None = None, refresh: timedelta = DEFAULT_REFRESH) -> None:
         self.source_id = source_id
         self.label = label
         self.url = url
         self.path = path
+        self.command = command
+        self.cwd = cwd
         self.token_env = token_env
-        self.timeout = timeout
+        self.timeout = timeout if timeout is not None else COMMAND_TIMEOUT if command is not None else TIMEOUT
+        self.refresh = refresh
 
     def snapshot(self, now: datetime) -> Snapshot:
-        body = self._fetch(self.url) if self.url is not None else read_file(self.path)
+        if self.command is not None:
+            key = (self.source_id, tuple(self.command), str(self.cwd) if self.cwd is not None else None)
+            body = cached_run(key, self.command, cwd=self.cwd, timeout=self.timeout, refresh=self.refresh)
+        elif self.url is not None:
+            body = self._fetch(self.url)
+        else:
+            body = read_file(self.path)
         return keep(parse(body), self.source_id, self.label, now)
 
     def _token(self) -> str | None:

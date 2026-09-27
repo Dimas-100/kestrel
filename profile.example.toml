@@ -47,4 +47,16 @@ label = "Demo data"
 # timeout = 5                               # optional: seconds, 1 to 60
 # stale_after = "15m"
 #
+# Or, with no server at all, a program kestrel runs itself, whose output is the same JSON (never through a shell):
+#
+# [[sources]]
+# id = "desk"
+# kind = "feed"
+# label = "Trading desk"
+# command = ["../desk/.venv/Scripts/python.exe", "-m", "desk.feed_export"]  # the program, then its arguments
+# cwd = "../desk"             # optional: the folder it runs in (default: this file's folder)
+# timeout = 30                # optional: seconds, 1 to 120
+# refresh = "1m"              # optional: how long one run's output is reused, 5s to 1h
+# stale_after = "15m"
+#
 # When two sources use the same id, the one higher up in this file wins. A trading-rails source comes later.

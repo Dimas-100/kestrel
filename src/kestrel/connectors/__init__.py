@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Any
 
 from ..contract import Snapshot, Source, merge
-from ..profile import Profile, SourceCfg
+from ..profile import Profile, SourceCfg, parse_duration
 from .base import DETAIL_LIMIT, Connector, ConnectorError, ConnectorUnavailable
+from .command import DEFAULT_REFRESH
+from .command import DEFAULT_TIMEOUT as COMMAND_TIMEOUT
 from .demo import DemoConnector
 from .fdc import FdcConnector
 from .feed import TIMEOUT as FEED_TIMEOUT
@@ -29,7 +31,15 @@ def build(cfg: SourceCfg, profile: Profile) -> Connector:
         return FdcConnector(cfg.id, cfg.label or cfg.id, Path(path), categories=getattr(cfg, "categories", None),
                             benchmark=profile.benchmark)
     if cfg.kind == "feed":
-        # the profile has already checked the shape: exactly one of url and path, the scheme, token_env, timeout
+        # the profile has already checked the shape: exactly one of url, path and command, the scheme, token_env,
+        # cwd, timeout and refresh
+        command = getattr(cfg, "command", None)
+        if command is not None:
+            cwd, refresh = getattr(cfg, "cwd", None), getattr(cfg, "refresh", None)
+            return FeedConnector(cfg.id, cfg.label or cfg.id, command=list(command),
+                                 cwd=Path(cwd) if cwd is not None else None,
+                                 timeout=float(getattr(cfg, "timeout", COMMAND_TIMEOUT)),
+                                 refresh=parse_duration(refresh) if refresh is not None else DEFAULT_REFRESH)
         path = getattr(cfg, "path", None)
         return FeedConnector(cfg.id, cfg.label or cfg.id, url=getattr(cfg, "url", None),
                              path=Path(path) if path is not None else None, token_env=getattr(cfg, "token_env", None),
