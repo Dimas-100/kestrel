@@ -7,6 +7,8 @@ from typing import Protocol
 
 from ..contract import Snapshot
 
+DETAIL_LIMIT = 200  # how much of a source's error its row keeps: a sidebar line, not a log
+
 
 class Connector(Protocol):
     source_id: str
