@@ -9,6 +9,8 @@ from kestrel.cli import main
 from kestrel.connectors import collect
 from kestrel.connectors.base import DETAIL_LIMIT
 from kestrel.profile import DEMO_PROFILE, Profile, SourceCfg
+from kestrel.views.home import home_view
+from kestrel.views.strategy import strategy_view
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
 DAY = {"date": "2026-09-25", "value": 100.0}
@@ -147,3 +149,22 @@ def test_duplicate_ids_within_one_source_keep_the_first_and_are_noted(tmp_path):
     snap = collect(profile_of(feed_file(tmp_path, payload)), NOW)
     assert [(b.id, b.name) for b in snap.books] == [("x", "First x")]
     assert "ignored duplicate ids: x" in snap.sources[0].detail
+
+
+def test_two_histories_of_one_id_keep_the_first_on_every_page(tmp_path):
+    first = {"id": "swing-real", "points": [{"date": "2026-09-24", "value": 2131.4},
+                                            {"date": "2026-09-25", "value": 2150.0}]}
+    second = {"id": "swing-real", "points": [{"date": "2026-09-17", "value": 900.0},
+                                             {"date": "2026-09-18", "value": 1000.0}]}
+    within = profile_of(feed_file(tmp_path, desk(book_history=[first, second]), "within.json"))
+    # across sources: the later one has no book of that id to drop, only a second history for it
+    later = desk(books=[], positions=[], trades=[], runs=[], alerts=[], strategies=[], book_history=[second])
+    across = profile_of(feed_file(tmp_path, desk(book_history=[first]), "desk.json"),
+                        feed_file(tmp_path, later, "later.json"))
+    for profile in (within, across):
+        snap = collect(profile, NOW)
+        home = home_view(snap, profile, NOW)
+        strategy = strategy_view(snap, profile, NOW, "swing", "real")
+        seen = ({row.id: row.day_change for row in home.books}["swing-real"],
+                [d.isoformat() for d in strategy.slots.days])
+        assert seen == (18.6, ["2026-09-24", "2026-09-25"]), profile.sources[-1].id

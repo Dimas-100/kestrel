@@ -192,6 +192,42 @@ def test_a_malformed_bracketed_url_gets_the_friendly_message(tmp_path):
     assert "[::1" not in str(error.value)  # the malformed url text is never echoed back
 
 
+@pytest.mark.parametrize("url", ["http://127.0.0.1:99999/api/feed", "http://127.0.0.1:k3y/api/feed",
+                                 "http://127.0.0.1:0/api/feed"], ids=["out of range", "not a number", "zero"])
+def test_a_feed_urls_port_is_a_number_from_1_to_65535(tmp_path, url):
+    with pytest.raises(ProfileError) as error:
+        load_profile(write(tmp_path, FEED + f'url = "{url}"\n'))
+    assert "a feed url must start with http:// or https:// and name a host" in str(error.value)
+    shown = str(error.value).replace(str(tmp_path), "")  # the message, less the profile's own path
+    assert "k3y" not in shown and "99999" not in shown  # the url is never echoed back
+
+
+# written as TOML escapes (\t, \n, \u0007), they reach the profile as a tab, a line break and a control character
+@pytest.mark.parametrize("url", [r"http://127.0.0.1:8000/api feed?key=s3cret", r"http://127.0.0.1:8000/api\tfeed?key=s3cret",
+                                 r"http://127.0.0.1:8000/api/feed?key=s3cret\n",
+                                 r"http://127.0.0.1:8000/api\u0007feed?key=s3cret"],
+                         ids=["space", "tab", "line break", "control character"])
+def test_a_feed_url_cant_hold_spaces_or_control_characters(tmp_path, url):
+    # http.client would refuse a space later, quoting the path and query (where a secret can hide) in the row
+    with pytest.raises(ProfileError) as error:
+        load_profile(write(tmp_path, FEED + f'url = "{url}"\n'))
+    assert "a feed url can't contain spaces or control characters" in str(error.value)
+    shown = str(error.value).replace(str(tmp_path), "")  # the message, less the profile's own path
+    assert "s3cret" not in shown and "api" not in shown
+
+
+@pytest.mark.parametrize("url", ["http://desk.example.com/api/feed", "http://192.168.1.20:8000/api/feed"])
+def test_a_token_goes_only_over_https_or_to_this_computer(tmp_path, url):
+    token = 'token_env = "KESTREL_DESK_TOKEN"\n'
+    with pytest.raises(ProfileError, match="a token goes only over https, or to this computer"):
+        load_profile(write(tmp_path, FEED + f'url = "{url}"\n' + token))
+    for fine in ("http://127.0.0.1:8000/api/feed", "http://localhost:8000/api/feed", "http://[::1]:8000/api/feed",
+                 "https://desk.example.com/api/feed"):
+        profile, _ = load_profile(write(tmp_path, FEED + f'url = "{fine}"\n' + token))
+        assert getattr(profile.sources[0], "token_env") == "KESTREL_DESK_TOKEN"
+    load_profile(write(tmp_path, FEED + f'url = "{url}"\n'))  # without a token nothing secret goes: fine
+
+
 def test_a_feed_url_cant_carry_a_user_name_or_password(tmp_path):
     for url in ("http://alex:hunter2@127.0.0.1:8000/api/feed", "https://hunter2@example.com/feed"):
         with pytest.raises(ProfileError) as error:
@@ -208,7 +244,8 @@ def test_token_env_is_the_name_of_a_variable_never_the_token(tmp_path, name):
         load_profile(write(tmp_path, FEED + f'url = "http://127.0.0.1:8000/api/feed"\ntoken_env = {value}\n'))
     assert "token_env is the name of an environment variable in capitals, such as KESTREL_DESK_TOKEN" in str(
         error.value)
-    assert not name or str(name) not in str(error.value)
+    # the profile's own path is left out of the search: pytest's temp folder (pytest-3842) can hold the "42"
+    assert not name or str(name) not in str(error.value).replace(str(tmp_path), "")
 
 
 def test_a_feed_file_takes_no_token(tmp_path):

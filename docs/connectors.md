@@ -140,14 +140,17 @@ trades, runs and alerts (and its accounts, if it has any) without kestrel knowin
   the folder `profile.toml` is in.
 - **`token_env`** names an environment variable, in capitals; the token itself never goes in the profile. kestrel
   reads it each time it asks the feed and sends it as `Authorization: Bearer …` to the configured URL and nowhere
-  else: it doesn't follow redirects and doesn't use a proxy, and it never prints or logs the token. A URL can't carry
-  a user name or password (`http://name:secret@…`); use `token_env`.
+  else: it doesn't follow redirects and doesn't use a proxy, and it never prints or logs the token. A token goes only
+  over `https://`, or over `http://` to this computer (`127.0.0.1`, `::1` or `localhost`). A URL can't carry a user
+  name or password (`http://name:secret@…`); use `token_env`.
 - **Read-only, and asked each time a page loads.** One GET, with `Accept: application/json`,
   `User-Agent: kestrel/<version>` and no cookies, or one file read. Nothing is cached.
 
 A feed's shape is checked when the profile loads: a source with both `url` and `path` (or neither), another scheme,
-a user name in the URL, a `token_env` that isn't a variable's name (or that goes with a `path`), or a `timeout`
-outside 1 to 60 stops `kestrel check` with `profile problem: …` and exit status 2, before any source is read.
+a space or control character in the URL (write a space as `%20`), a port that isn't 1 to 65535, a user name in the
+URL, a `token_env` that isn't a variable's name (or that goes with a `path`, or with plain `http://` to another
+computer), or a `timeout` outside 1 to 60 stops `kestrel check` with `profile problem: …` and exit status 2, before
+any source is read. No message repeats the URL back.
 
 ### What is checked
 
@@ -238,8 +241,13 @@ that source up in the profile. `kestrel check` reads each source on its own, so 
 never shows this note.
 
 The same thing can happen within a single source: a feed that sends two books (or accounts, or strategies) of the
-same id is treated exactly like the cross-source case — the first item is kept, the later one dropped with whatever
-hangs off it, and that source's own line gets the `ignored duplicate ids: …` note.
+same id. The first item is kept and the later one dropped, and that source's own line gets the
+`ignored duplicate ids: …` note. What hangs off the dropped item stays, though: its positions, trades, holdings and
+the rest carry the same id, so within one source they can't be told apart, and they show under the item that's kept.
+
+Histories follow the same rule by their id. When two account or book histories share an id, in one source or
+across sources, the first is kept and every page draws that one; a later source's history goes even when that source
+has no item of the id. A history isn't an item of its own, so this isn't noted on the source's line.
 
 ## `rails`
 

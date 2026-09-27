@@ -25,6 +25,7 @@ class ProfileError(Exception):
 _DURATION = re.compile(r"^\s*(\d+)\s*([mhd])\s*$")
 # an environment variable's name in capitals: a token pasted in by mistake almost never looks like one
 _ENV_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+_THIS_COMPUTER = ("127.0.0.1", "::1", "localhost")  # the hosts a token may go to over plain http
 
 
 def parse_duration(text: str) -> timedelta:
@@ -107,13 +108,20 @@ class SourceCfg(BaseModel):
             raise ValueError('a feed source needs exactly one of url and path, e.g. url = '
                              '"http://127.0.0.1:8000/api/feed" or path = "../desk/feed.json"')
         if url is not None:
+            if isinstance(url, str) and any(c.isspace() or not c.isprintable() for c in url):
+                # urllib quietly drops tabs and line breaks, and http.client refuses a space with the path and
+                # query (where a secret can hide) in its message
+                raise ValueError("a feed url can't contain spaces or control characters (write a space as %20)")
             try:
                 parts = urlsplit(url) if isinstance(url, str) else None
-                valid = parts is not None and parts.scheme in ("http", "https") and bool(parts.hostname)
-            except ValueError:  # e.g. urlsplit("http://[::1/feed") raises its own "Invalid IPv6 URL"
+                # .port raises for a port that isn't a number or is out of range
+                valid = (parts is not None and parts.scheme in ("http", "https") and bool(parts.hostname)
+                         and parts.port != 0)
+            except ValueError:  # that, or urlsplit("http://[::1/feed") with its own "Invalid IPv6 URL"
                 valid = False
             if not valid:
-                raise ValueError("a feed url must start with http:// or https:// and name a host")
+                raise ValueError("a feed url must start with http:// or https:// and name a host "
+                                 "(and a port from 1 to 65535, if it has one)")
             if parts.username is not None or parts.password is not None:
                 raise ValueError("a feed url can't carry a user name or password: put the token in an environment "
                                  "variable and name it in token_env")
@@ -126,6 +134,9 @@ class SourceCfg(BaseModel):
             if not isinstance(token_env, str) or not _ENV_NAME.match(token_env):
                 raise ValueError("token_env is the name of an environment variable in capitals, such as "
                                  "KESTREL_DESK_TOKEN, never the token itself")
+            if parts.scheme == "http" and parts.hostname not in _THIS_COMPUTER:
+                # plain http shows the token to anything on the way; to this computer, nothing is on the way
+                raise ValueError("a token goes only over https, or to this computer")
         timeout = getattr(self, "timeout", 5)
         if isinstance(timeout, bool) or not isinstance(timeout, int | float) or not 1 <= timeout <= 60:
             raise ValueError("timeout is in seconds, from 1 to 60")

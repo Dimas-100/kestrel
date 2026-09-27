@@ -76,8 +76,9 @@ def _noted(sources: list[Source], ignored: list[str]) -> list[Source]:
 
 def _dedupe_within(part: Snapshot) -> tuple[Snapshot, list[str]]:
     """Two accounts, books or strategies of the same id within this one source: keep the first, drop the later
-    item itself. Its dependents (positions, trades, history, …) are keyed by that same id, so they stay — they end
-    up attached to the one that's kept."""
+    item itself. Its dependents (positions, trades, holdings, …) are keyed by that same id, so they stay — they end
+    up attached to the one that's kept. Two histories of the same id: the first stays, the later goes (a history
+    isn't an item of its own, so it isn't named in the note)."""
 
     def first_only(items: list) -> tuple[list, list[str]]:
         seen: set[str] = set()
@@ -94,30 +95,41 @@ def _dedupe_within(part: Snapshot) -> tuple[Snapshot, list[str]]:
     accounts, dup_accounts = first_only(part.accounts)
     books, dup_books = first_only(part.books)
     strategies, dup_strategies = first_only(part.strategies)
+    account_history, dup_account_history = first_only(part.account_history)
+    book_history, dup_book_history = first_only(part.book_history)
     dupes = [*dup_accounts, *dup_books, *dup_strategies]
-    if not dupes:
+    if not (dupes or dup_account_history or dup_book_history):
         return part, []
-    return part.model_copy(update={"accounts": accounts, "books": books, "strategies": strategies}), dupes
+    return part.model_copy(update={"accounts": accounts, "books": books, "strategies": strategies,
+                                   "account_history": account_history, "book_history": book_history}), dupes
 
 
 def _without_duplicates(parts: list[Snapshot]) -> list[Snapshot]:
     """When a later source uses an account, book or strategy id an earlier one already has, the earlier one's item
     stays and the later one's goes, with everything that hangs off it: an account's holdings and history; a book's
-    history, positions, trades, trade charts and runs. Books keep pointing at the first strategy of their id. Two
-    items of the same id within one source (`_dedupe_within`) are resolved the same way, first."""
+    history, positions, trades, trade charts and runs. Books keep pointing at the first strategy of their id. A
+    history whose id an earlier source's history already has goes too, even without an item of that id, so every
+    page reads the same one. Two items or histories of the same id within one source (`_dedupe_within`) are
+    resolved first."""
     seen_accounts: set[str] = set()
     seen_books: set[str] = set()
     seen_strategies: set[str] = set()
+    seen_account_history: set[str] = set()
+    seen_book_history: set[str] = set()
     out = []
     for part in parts:
         part, within = _dedupe_within(part)
         accounts = {a.id for a in part.accounts} & seen_accounts
         books = {b.id for b in part.books} & seen_books
         strategies = {s.id for s in part.strategies} & seen_strategies
+        account_history = {s.id for s in part.account_history} & seen_account_history
+        book_history = {s.id for s in part.book_history} & seen_book_history
         seen_accounts |= {a.id for a in part.accounts}
         seen_books |= {b.id for b in part.books}
         seen_strategies |= {s.id for s in part.strategies}
-        if not (accounts or books or strategies or within):
+        seen_account_history |= {s.id for s in part.account_history}
+        seen_book_history |= {s.id for s in part.book_history}
+        if not (accounts or books or strategies or within or account_history or book_history):
             out.append(part)
             continue
         ignored = [*(a.id for a in part.accounts if a.id in accounts), *(b.id for b in part.books if b.id in books),
@@ -125,15 +137,16 @@ def _without_duplicates(parts: list[Snapshot]) -> list[Snapshot]:
         out.append(part.model_copy(update={
             "accounts": [a for a in part.accounts if a.id not in accounts],
             "holdings": [h for h in part.holdings if h.account_id not in accounts],
-            "account_history": [s for s in part.account_history if s.id not in accounts],
+            "account_history": [s for s in part.account_history if s.id not in accounts | account_history],
             "books": [b for b in part.books if b.id not in books],
-            "book_history": [s for s in part.book_history if s.id not in books],
+            "book_history": [s for s in part.book_history if s.id not in books | book_history],
             "positions": [p for p in part.positions if p.book_id not in books],
             "trades": [t for t in part.trades if t.book_id not in books],
             "trade_charts": [c for c in part.trade_charts if c.book_id not in books],
             "runs": [r for r in part.runs if r.book_id not in books],
             "strategies": [s for s in part.strategies if s.id not in strategies],
-            "sources": _noted(list(part.sources), list(dict.fromkeys(ignored))),  # an id named once, in order
+            # an id named once, in order; a history alone (no item dropped) isn't noted
+            "sources": _noted(list(part.sources), list(dict.fromkeys(ignored))) if ignored else part.sources,
         }))
     return out
 
