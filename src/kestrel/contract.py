@@ -9,12 +9,12 @@ from __future__ import annotations
 import datetime as dt
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CONTRACT_VERSION = "1"
 
 Money = Literal["real", "paper"]
-Category = Literal["long_term", "trading", "cash", "other"]
+Category = Literal["long_term", "trading", "cash", "debt", "other"]  # debt: money owed; its value is the amount owed
 
 
 class Model(BaseModel):
@@ -39,6 +39,8 @@ class Account(Model):
     value: float
     cash: float = 0.0
     as_of: AwareDatetime
+    rate_pct: float | None = None  # yearly interest: what cash earns (APY), what debt costs (APR)
+    limit: float | None = None  # a credit line's limit (debt accounts)
 
 
 class Holding(Model):
@@ -196,6 +198,101 @@ class Benchmark(Model):
     points: list[ValuePoint]  # value = the close
 
 
+class Target(Model):
+    """What the plan says an account (or, with no account, all of them) should hold."""
+
+    id: str
+    account_id: str | None = None
+    label: str  # "VTI", "Growth core"
+    symbols: list[str] = []  # the holdings it measures, summed
+    # "%": a share of the account's value (kestrel works out `actual` from holdings when it isn't sent);
+    # "x": a ratio the source measures and sends as `actual`
+    unit: Literal["%", "x"] = "%"
+    target: float | None = None  # the aim
+    low: float | None = None  # the band around it; a missing end is open
+    high: float | None = None
+    actual: float | None = None
+    note: str = ""
+
+    @model_validator(mode="after")
+    def _aimed(self) -> Target:
+        if self.target is None and self.low is None and self.high is None:
+            raise ValueError("a target needs an aim: target, low or high")
+        if self.unit == "x" and self.actual is None:
+            raise ValueError('a ratio target (unit "x") needs its actual: only its source can measure it')
+        if self.low is not None and self.high is not None and self.low > self.high:
+            raise ValueError(f"the target's low ({self.low:g}) is above its high ({self.high:g})")
+        return self
+
+
+class Thesis(Model):
+    """Why a holding is owned, and whether that still holds."""
+
+    symbol: str
+    name: str = ""
+    status: str = "active"
+    health: Literal["ok", "watch", "alert", "none"] = "none"
+    reasons: list[str] = []  # what drove the health
+    conviction: str = ""  # free text, usually low, medium or high
+    opened: dt.date | None = None
+    last_reviewed: dt.date | None = None
+    wrong_if: list[str] = []  # the conditions that would prove it wrong
+    account_ids: list[str] = []
+
+
+class Event(Model):
+    """A dated thing about a company. Everything in it is shown as text."""
+
+    date: dt.date
+    symbol: str = ""
+    kind: Literal["earnings", "filing", "insider", "dividend", "other"]
+    title: str
+    detail: str = ""
+    # https only, or empty: never another scheme (javascript:, http:), and nothing that could break out of a link
+    url: str = Field(default="", pattern=r"^(https://[^\s<>\"']+)?$")
+
+
+class Goal(Model):
+    """An amount to reach. It measures an account, or a category, or, with neither, net worth; kestrel works out the
+    current value and the progress."""
+
+    id: str
+    label: str
+    target: float
+    account_id: str | None = None
+    category: Category | None = None
+    by: dt.date | None = None
+    note: str = ""
+
+
+class Exposure(Model):
+    """What the money is really in, looking through funds."""
+
+    symbol: str
+    name: str = ""
+    value: float  # held directly plus through funds
+    direct: float = 0.0  # the part held directly
+    sector: str = ""
+
+
+class Backtest(Model):
+    """One entry in the research record."""
+
+    id: str
+    name: str
+    family: str = ""
+    window: str = ""  # free text: "develop", "confirm", ...
+    verdict: Literal["pass", "fail", "refused", "pending"]
+    at: AwareDatetime
+    strategy_id: str | None = None
+    trades: int | None = None
+    avg_trade_pct: float | None = None
+    t_stat: float | None = None
+    calmar: float | None = None
+    max_drawdown_pct: float | None = None  # negative
+    note: str = ""
+
+
 def check_version(value: str) -> str:
     """`value` when its major version is this contract's; a ValueError worded for a person when it isn't."""
     if value.split(".")[0] != CONTRACT_VERSION:
@@ -219,6 +316,12 @@ class Snapshot(Model):
     runs: list[Run] = []
     alerts: list[Alert] = []
     benchmark: Benchmark | None = None
+    targets: list[Target] = []
+    theses: list[Thesis] = []
+    events: list[Event] = []
+    goals: list[Goal] = []
+    exposures: list[Exposure] = []
+    backtests: list[Backtest] = []
 
     @field_validator("contract_version")
     @classmethod
@@ -229,6 +332,7 @@ class Snapshot(Model):
 _LIST_FIELDS = (
     "sources", "accounts", "holdings", "account_history", "books", "book_history",
     "positions", "trades", "trade_charts", "strategies", "runs", "alerts",
+    "targets", "theses", "events", "goals", "exposures", "backtests",
 )
 
 

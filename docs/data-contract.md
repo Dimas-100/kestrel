@@ -7,7 +7,8 @@ code entering this repo ([how](connectors.md#feed-any-system-that-serves-the-con
 - **Schema:** [`contract/snapshot.schema.json`](contract/snapshot.schema.json), generated from
   `src/kestrel/contract.py` (`kestrel schema`); a test fails if the two drift.
 - **A complete example:** `kestrel demo` prints the demo Snapshot — a year of fictional accounts, books, trades and runs.
-- **Entities and fields:** the table in the [design spec](specs/2026-09-25-kestrel-design.md#7-data-contract-v1).
+- **Entities and fields:** the table in the [design spec](specs/2026-09-25-kestrel-design.md#7-data-contract-v1), and
+  the blocks added since in [Cash, debt, plan and research](#cash-debt-plan-and-research) below.
 
 ## Rules
 
@@ -26,7 +27,8 @@ code entering this repo ([how](connectors.md#feed-any-system-that-serves-the-con
 - A connector only reads. Nothing in the contract asks a source to change anything.
 - A strategy, book or account `id` appears directly in a URL path (`/strategies/{id}`); an id must not contain `/`.
   When two sources use the same id, the one earlier in the profile keeps it and the later one's item is dropped
-  ([connectors.md](connectors.md#when-two-sources-use-the-same-id)).
+  ([connectors.md](connectors.md#when-two-sources-use-the-same-id)). Targets, goals and backtests are matched by
+  `id` the same way, theses and exposures by `symbol`, and events by `date`, `kind`, `symbol` and `title`.
 
 ## Optional extras
 
@@ -46,3 +48,109 @@ plain "not reported" state for that part and everything else still works.
   percent), plotted on "Is it worth it?".
 - `Strategy.watch`: names close to a signal (`symbol`, `label`, `value`, `note`), listed under "Where the money
   works".
+
+## Cash, debt, plan and research
+
+Six more blocks — `targets`, `theses`, `events`, `goals`, `exposures` and `backtests` — and a `debt` category. Each
+block is a list that defaults to empty, so a document written before they existed still loads, and an older kestrel
+ignores them. A source sends facts (a target, a thesis's health, an event); kestrel works out what it can from data
+it already has, such as an account's actual share of a holding or a goal's progress, so two sources can't disagree
+about the same number.
+
+### Accounts: cash and debt
+
+`category` is `long_term`, `trading`, `cash`, `debt` or `other`. A `debt` account is money owed, such as a credit
+card; its `value` is the amount owed, zero or more. Two optional fields:
+
+| Field | Meaning |
+|---|---|
+| `rate_pct` | yearly interest, in percent: what cash earns (APY), what debt costs (APR) |
+| `limit` | a credit line's limit |
+
+### Targets
+
+What the plan says an account should hold.
+
+| Field | Meaning |
+|---|---|
+| `id` | unique |
+| `account_id` | the account the target is about, or none for all accounts |
+| `label` | display text: `VTI`, `Growth core` |
+| `symbols` | what it measures; kestrel sums these holdings |
+| `unit` | `"%"` (the default): a share of the account's value, and kestrel computes `actual` from holdings when it isn't sent · `"x"`: a ratio the source measures and sends as `actual` |
+| `target`, `low`, `high` | the aim and the band around it; at least one of the three |
+| `actual` | optional for `%`, required for `x` |
+| `note` | why |
+
+A target is **on plan** inside `[low, high]` (a missing end is open), **over** above it and **under** below it. A
+target with no aim, a ratio without its `actual`, or a `low` above its `high` fails validation, so the payload is
+dropped and the source shows as `error`.
+
+### Theses
+
+Why each holding is owned.
+
+| Field | Meaning |
+|---|---|
+| `symbol`, `name` | the holding |
+| `status` | free text; `active` by default |
+| `health` | `ok`, `watch`, `alert` or `none` (the default) |
+| `reasons` | what drove the health |
+| `conviction` | free text, usually `low`, `medium` or `high` |
+| `opened`, `last_reviewed` | dates, each optional |
+| `wrong_if` | the conditions that would prove it wrong |
+| `account_ids` | the accounts it is about |
+
+### Events
+
+Dated things about a company.
+
+| Field | Meaning |
+|---|---|
+| `date` | the day |
+| `symbol` | the company, or empty |
+| `kind` | `earnings`, `filing`, `insider`, `dividend` or `other` |
+| `title`, `detail` | what happened or will |
+| `url` | `https://…` or empty |
+
+A `url` that isn't `https://` (`http:`, `javascript:`), or that holds a space, a quote or `<`/`>`, fails validation, so
+the payload is dropped and the source shows as `error`. Everything else in an event is shown as text.
+
+### Goals
+
+| Field | Meaning |
+|---|---|
+| `id` | unique |
+| `label` | display text |
+| `target` | the amount to reach |
+| `account_id`, `category` | what it measures: an account, or a category, or neither for net worth |
+| `by` | the date to reach it by, optional |
+| `note` | why |
+
+kestrel computes the current value and the progress.
+
+### Exposures
+
+What the money is really in, looking through funds.
+
+| Field | Meaning |
+|---|---|
+| `symbol`, `name` | the company or asset |
+| `value` | held directly plus through funds |
+| `direct` | the part held directly (0 by default) |
+| `sector` | free text |
+
+### Backtests
+
+The research record.
+
+| Field | Meaning |
+|---|---|
+| `id` | unique |
+| `name`, `family` | the candidate, and the family of candidates it belongs to |
+| `window` | free text: `develop`, `confirm`, … |
+| `verdict` | `pass`, `fail`, `refused` or `pending` |
+| `at` | when it ran (a timestamp with an offset) |
+| `strategy_id` | the strategy it tests, if any |
+| `trades`, `avg_trade_pct`, `t_stat`, `calmar`, `max_drawdown_pct` | the results, each optional; the drawdown is a negative percent |
+| `note` | free text |

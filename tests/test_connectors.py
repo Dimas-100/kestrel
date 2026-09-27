@@ -3,7 +3,7 @@
 import datetime as dt
 import re
 
-from feed_fixture import desk, feed_file
+from feed_fixture import MADE, desk, feed_file
 
 from kestrel.cli import main
 from kestrel.connectors import collect
@@ -168,3 +168,58 @@ def test_two_histories_of_one_id_keep_the_first_on_every_page(tmp_path):
         seen = ({row.id: row.day_change for row in home.books}["swing-real"],
                 [d.isoformat() for d in strategy.slots.days])
         assert seen == (18.6, ["2026-09-24", "2026-09-25"]), profile.sources[-1].id
+
+
+def plan_only(**blocks) -> dict:
+    """A feed with only the plan and research blocks: no books, strategies or trades of its own to collide."""
+    return desk(books=[], book_history=[], positions=[], trades=[], strategies=[], runs=[], alerts=[], **blocks)
+
+
+TARGET = {"id": "roth-vti", "label": "VTI", "symbols": ["VTI"], "target": 60.0}
+THESIS = {"symbol": "KO", "health": "ok"}
+EVENT = {"date": "2026-10-21", "symbol": "KO", "kind": "earnings", "title": "Third-quarter results"}
+GOAL = {"id": "house", "label": "House deposit", "target": 60000.0}
+EXPOSURE = {"symbol": "MSFT", "value": 900.0}
+BACKTEST = {"id": "dip-a1", "name": "Dip buy", "verdict": "pass", "at": MADE}
+FIRST = plan_only(targets=[TARGET], theses=[THESIS], events=[EVENT], goals=[GOAL], exposures=[EXPOSURE],
+                  backtests=[BACKTEST])
+
+
+def seen(snap) -> dict:
+    return {"targets": [(t.id, t.target) for t in snap.targets], "theses": [(t.symbol, t.health) for t in snap.theses],
+            "events": [(e.kind, e.detail) for e in snap.events], "goals": [(g.id, g.target) for g in snap.goals],
+            "exposures": [(e.symbol, e.value) for e in snap.exposures],
+            "backtests": [(b.id, b.verdict) for b in snap.backtests]}
+
+
+def test_duplicate_new_block_ids_first_source_wins(tmp_path):
+    later = plan_only(
+        targets=[{**TARGET, "target": 70.0}, {**TARGET, "id": "roth-bnd", "label": "BND", "symbols": ["BND"]}],
+        theses=[{**THESIS, "health": "alert"}, {"symbol": "PG"}],
+        # the same (date, kind, symbol, title) is the same event whatever its detail; another kind is another event
+        events=[{**EVENT, "detail": "after the close"}, {**EVENT, "kind": "dividend"}],
+        goals=[{**GOAL, "target": 1.0}], exposures=[{**EXPOSURE, "value": 1.0}],
+        backtests=[{**BACKTEST, "verdict": "fail"}])
+    snap = collect(profile_of(feed_file(tmp_path, FIRST, "desk.json"), feed_file(tmp_path, later, "notebook.json")),
+                   NOW)
+    assert seen(snap) == {
+        "targets": [("roth-vti", 60.0), ("roth-bnd", 60.0)], "theses": [("KO", "ok"), ("PG", "none")],
+        "events": [("earnings", ""), ("dividend", "")], "goals": [("house", 60000.0)],
+        "exposures": [("MSFT", 900.0)], "backtests": [("dip-a1", "pass")],
+    }
+    # the target id and the thesis symbol are named, and the goal, exposure and backtest too; an event has no id
+    assert {s.id: s.detail for s in snap.sources} == {
+        "desk": "0 books · 0 strategies · 0 trades",
+        "notebook": "0 books · 0 strategies · 0 trades · ignored duplicate ids: roth-vti, KO, house, MSFT, dip-a1",
+    }
+
+
+def test_duplicate_new_block_items_within_one_source_keep_the_first(tmp_path):
+    payload = plan_only(targets=[TARGET, {**TARGET, "target": 70.0}], theses=[THESIS, {**THESIS, "health": "alert"}],
+                        events=[EVENT, {**EVENT, "detail": "after the close"}], goals=[GOAL, {**GOAL, "target": 1.0}],
+                        exposures=[EXPOSURE, {**EXPOSURE, "value": 1.0}],
+                        backtests=[BACKTEST, {**BACKTEST, "verdict": "fail"}])
+    snap = collect(profile_of(feed_file(tmp_path, payload)), NOW)
+    assert seen(snap) == seen(collect(profile_of(feed_file(tmp_path, FIRST, "first.json")), NOW))
+    assert snap.sources[0].detail == ("0 books · 0 strategies · 0 trades · ignored duplicate ids: roth-vti, KO, house, "
+                                      "MSFT, dip-a1")

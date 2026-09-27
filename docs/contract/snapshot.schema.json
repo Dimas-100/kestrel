@@ -25,6 +25,7 @@
             "long_term",
             "trading",
             "cash",
+            "debt",
             "other"
           ],
           "title": "Category",
@@ -43,6 +44,30 @@
           "format": "date-time",
           "title": "As Of",
           "type": "string"
+        },
+        "rate_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rate Pct"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit"
         }
       },
       "required": [
@@ -87,6 +112,129 @@
         "title"
       ],
       "title": "Alert",
+      "type": "object"
+    },
+    "Backtest": {
+      "description": "One entry in the research record.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "family": {
+          "default": "",
+          "title": "Family",
+          "type": "string"
+        },
+        "window": {
+          "default": "",
+          "title": "Window",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "pass",
+            "fail",
+            "refused",
+            "pending"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "strategy_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strategy Id"
+        },
+        "trades": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Trades"
+        },
+        "avg_trade_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Avg Trade Pct"
+        },
+        "t_stat": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "T Stat"
+        },
+        "calmar": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calmar"
+        },
+        "max_drawdown_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Drawdown Pct"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "verdict",
+        "at"
+      ],
+      "title": "Backtest",
       "type": "object"
     },
     "Bar": {
@@ -239,6 +387,54 @@
       "title": "Book",
       "type": "object"
     },
+    "Event": {
+      "description": "A dated thing about a company. Everything in it is shown as text.",
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "symbol": {
+          "default": "",
+          "title": "Symbol",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "earnings",
+            "filing",
+            "insider",
+            "dividend",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "url": {
+          "default": "",
+          "pattern": "^(https://[^\\s<>\\\"']+)?$",
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "date",
+        "kind",
+        "title"
+      ],
+      "title": "Event",
+      "type": "object"
+    },
     "Expected": {
       "properties": {
         "win_rate": {
@@ -317,6 +513,113 @@
         "sd_trade_pct"
       ],
       "title": "Expected",
+      "type": "object"
+    },
+    "Exposure": {
+      "description": "What the money is really in, looking through funds.",
+      "properties": {
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "direct": {
+          "default": 0.0,
+          "title": "Direct",
+          "type": "number"
+        },
+        "sector": {
+          "default": "",
+          "title": "Sector",
+          "type": "string"
+        }
+      },
+      "required": [
+        "symbol",
+        "value"
+      ],
+      "title": "Exposure",
+      "type": "object"
+    },
+    "Goal": {
+      "description": "An amount to reach. It measures an account, or a category, or, with neither, net worth; kestrel works out the\ncurrent value and the progress.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "number"
+        },
+        "account_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Account Id"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "enum": [
+                "long_term",
+                "trading",
+                "cash",
+                "debt",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "by": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "By"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "target"
+      ],
+      "title": "Goal",
       "type": "object"
     },
     "Holding": {
@@ -710,6 +1013,197 @@
       "title": "Strategy",
       "type": "object"
     },
+    "Target": {
+      "description": "What the plan says an account (or, with no account, all of them) should hold.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "account_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Account Id"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "symbols": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Symbols",
+          "type": "array"
+        },
+        "unit": {
+          "default": "%",
+          "enum": [
+            "%",
+            "x"
+          ],
+          "title": "Unit",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target"
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Low"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "High"
+        },
+        "actual": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Actual"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "Target",
+      "type": "object"
+    },
+    "Thesis": {
+      "description": "Why a holding is owned, and whether that still holds.",
+      "properties": {
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "default": "active",
+          "title": "Status",
+          "type": "string"
+        },
+        "health": {
+          "default": "none",
+          "enum": [
+            "ok",
+            "watch",
+            "alert",
+            "none"
+          ],
+          "title": "Health",
+          "type": "string"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "conviction": {
+          "default": "",
+          "title": "Conviction",
+          "type": "string"
+        },
+        "opened": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opened"
+        },
+        "last_reviewed": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Reviewed"
+        },
+        "wrong_if": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Wrong If",
+          "type": "array"
+        },
+        "account_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Account Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "symbol"
+      ],
+      "title": "Thesis",
+      "type": "object"
+    },
     "Trade": {
       "properties": {
         "book_id": {
@@ -1016,6 +1510,54 @@
         }
       ],
       "default": null
+    },
+    "targets": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Target"
+      },
+      "title": "Targets",
+      "type": "array"
+    },
+    "theses": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Thesis"
+      },
+      "title": "Theses",
+      "type": "array"
+    },
+    "events": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Event"
+      },
+      "title": "Events",
+      "type": "array"
+    },
+    "goals": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Goal"
+      },
+      "title": "Goals",
+      "type": "array"
+    },
+    "exposures": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Exposure"
+      },
+      "title": "Exposures",
+      "type": "array"
+    },
+    "backtests": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Backtest"
+      },
+      "title": "Backtests",
+      "type": "array"
     }
   },
   "required": [

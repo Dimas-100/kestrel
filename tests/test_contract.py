@@ -136,3 +136,125 @@ def test_merge_keeps_every_sources_trade_charts():
     a = Snapshot.model_validate(minimal(trade_charts=[CHART]))
     b = Snapshot.model_validate(minimal(trade_charts=[{**CHART, "symbol": "LOW"}]))
     assert [c.symbol for c in merge([a, b], generated_at=NOW).trade_charts] == ["HD", "LOW"]
+
+
+# the six blocks and the debt category added in phase 5; every name and number here is made up
+TARGET = {"id": "roth-vti", "account_id": "roth", "label": "VTI", "symbols": ["VTI"], "target": 60.0, "low": 55.0,
+          "high": 65.0, "note": "the core"}
+THESIS = {"symbol": "KO", "name": "Coca-Cola", "health": "watch", "reasons": ["volume soft two quarters"],
+          "conviction": "medium", "opened": "2025-03-03", "last_reviewed": "2026-09-01",
+          "wrong_if": ["pricing power fades"], "account_ids": ["brokerage"]}
+EVENT = {"date": "2026-10-21", "symbol": "KO", "kind": "earnings", "title": "Third-quarter results",
+         "detail": "before the open", "url": "https://example.com/ko/q3"}
+GOAL = {"id": "house", "label": "House deposit", "target": 60000.0, "category": "cash", "by": "2028-06-01",
+        "note": "twenty percent down"}
+EXPOSURE = {"symbol": "MSFT", "name": "Microsoft", "value": 4210.5, "direct": 1500.0, "sector": "Technology"}
+BACKTEST = {"id": "dip-a1", "name": "Dip buy, sell the bounce", "family": "dip", "window": "confirm",
+            "verdict": "pass", "at": "2026-09-10T22:00:00+00:00", "strategy_id": "swing", "trades": 212,
+            "avg_trade_pct": 0.41, "t_stat": 2.61, "calmar": 1.2, "max_drawdown_pct": -9.4, "note": "a made-up run"}
+NEW_BLOCKS = {"targets": TARGET, "theses": THESIS, "events": EVENT, "goals": GOAL, "exposures": EXPOSURE,
+              "backtests": BACKTEST}
+
+
+def test_new_blocks_default_empty():
+    # a v1 document written before these blocks existed still loads, with each of them empty
+    account = {"id": "roth", "name": "Roth IRA", "category": "long_term", "value": 100.0, "as_of": NOW.isoformat()}
+    snap = Snapshot.model_validate(minimal(accounts=[account]))
+    assert [getattr(snap, name) for name in NEW_BLOCKS] == [[]] * 6
+    assert snap.accounts[0].rate_pct is None and snap.accounts[0].limit is None
+
+
+def test_every_new_block_round_trips_through_json():
+    snap = Snapshot.model_validate(minimal(**{name: [item] for name, item in NEW_BLOCKS.items()}))
+    assert Snapshot.model_validate_json(snap.model_dump_json()) == snap
+    assert snap.targets[0].unit == "%" and snap.targets[0].actual is None
+    assert snap.theses[0].status == "active" and snap.theses[0].last_reviewed == dt.date(2026, 9, 1)
+    assert snap.events[0].date == dt.date(2026, 10, 21) and snap.goals[0].by == dt.date(2028, 6, 1)
+    assert snap.exposures[0].direct == 1500.0 and snap.backtests[0].t_stat == 2.61
+    bare = Snapshot.model_validate(minimal(
+        theses=[{"symbol": "PG"}], events=[{"date": "2026-10-01", "kind": "other", "title": "Investor day"}],
+        goals=[{"id": "all", "label": "Net worth", "target": 100000}],
+        exposures=[{"symbol": "AAPL", "value": 10.0}],
+        backtests=[{"id": "b", "name": "B", "verdict": "pending", "at": NOW.isoformat()}]))
+    assert bare.theses[0].health == "none" and bare.theses[0].opened is None
+    assert bare.events[0].symbol == "" and bare.events[0].url == ""
+    assert bare.goals[0].account_id is None and bare.goals[0].category is None
+    assert bare.exposures[0].direct == 0.0 and bare.backtests[0].trades is None
+
+
+def test_debt_category_and_rates_round_trip():
+    card = {"id": "card", "name": "Rewards card", "category": "debt", "value": 640.0, "rate_pct": 24.9,
+            "limit": 5000.0, "as_of": NOW.isoformat()}
+    savings = {"id": "savings", "name": "High-yield savings", "category": "cash", "value": 8000.0, "rate_pct": 4.1,
+               "as_of": NOW.isoformat()}
+    snap = Snapshot.model_validate(minimal(accounts=[card, savings], goals=[{**GOAL, "category": "debt"}]))
+    assert [(a.category, a.rate_pct, a.limit) for a in snap.accounts] == [("debt", 24.9, 5000.0), ("cash", 4.1, None)]
+    assert snap.goals[0].category == "debt"
+    assert Snapshot.model_validate_json(snap.model_dump_json()) == snap
+
+
+def test_target_needs_an_aim():
+    aimless = {key: value for key, value in TARGET.items() if key not in ("target", "low", "high")}
+    with pytest.raises(ValidationError, match="target, low or high"):
+        Snapshot.model_validate(minimal(targets=[aimless]))
+    for only in ("target", "low", "high"):  # any one of the three is an aim
+        snap = Snapshot.model_validate(minimal(targets=[{**aimless, only: 50.0}]))
+        assert getattr(snap.targets[0], only) == 50.0
+
+
+def test_ratio_target_needs_actual():
+    ratio = {"id": "cover", "label": "Cash cover", "unit": "x", "low": 6.0}
+    with pytest.raises(ValidationError, match="actual"):
+        Snapshot.model_validate(minimal(targets=[ratio]))
+    snap = Snapshot.model_validate(minimal(targets=[{**ratio, "actual": 7.5}]))
+    assert snap.targets[0].unit == "x" and snap.targets[0].actual == 7.5 and snap.targets[0].account_id is None
+    with pytest.raises(ValidationError):
+        Snapshot.model_validate(minimal(targets=[{**ratio, "unit": "$", "actual": 7.5}]))
+
+
+def test_target_low_above_high_is_refused():
+    with pytest.raises(ValidationError, match="low"):
+        Snapshot.model_validate(minimal(targets=[{**TARGET, "low": 70.0, "high": 65.0}]))
+    snap = Snapshot.model_validate(minimal(targets=[{**TARGET, "low": 60.0, "high": 60.0}]))  # a point band is fine
+    assert snap.targets[0].low == snap.targets[0].high == 60.0
+
+
+@pytest.mark.parametrize("url,ok", [
+    ("", True),
+    ("https://example.com/a", True),
+    ("http://x", False),
+    ("javascript:alert(1)", False),
+    ("https://a b", False),
+])
+def test_event_url_must_be_https(url, ok):
+    payload = minimal(events=[{**EVENT, "url": url}])
+    if ok:
+        assert Snapshot.model_validate(payload).events[0].url == url
+    else:
+        with pytest.raises(ValidationError):
+            Snapshot.model_validate(payload)
+
+
+def test_backtest_verdicts():
+    for verdict in ("pass", "fail", "refused", "pending"):
+        assert Snapshot.model_validate(minimal(backtests=[{**BACKTEST, "verdict": verdict}])).backtests[0].verdict == \
+            verdict
+    with pytest.raises(ValidationError):
+        Snapshot.model_validate(minimal(backtests=[{**BACKTEST, "verdict": "maybe"}]))
+    with pytest.raises(ValidationError):  # like every timestamp, `at` carries an offset
+        Snapshot.model_validate(minimal(backtests=[{**BACKTEST, "at": "2026-09-10T22:00:00"}]))
+
+
+def test_merge_keeps_every_new_block():
+    a = Snapshot.model_validate(minimal(**{name: [item] for name, item in NEW_BLOCKS.items()}))
+    b = Snapshot.model_validate(minimal(
+        targets=[{**TARGET, "id": "roth-bnd", "label": "BND", "symbols": ["BND"]}], theses=[{**THESIS, "symbol": "PG"}],
+        events=[{**EVENT, "symbol": "PG"}], goals=[{**GOAL, "id": "car"}], exposures=[{**EXPOSURE, "symbol": "AAPL"}],
+        backtests=[{**BACKTEST, "id": "dip-a2"}]))
+    merged = merge([a, b], generated_at=NOW)
+    assert [t.id for t in merged.targets] == ["roth-vti", "roth-bnd"]
+    assert [t.symbol for t in merged.theses] == ["KO", "PG"]
+    assert [e.symbol for e in merged.events] == ["KO", "PG"]
+    assert [g.id for g in merged.goals] == ["house", "car"]
+    assert [e.symbol for e in merged.exposures] == ["MSFT", "AAPL"]
+    assert [b.id for b in merged.backtests] == ["dip-a1", "dip-a2"]

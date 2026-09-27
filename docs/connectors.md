@@ -249,6 +249,11 @@ Histories follow the same rule by their id. When two account or book histories s
 across sources, the first is kept and every page draws that one; a later source's history goes even when that source
 has no item of the id. A history isn't an item of its own, so this isn't noted on the source's line.
 
+The plan and research blocks follow it too: targets, goals and backtests by their id, theses and exposures by their
+symbol, and events by their date, kind, symbol and title. In one source or across sources, the first is kept and the
+later one goes on its own (nothing hangs off these). The ids and symbols dropped are named in the same
+`ignored duplicate ids: …` note; an event has no id, so a dropped event isn't.
+
 ## `rails`
 
 Later: a trading-rails install's paper books, run log and backtests. Until then a source of this kind shows as an
