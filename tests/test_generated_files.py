@@ -26,7 +26,10 @@ GENERATED = [
 @pytest.mark.parametrize("path,argv", GENERATED, ids=[p.name for p, _ in GENERATED])
 def test_generated_file_is_current(path, argv, capsysbinary):
     main(argv)
-    current = json.loads(capsysbinary.readouterr().out.decode("utf-8"))
+    emitted = capsysbinary.readouterr().out.decode("utf-8")
     command = "kestrel " + " ".join(argv) + f" > {path.relative_to(ROOT).as_posix()}"
     assert path.is_file(), f"missing: run `{command}`"
-    assert json.loads(path.read_text(encoding="utf-8")) == current, f"out of date: run `{command}`"
+    written = path.read_text(encoding="utf-8")  # newlines read as "\n" whatever the checkout wrote
+    assert json.loads(written) == json.loads(emitted), f"out of date: run `{command}`"
+    # the text too: JSON equality can't see formatting, and it reads -0.0 as 0.0
+    assert written == emitted, f"not the text the CLI writes: run `{command}`"

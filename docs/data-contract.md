@@ -60,7 +60,8 @@ about the same number.
 ### Accounts: cash and debt
 
 `category` is `long_term`, `trading`, `cash`, `debt` or `other`. A `debt` account is money owed, such as a credit
-card; its `value` is the amount owed, zero or more. Net worth is everything owned less everything owed. A debt
+card; its `value` is the amount owed, and below zero when the balance is in your favour (a card paid past zero is
+money owed to you). Net worth is everything owned less everything owed, signed, so a credit balance adds. A debt
 account's history carries what it owes, and its `net_flow` keeps its meaning — money in (a payment) minus money out
 (a charge) — so a payment from checking nets to nothing and only interest reads as a change of its own. Two optional
 fields:
