@@ -457,6 +457,42 @@ export interface BookView {
   runs: BookRun[] // this book's, next first then newest
 }
 
+// --- the Activity page (src/kestrel/views/activity.py) ------------------------------------------------------------
+
+export interface RunRow {
+  time: string
+  label: string
+  book_id: string | null
+  book_name: string | null
+  status: 'done' | 'due' | 'late' | 'failed' | 'paused'
+  detail: string
+}
+
+export interface DayRuns {
+  date: string
+  label: string // 'Today' | 'Tomorrow' | a weekday date, e.g. 'Fri 25 Sep'
+  runs: RunRow[]
+}
+
+export interface ActivitySource {
+  id: string
+  label: string
+  kind: string
+  status: 'ok' | 'stale' | 'error'
+  last_success: string | null
+  age_text: string | null
+  stale_after: string | null
+  detail: string
+}
+
+export interface ActivityView {
+  as_of: string
+  days: DayRuns[]
+  counts: Record<string, number>
+  alerts: Attention[] // serious, warning, note
+  sources: ActivitySource[]
+}
+
 // --- the Accounts pages (src/kestrel/views/accounts.py) ---------------------------------------------------------
 
 export type Window = 'ytd' | '1y' | 'all'
@@ -593,6 +629,12 @@ export function useBook(id: string) {
     queryKey: ['book', id],
     queryFn: () => getJson<BookView>(`/api/books/${encodeURIComponent(id)}`),
     refetchInterval: MINUTE,
+  })
+}
+
+export function useActivity() {
+  return useQuery({
+    queryKey: ['activity'], queryFn: () => getJson<ActivityView>('/api/activity'), refetchInterval: MINUTE,
   })
 }
 

@@ -23,6 +23,7 @@ GENERATED = [
     (ROOT / "web" / "src" / "test" / "fixtures" / "books.json", ["demo", "--view", "books", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "book-rsi2-real.json",
      ["demo", "--view", "book", "--id", "rsi2-real", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "activity.json", ["demo", "--view", "activity", "--now", NOW]),
 ]
 
 

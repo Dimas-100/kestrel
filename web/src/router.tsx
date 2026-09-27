@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, type RouterHistory, useNavi
 import type { Money } from './lib/api'
 import { Account } from './pages/account/Account'
 import { Accounts } from './pages/accounts/Accounts'
+import { Activity } from './pages/activity/Activity'
 import { Book } from './pages/book/Book'
 import { Books } from './pages/books/Books'
 import { Home } from './pages/home/Home'
@@ -71,7 +72,7 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
   strategyRoute,
   later('/backtests', 'Backtests', 'What has been tested and what passed — Phase 5.'),
-  later('/activity', 'Activity', 'What ran, what is due, what failed — Phase 5.'),
+  createRoute({ getParentRoute: () => root, path: '/activity', component: Activity }),
   later('/settings', 'Settings', 'Your profile and the status of every source — Phase 5.'),
 ])
 

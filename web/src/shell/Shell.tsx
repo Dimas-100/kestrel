@@ -51,7 +51,7 @@ export function crumbs(pathname: string): { group: string; page: string; parent:
   return { group: 'kestrel', page: 'Not found', parent: null }
 }
 
-const STATUS_ICON: Record<Source['status'], { name: IconName; color: string; text: string }> = {
+export const STATUS_ICON: Record<Source['status'], { name: IconName; color: string; text: string }> = {
   ok: { name: 'checkCircle', color: 'var(--good)', text: 'up to date' },
   stale: { name: 'clock', color: 'var(--warn)', text: 'stale' },
   error: { name: 'alert', color: 'var(--serious)', text: 'error' },

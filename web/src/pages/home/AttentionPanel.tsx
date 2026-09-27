@@ -3,7 +3,7 @@ import { Panel } from '../../components/bits'
 import { Icon, type IconName } from '../../components/Icon'
 import type { Attention, Level } from '../../lib/api'
 
-const LOOK: Record<Level, { icon: IconName; color: string; word: string }> = {
+export const LOOK: Record<Level, { icon: IconName; color: string; word: string }> = {
   serious: { icon: 'shield', color: 'var(--serious)', word: 'Serious' },
   warning: { icon: 'clock', color: 'var(--warn)', word: 'Warning' },
   note: { icon: 'info', color: 'var(--ink3)', word: 'Note' },

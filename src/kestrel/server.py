@@ -16,6 +16,7 @@ from .connectors import collect
 from .contract import Money
 from .profile import Profile
 from .views.accounts import AccountsView, AccountView, account_view, accounts_view
+from .views.activity import ActivityView, activity_view
 from .views.books import BooksView, BookView, book_view, books_view
 from .views.home import HomeView, home_view
 from .views.shell import ShellView, shell_view
@@ -101,6 +102,11 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
         if view is None:
             raise HTTPException(status_code=404, detail=f"no such strategy: {strategy_id}")
         return view
+
+    @app.get("/api/activity", response_model=ActivityView)
+    def activity() -> ActivityView:
+        now = clock()
+        return activity_view(collect(profile, now), profile, now)
 
     @app.get("/api/{rest:path}", include_in_schema=False)
     def unknown_api(rest: str) -> None:
