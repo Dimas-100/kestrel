@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import datetime as dt
-from statistics import fmean
 from typing import Literal
 from urllib.parse import quote
 
 from pydantic import BaseModel
 
 from ..contract import Book, Snapshot, Source, ValuePoint
-from ..metrics import expected_band, growth_index, largest_remainder, max_drawdown_pct, sum_series
+from ..metrics import growth_index, largest_remainder, max_drawdown_pct, sum_series
 from ..profile import Profile
+from .books import MIN_TRADES_FOR_VERDICT as MIN_TRADES_FOR_VERDICT  # noqa: F401 - re-exported for strategy.py
+from .books import BookRow
+from .books import book_rows as _book_rows
 
 CATEGORY_LABELS = {"long_term": "Long-term", "trading": "Trading", "cash": "Cash", "debt": "Debt", "other": "Other"}
 OWNED = ("long_term", "trading", "cash", "other")  # money held; "debt" is money owed
-MIN_TRADES_FOR_VERDICT = 10  # fewer closed trades than this is "too early" to judge a book
 MIN_YTD_POINTS = 5  # early January falls back to the past twelve months
 
 
@@ -78,26 +79,6 @@ class Attention(View):
     title: str
     detail: str
     link: str
-
-
-class BookRow(View):
-    id: str
-    name: str
-    strategy: str
-    money: Literal["real", "paper"]
-    status: str
-    value: float
-    day_change: float | None
-    since_pct: float | None
-    started: dt.date
-    trades: int
-    per_trade_pct: float | None
-    band_lo: float | None
-    band_hi: float | None
-    verdict: Literal["in_band", "below", "above", "early", "none"]
-    slots_used: int
-    slots_total: int | None
-    next_run: dt.datetime | None
 
 
 class TodayRun(View):
@@ -246,40 +227,6 @@ def _comparison(snapshot: Snapshot, profile: Profile, today: dt.date, real_books
         real_trades=sum(1 for tr in snapshot.trades if tr.book_id in real_ids),
         review_at=min(review) if review else None,
     )
-
-
-def _book_rows(snapshot: Snapshot) -> list[BookRow]:
-    history = {s.id: s.points for s in snapshot.book_history}
-    strategies = {s.id: s for s in snapshot.strategies}
-    rows = []
-    for book in snapshot.books:
-        points = list(history.get(book.id, []))
-        returns = [t.return_pct for t in snapshot.trades if t.book_id == book.id]
-        strategy = strategies.get(book.strategy_id)
-        expected = strategy.expected if strategy else None
-        per_trade_raw = fmean(returns) if returns else None
-        per_trade = round(per_trade_raw, 3) if per_trade_raw is not None else None
-        lo = hi = None
-        if not returns or expected is None:
-            verdict = "none"
-        elif len(returns) < MIN_TRADES_FOR_VERDICT:
-            verdict = "early"
-        else:
-            lo, hi = expected_band(expected.avg_trade_pct, expected.sd_trade_pct, len(returns))
-            # compare the unrounded mean: a mean that rounds to the band edge must not read as "in_band" (the
-            # scorecard on the strategy page compares the same unrounded mean, so the two never disagree)
-            verdict = "below" if per_trade_raw < lo else "above" if per_trade_raw > hi else "in_band"
-        rows.append(BookRow(
-            id=book.id, name=book.name, strategy=strategy.name if strategy else book.strategy_id, money=book.money,
-            status=book.status, value=book.value,
-            day_change=round(points[-1].value - points[-2].value - points[-1].net_flow, 2) if len(points) > 1 else None,
-            since_pct=round((growth_index(points)[-1] - 1) * 100, 2) if len(points) > 1 else None,
-            started=book.started, trades=len(returns), per_trade_pct=per_trade,
-            band_lo=round(lo, 3) if lo is not None else None, band_hi=round(hi, 3) if hi is not None else None,
-            verdict=verdict, slots_used=sum(1 for p in snapshot.positions if p.book_id == book.id),
-            slots_total=book.slots_total, next_run=book.next_run,
-        ))
-    return rows
 
 
 def _source_attention(source: Source, now: dt.datetime, tz: dt.tzinfo) -> Attention | None:

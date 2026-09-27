@@ -1,0 +1,106 @@
+{
+  "as_of": "2026-09-25T21:08:00Z",
+  "days": [
+    {
+      "date": "2026-09-25",
+      "label": "Today",
+      "runs": [
+        {
+          "time": "2026-09-25T09:25:00-04:00",
+          "label": "Opening leader · paper",
+          "book_id": "leader-paper",
+          "book_name": "Opening leader",
+          "status": "done",
+          "detail": "Screened at 09:45 · no entry"
+        },
+        {
+          "time": "2026-09-25T09:31:00-04:00",
+          "label": "Morning run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "1 exit sold · MSFT entry filled"
+        },
+        {
+          "time": "2026-09-25T15:56:00-04:00",
+          "label": "ETF close entries · paper",
+          "book_id": "ibs-paper",
+          "book_name": "ETF close strength",
+          "status": "done",
+          "detail": "Bought XLF at the close"
+        },
+        {
+          "time": "2026-09-25T17:30:00-04:00",
+          "label": "Nightly suite",
+          "book_id": null,
+          "book_name": null,
+          "status": "due",
+          "detail": "Signals, paper fills, the nightly note"
+        },
+        {
+          "time": "2026-09-25T17:45:00-04:00",
+          "label": "Evening run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "due",
+          "detail": "Queues the next session's entries and exits"
+        },
+        {
+          "time": "2026-09-25T19:00:00-04:00",
+          "label": "Watchdog",
+          "book_id": null,
+          "book_name": null,
+          "status": "due",
+          "detail": "Checks every run reported in"
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "done": 3,
+    "due": 3
+  },
+  "alerts": [],
+  "sources": [
+    {
+      "id": "demo-portfolio",
+      "label": "Portfolio",
+      "kind": "data collector",
+      "status": "ok",
+      "last_success": "2026-09-25T21:06:00Z",
+      "age_text": "2 minutes",
+      "stale_after": "36h",
+      "detail": ""
+    },
+    {
+      "id": "demo-desk",
+      "label": "Trading desk",
+      "kind": "feed",
+      "status": "ok",
+      "last_success": "2026-09-25T21:07:00Z",
+      "age_text": "1 minute",
+      "stale_after": "36h",
+      "detail": ""
+    },
+    {
+      "id": "demo-paper",
+      "label": "Paper broker",
+      "kind": "rails",
+      "status": "ok",
+      "last_success": "2026-09-25T21:02:00Z",
+      "age_text": "6 minutes",
+      "stale_after": "36h",
+      "detail": ""
+    },
+    {
+      "id": "demo-savings",
+      "label": "Savings",
+      "kind": "bank link",
+      "status": "stale",
+      "last_success": "2026-09-24T19:08:00Z",
+      "age_text": "26 hours",
+      "stale_after": "36h",
+      "detail": ""
+    }
+  ]
+}

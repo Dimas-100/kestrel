@@ -16,6 +16,8 @@ from .connectors import collect
 from .contract import Money
 from .profile import Profile
 from .views.accounts import AccountsView, AccountView, account_view, accounts_view
+from .views.activity import ActivityView, activity_view
+from .views.books import BooksView, BookView, book_view, books_view
 from .views.home import HomeView, home_view
 from .views.shell import ShellView, shell_view
 from .views.strategy import StrategiesView, StrategyView, strategies_view, strategy_view
@@ -75,6 +77,19 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
             raise HTTPException(status_code=404, detail=f"no such account: {account_id}")
         return view
 
+    @app.get("/api/books", response_model=BooksView)
+    def books() -> BooksView:
+        now = clock()
+        return books_view(collect(profile, now), profile, now)
+
+    @app.get("/api/books/{book_id}", response_model=BookView)
+    def book(book_id: str) -> BookView:
+        now = clock()
+        view = book_view(collect(profile, now), profile, now, book_id)
+        if view is None:
+            raise HTTPException(status_code=404, detail=f"no such book: {book_id}")
+        return view
+
     @app.get("/api/strategies", response_model=StrategiesView)
     def strategies() -> StrategiesView:
         now = clock()
@@ -87,6 +102,11 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
         if view is None:
             raise HTTPException(status_code=404, detail=f"no such strategy: {strategy_id}")
         return view
+
+    @app.get("/api/activity", response_model=ActivityView)
+    def activity() -> ActivityView:
+        now = clock()
+        return activity_view(collect(profile, now), profile, now)
 
     @app.get("/api/{rest:path}", include_in_schema=False)
     def unknown_api(rest: str) -> None:
