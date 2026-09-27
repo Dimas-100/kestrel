@@ -16,7 +16,7 @@ import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from ..contract import Book, Position, Run, Series, Snapshot, Source, Strategy, ValuePoint
+from ..contract import Book, Position, Run, Series, Snapshot, Source, Strategy, Trade, ValuePoint
 from .base import ConnectorError
 
 STATE_FILE = "paper.json"
@@ -24,6 +24,9 @@ LOG_FILE = "runs.jsonl"
 BOOK_ID = "rails-paper"
 DEFAULT_STRATEGY_ID = "rails"
 DEFAULT_STRATEGY_NAME = "trading-rails"
+# trading-rails never rotates runs.jsonl, and this connector re-reads it on every request (there is no cache here,
+# unlike a feed's command): read only its most recent bytes, so a read never grows with the log's whole history.
+LOG_TAIL_LIMIT = 2 * 1024 * 1024
 
 
 def _parse_time(text: str) -> datetime:
@@ -50,12 +53,35 @@ def _read_state(path: Path) -> dict:
 
 
 def _read_runs(path: Path) -> list[dict]:
-    """Every well-formed row of the run log, oldest first. A missing log is no runs, not an error; a torn last line
-    (the file may still be growing, or a run crashed mid-write) is skipped, not fatal."""
-    if not path.is_file():
+    """The run log's most recent rows, oldest of those first: at most its last LOG_TAIL_LIMIT bytes, since
+    trading-rails never rotates this file and it is re-read on every request. A missing log is no runs, not an
+    error — the file may not exist yet. An unreadable or non-UTF-8 file is a readable ConnectorError, the same as
+    paper.json's. A torn line — the first line after a seek into the middle of the file, almost certainly cut in
+    half, or a last line the file may still be mid-write on — is skipped, not fatal."""
+    try:
+        size = path.stat().st_size
+    except FileNotFoundError:
         return []
+    except OSError as exc:
+        raise ConnectorError(f"trading-rails' {path.name} couldn't be read ({exc.strerror or exc})") from None
+    try:
+        with path.open("rb") as fh:
+            if size > LOG_TAIL_LIMIT:
+                fh.seek(size - LOG_TAIL_LIMIT)
+            raw = fh.read()
+    except FileNotFoundError:
+        return []  # removed between the stat above and this read: no runs, not an error
+    except OSError as exc:
+        raise ConnectorError(f"trading-rails' {path.name} couldn't be read ({exc.strerror or exc})") from None
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ConnectorError(f"trading-rails' {path.name} isn't UTF-8 text") from None
+    lines = text.splitlines()
+    if size > LOG_TAIL_LIMIT and lines:
+        lines = lines[1:]  # almost certainly a partial line, cut in half by the seek
     rows = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in lines:
         line = line.strip()
         if not line:
             continue
@@ -125,6 +151,70 @@ def _positions(state: dict, fallback_date: date) -> list[Position]:
                             last_price=_last_price(symbol, avg_cost, fills),
                             stop_price=_stop_price(symbol, open_orders), opened=_opened(symbol, fills, fallback_date)))
     return sorted(out, key=lambda p: p.symbol)
+
+
+def _valid_fill(fill: object) -> bool:
+    if not (isinstance(fill, dict) and isinstance(fill.get("symbol"), str) and fill.get("side") in ("BUY", "SELL")):
+        return False
+    try:
+        float(fill["quantity"])
+        float(fill["price"])
+        _parse_time(fill["ts"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return True
+
+
+def _closed_trades(fills: list[dict]) -> list[Trade]:
+    """Closed trades, matched FIFO per symbol: a SELL fill consumes the oldest open BUY lot(s) first, so its
+    entry_price is the weighted average of whatever it draws from — one buy, or several averaged together. A SELL
+    that finds no matching BUY lot at all (a position the log's fill history doesn't reach back far enough to
+    explain) is skipped — never invented an entry for; one that only partly matches produces a trade for the
+    matched quantity alone. trading-rails' own fills carry no commission today (`PaperBroker._apply` charges its
+    `CostModel.commission` but never persists it per fill); a `commission` key, if a future format ever sends one,
+    is netted out of pnl."""
+    by_symbol: dict[str, list[dict]] = {}
+    for fill in fills:
+        if _valid_fill(fill):
+            by_symbol.setdefault(fill["symbol"], []).append(fill)
+
+    trades: list[Trade] = []
+    for symbol, symbol_fills in by_symbol.items():
+        lots: list[dict] = []  # each: quantity remaining, price, opened ts, commission per share
+        for fill in sorted(symbol_fills, key=lambda f: f["ts"]):
+            quantity = float(fill["quantity"])
+            price = float(fill["price"])
+            try:
+                commission = float(fill.get("commission") or 0.0)
+            except (TypeError, ValueError):
+                commission = 0.0
+            if fill["side"] == "BUY":
+                lots.append({"quantity": quantity, "price": price, "ts": fill["ts"],
+                            "commission_per_share": commission / quantity if quantity else 0.0})
+                continue
+            remaining, matched, cost, buy_commission, opened_ts = quantity, 0.0, 0.0, 0.0, None
+            while remaining > 1e-9 and lots:
+                lot = lots[0]
+                take = min(lot["quantity"], remaining)
+                cost += take * lot["price"]
+                buy_commission += take * lot["commission_per_share"]
+                opened_ts = lot["ts"] if opened_ts is None else opened_ts
+                matched += take
+                remaining -= take
+                lot["quantity"] -= take
+                if lot["quantity"] <= 1e-9:
+                    lots.pop(0)
+            if matched <= 1e-9:
+                continue  # an unmatched sell: skipped, not invented
+            sell_commission = commission * (matched / quantity) if quantity else 0.0
+            proceeds = matched * price
+            pnl = proceeds - cost - buy_commission - sell_commission
+            trades.append(Trade(
+                book_id=BOOK_ID, symbol=symbol, opened=_parse_time(opened_ts).date(),
+                closed=_parse_time(fill["ts"]).date(), entry_price=round(cost / matched, 4), exit_price=price,
+                quantity=matched, pnl=round(pnl, 2), return_pct=round(pnl / cost * 100, 2) if cost else 0.0,
+            ))
+    return sorted(trades, key=lambda t: (t.closed, t.opened, t.symbol))
 
 
 def _value(state: dict, positions: list[Position]) -> float:
@@ -224,5 +314,6 @@ class RailsConnector:
                         status="ok" if last_success else "stale", detail=detail)
 
         equity = _equity_points(rows)
-        return Snapshot(generated_at=now, sources=[source], books=[book], positions=positions, strategies=[strategy],
-                        runs=_runs(rows), book_history=[Series(id=BOOK_ID, points=equity)] if equity else [])
+        return Snapshot(generated_at=now, sources=[source], books=[book], positions=positions,
+                        trades=_closed_trades(state.get("fills") or []), strategies=[strategy], runs=_runs(rows),
+                        book_history=[Series(id=BOOK_ID, points=equity)] if equity else [])

@@ -343,13 +343,21 @@ stale_after = "36h"
 - **Positions** carry their quantity, average cost, that same last price, their opened date (their earliest BUY
   fill, or the book's `started` without one), and a resting protective stop when `paper.json`'s `open_orders` has
   one for that symbol.
+- **Closed trades** are matched FIFO, per symbol, from `paper.json`'s `fills`: a SELL fill consumes the oldest open
+  BUY lot(s) first, so its entry price is the weighted average of whatever it draws from — one buy, or several
+  averaged together. A SELL that only partly closes a lot produces a trade for the sold quantity alone; a SELL that
+  matches no BUY at all (the fill history doesn't reach back far enough to explain a position that's already there)
+  is left out — never given an invented entry. `fills` carries no commission today; a `commission` a future format
+  might send is netted out of the trade's `pnl`.
 - **A strategy stub**, id and name from the run log's own `strategy` field on its newest row when a future log sends
   one, else `rails` / "trading-rails": today's run log names no strategy of its own.
 - **Runs**, one per cycle in `runs.jsonl` (its rows share one timestamp per cycle): `done`, or `failed` when one of
-  its steps errored, with that step's own message as the detail. A torn last line — the log may still be growing, or
-  a run crashed mid-write — is skipped, not fatal.
+  its steps errored, with that step's own message as the detail. Only the log's most recent 2 MB is ever read (it is
+  never rotated, and every page load re-reads it), so the very first line after that cut, almost certainly sliced in
+  half, is dropped along with a genuinely torn last line — the log may still be growing, or a run crashed mid-write.
 - **Book history** picks up an equity point from a run row that reports one (a future log's `equity`, top-level or
   inside `extra`); today's runner sends neither, so this is ordinarily empty.
 - **Errors, worded for a person:** a missing folder (`no trading-rails data at …`), a missing `paper.json`
-  (`no paper.json in … : run trading-rails' paper broker first`), and torn JSON in it (`… isn't valid JSON …`) each
-  show as the source's error; a missing `runs.jsonl` is not an error (there simply are no runs yet).
+  (`no paper.json in … : run trading-rails' paper broker first`), torn JSON in it (`… isn't valid JSON …`), and an
+  unreadable or non-UTF-8 `runs.jsonl` (`… couldn't be read (…)` / `… isn't UTF-8 text`) each show as the source's
+  error; a missing `runs.jsonl` is not an error (there simply are no runs yet).

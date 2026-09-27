@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 import shutil
 from pathlib import Path
 
@@ -6,7 +7,7 @@ import pytest
 
 from kestrel.connectors import build, collect
 from kestrel.connectors.base import ConnectorError
-from kestrel.connectors.rails import RailsConnector
+from kestrel.connectors.rails import LOG_TAIL_LIMIT, RailsConnector
 from kestrel.contract import ValuePoint
 from kestrel.profile import Profile, SourceCfg
 
@@ -94,6 +95,100 @@ def test_book_history_picks_up_an_equity_point_when_a_run_row_reports_one(fixtur
     # today's real runner never sends one; the fixture's first row does, to prove the hook works when a future one does
     history = {s.id: s.points for s in fixture_snapshot.book_history}
     assert history["rails-paper"] == [ValuePoint(date=dt.date(2026, 9, 20), value=8770.5)]
+
+
+def test_closed_trades_are_matched_fifo_including_a_partial_close_and_two_buys_averaged(fixture_snapshot):
+    by_symbol = {t.symbol: t for t in fixture_snapshot.trades}
+    assert set(by_symbol) == {"ACME", "ZETA"}  # ORPHAN's sell matches no buy at all: skipped, not invented
+    assert all(t.book_id == "rails-paper" for t in fixture_snapshot.trades)
+
+    # a partial close: 3 of a 10-share lot bought at 25.00, sold at 27.50
+    acme = by_symbol["ACME"]
+    assert (acme.entry_price, acme.exit_price, acme.quantity) == (25.0, 27.5, 3)
+    assert (acme.opened, acme.closed) == (dt.date(2026, 9, 18), dt.date(2026, 9, 20))
+    assert acme.pnl == pytest.approx(7.5) and acme.return_pct == pytest.approx(10.0)  # (27.50-25.00)*3 / 75.00
+
+    # two buys (4 @ 10.00, 6 @ 20.00) fully closed by one sell of 10 @ 25.00: entry is their weighted average
+    zeta = by_symbol["ZETA"]
+    assert zeta.entry_price == pytest.approx(16.0) and zeta.exit_price == 25.0 and zeta.quantity == 10
+    assert (zeta.opened, zeta.closed) == (dt.date(2026, 9, 15), dt.date(2026, 9, 17))
+    assert zeta.pnl == pytest.approx(90.0) and zeta.return_pct == pytest.approx(56.25)  # (250-160) / 160 * 100
+
+
+def test_a_future_fill_with_commission_nets_it_out_of_pnl(tmp_path):
+    # today's real fills never carry a commission (paper.py charges CostModel.commission but never persists it per
+    # fill); a future format that does should still be read correctly
+    state = {
+        "cash": 0.0, "positions": {}, "open_orders": {}, "as_of": "2026-09-20",
+        "fills": [
+            {"client_order_id": "b1", "symbol": "FUT", "side": "BUY", "quantity": 10, "price": 10.0,
+             "ts": "2026-09-18T00:00:00+00:00", "commission": 1.0},
+            {"client_order_id": "s1", "symbol": "FUT", "side": "SELL", "quantity": 10, "price": 12.0,
+             "ts": "2026-09-19T00:00:00+00:00", "commission": 1.0},
+        ],
+    }
+    (tmp_path / "paper.json").write_text(json.dumps(state), encoding="utf-8")
+    trade, = connector(tmp_path).snapshot(NOW).trades
+    # proceeds 120.00 - cost 100.00 - both commissions (1.00 + 1.00) = 18.00
+    assert trade.pnl == pytest.approx(18.0)
+
+
+def test_the_run_log_is_read_only_from_its_tail_once_it_grows_past_the_cap(tmp_path, monkeypatch):
+    shutil.copy(FIXTURES / "paper.json", tmp_path / "paper.json")
+    path = tmp_path / "runs.jsonl"
+
+    def row(ts: str, symbol: str, pad: int = 400) -> str:
+        return json.dumps({"ts": ts, "symbol": symbol, "step": "signal", "status": "ok", "detail": "x" * pad,
+                           "order": None, "extra": None})
+
+    lines = [row("2000-01-01T00:00:00+00:00", "SENTINEL-OLD")]
+    while sum(len(line) + 1 for line in lines) < LOG_TAIL_LIMIT + 100_000:
+        lines.append(row("2010-06-01T00:00:00+00:00", "PAD"))
+    lines.append(row("2026-09-24T00:00:00+00:00", "RECENT", pad=0))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    assert path.stat().st_size > LOG_TAIL_LIMIT
+
+    read_sizes: list[int] = []
+    real_open = Path.open
+
+    def spy_open(self, *args, **kwargs):
+        handle = real_open(self, *args, **kwargs)
+        if self == path:
+            original_read = handle.read
+
+            def counted(*a, **k):
+                data = original_read(*a, **k)
+                read_sizes.append(len(data))
+                return data
+            handle.read = counted
+        return handle
+
+    monkeypatch.setattr(Path, "open", spy_open)
+    snap = connector(tmp_path).snapshot(NOW)
+    years = {r.time.year for r in snap.runs}
+    assert 2000 not in years and 2026 in years  # the sentinel — the file's very first row — never entered the tail
+    assert read_sizes and max(read_sizes) <= LOG_TAIL_LIMIT + 4096  # bounded near the cap, nowhere near the file
+
+
+def test_a_non_utf8_run_log_is_a_readable_error(tmp_path):
+    shutil.copy(FIXTURES / "paper.json", tmp_path / "paper.json")
+    (tmp_path / "runs.jsonl").write_bytes(b"\xff\xfe\x00\x00not utf-8")
+    with pytest.raises(ConnectorError, match="runs.jsonl.*isn't UTF-8 text"):
+        connector(tmp_path).snapshot(NOW)
+
+
+def test_an_unreadable_run_log_is_a_readable_error(tmp_path):
+    shutil.copy(FIXTURES / "paper.json", tmp_path / "paper.json")
+    (tmp_path / "runs.jsonl").write_text('{"ts": "2026-09-20T00:00:00+00:00"}\n', encoding="utf-8")
+
+    class Locked(type(tmp_path)):
+        def stat(self, *args, **kwargs):
+            if self.name == "runs.jsonl":
+                raise PermissionError(13, "Permission denied")
+            return super().stat(*args, **kwargs)
+
+    with pytest.raises(ConnectorError, match="runs.jsonl couldn't be read"):
+        connector(Locked(tmp_path)).snapshot(NOW)
 
 
 def test_a_missing_run_log_falls_back_to_the_state_files_as_of_date(tmp_path):
