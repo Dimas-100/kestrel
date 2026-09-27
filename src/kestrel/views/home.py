@@ -296,8 +296,10 @@ def _source_attention(source: Source, now: dt.datetime, tz: dt.tzinfo) -> Attent
 
 def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[str, int | None],
                now: dt.datetime, tz: dt.tzinfo) -> list[Attention]:
+    from .plan import target_attention, thesis_attention  # local: plan.py imports this module at load time
+
     books = {b.id: b for b in snapshot.books}
-    items: list[Attention] = []
+    items: list[Attention] = [*target_attention(snapshot), *thesis_attention(snapshot)]
     for p in snapshot.positions:
         book = books.get(p.book_id)
         if book is not None and book.money == "real" and p.stop_price is None:

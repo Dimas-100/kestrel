@@ -144,7 +144,7 @@ describe('Home', () => {
 describe('words from the data', () => {
   it('writes the summary sentence', async () => {
     const base = homeFixture
-    expect(summaryParts(base).needs).toBe('2 items need you.')
+    expect(summaryParts(base).needs).toBe('5 items need you.')
     expect(summaryParts(base).trading).toBe('Trading is ahead of your index money by 2.9 pts this year.')
     const behind = { ...base, summary: { ...base.summary, gap_pts: -1.26, needs_you: 1 } }
     expect(summaryParts(behind)).toEqual({

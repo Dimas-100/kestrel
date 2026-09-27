@@ -509,3 +509,72 @@ export function useStrategy(id: string, book: Money) {
     placeholderData: (previous, query) => (query?.queryKey[1] === id ? previous : undefined),
   })
 }
+
+// --- the Plan page (src/kestrel/views/plan.py) -------------------------------------------------------------------
+
+export type TargetStatus = 'on' | 'over' | 'under' | 'unknown'
+export type Health = 'ok' | 'watch' | 'alert' | 'none'
+
+export interface TargetRow {
+  id: string
+  label: string
+  symbols: string[]
+  unit: '%' | 'x'
+  target: number | null
+  low: number | null
+  high: number | null
+  actual: number | null
+  status: TargetStatus
+  // money for a target scoped to an account, percentage points ("%") or ratio units ("x") otherwise; null when unknown
+  gap: number | null
+  gap_text: string // "under the low end" / "over the high end" / "on plan" / "" when unknown
+  note: string
+}
+
+export interface AccountTargets {
+  account_id: string
+  name: string
+  rows: TargetRow[]
+}
+
+export interface ThesisRow {
+  symbol: string
+  name: string
+  health: Health
+  reasons: string[]
+  conviction: string
+  status: string
+  opened: string | null
+  last_reviewed: string | null
+  days_since_review: number | null
+  held: boolean
+  held_value: number
+  account_names: string[]
+  wrong_if: string[]
+}
+
+export interface GoalRow {
+  id: string
+  label: string
+  scope_text: string
+  current: number
+  target: number
+  progress_pct: number
+  by: string | null
+  months_left: number | null
+  monthly_needed: number | null
+  reached: boolean
+}
+
+export interface PlanView {
+  as_of: string
+  accounts: AccountTargets[]
+  unscoped: TargetRow[]
+  theses: ThesisRow[]
+  goals: GoalRow[]
+  counts: { off_plan: number; theses_alert: number; theses_watch: number }
+}
+
+export function usePlan() {
+  return useQuery({ queryKey: ['plan'], queryFn: () => getJson<PlanView>('/api/plan'), refetchInterval: MINUTE })
+}

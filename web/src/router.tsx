@@ -3,6 +3,7 @@ import type { Money } from './lib/api'
 import { Account } from './pages/account/Account'
 import { Accounts } from './pages/accounts/Accounts'
 import { Home } from './pages/home/Home'
+import { Plan } from './pages/plan/Plan'
 import { Soon } from './pages/Soon'
 import { Strategies } from './pages/strategies/Strategies'
 import { Strategy } from './pages/strategy/Strategy'
@@ -53,6 +54,7 @@ const routeTree = root.addChildren([
   createRoute({ getParentRoute: () => root, path: '/', component: Home }),
   createRoute({ getParentRoute: () => root, path: '/accounts', component: Accounts }),
   accountRoute,
+  createRoute({ getParentRoute: () => root, path: '/plan', component: Plan }),
   later('/books', 'Books', 'Each book, real or paper: equity against its benchmark, drawdown, trades — Phase 3.'),
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
   strategyRoute,

@@ -203,11 +203,14 @@ def test_demo_has_every_new_block():
     assert filings and all(e.date < today and e.url.startswith("https://www.sec.gov/") for e in filings)
     assert any(e.symbol not in held for e in snap.events)  # something not held, too
 
-    # a goal for an account, one for a category, one for net worth
-    assert len(snap.goals) == 3
-    assert sorted((g.account_id is not None, g.category is not None) for g in snap.goals) == [
-        (False, False), (False, True), (True, False)]
+    # a goal for an account, one for a category, one for net worth, one for several accounts, one on deposits
+    assert len(snap.goals) == 5
     assert all(g.account_id is None or g.account_id in accounts for g in snap.goals)
+    assert all(set(g.account_ids) <= set(accounts) for g in snap.goals)
+    by_id = {g.id: g for g in snap.goals}
+    assert by_id["long-term-together"].account_ids == ["roth", "brokerage"]
+    assert by_id["save-this-year"].measure == "deposits" and by_id["save-this-year"].account_id == "savings"
+    assert {g.measure for g in snap.goals} == {"value", "deposits"}
 
     # exposures: what is held directly plus what the funds hold
     assert snap.exposures and len({e.symbol for e in snap.exposures}) == len(snap.exposures)

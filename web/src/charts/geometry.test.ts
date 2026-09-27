@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ValuePoint } from '../lib/api'
 import {
-  bandLayout, baseline, candleShapes, cellWash, clampTip, indexAt, nearestIndex, placeLabels, tickDecimals,
-  tickIndices, windowPoints, yearSpans,
+  bandGeometry, bandLayout, baseline, candleShapes, cellWash, clampTip, indexAt, nearestIndex, placeLabels,
+  tickDecimals, tickIndices, windowPoints, yearSpans,
 } from './geometry'
 
 const p = (date: string, value: number, net_flow = 0): ValuePoint => ({ date, value, net_flow })
@@ -95,6 +95,21 @@ describe('chart geometry', () => {
     expect(tickDecimals([0, 0.05, 0.1])).toBe(2)
     expect(tickDecimals([5])).toBe(0)
     expect(tickDecimals([])).toBe(0)
+  })
+  it('lays out a target band as fractions of a domain, open ends filling to the edge', () => {
+    expect(bandGeometry(40, 60, 50, 55, [0, 100])).toEqual(
+      { bandStart: 0.4, bandEnd: 0.6, target: 0.5, actual: 0.55, clamped: false })
+    expect(bandGeometry(null, 60, null, 30, [0, 100])).toEqual(
+      { bandStart: 0, bandEnd: 0.6, target: null, actual: 0.3, clamped: false }) // no low: the band opens to 0
+    expect(bandGeometry(40, null, 50, 90, [0, 100])).toEqual(
+      { bandStart: 0.4, bandEnd: 1, target: 0.5, actual: 0.9, clamped: false }) // no high: the band opens to 1
+    expect(bandGeometry(40, 60, 50, null, [0, 100])).toMatchObject({ actual: null, clamped: false })
+  })
+  it('clamps an actual outside the domain to the edge and flags it for an arrow marker', () => {
+    expect(bandGeometry(40, 60, 50, 140, [0, 100])).toEqual(
+      { bandStart: 0.4, bandEnd: 0.6, target: 0.5, actual: 1, clamped: true })
+    expect(bandGeometry(40, 60, 50, -20, [0, 100])).toEqual(
+      { bandStart: 0.4, bandEnd: 0.6, target: 0.5, actual: 0, clamped: true })
   })
   it('groups months under their year', () => {
     expect(yearSpans(['2025-10', '2025-11', '2025-12', '2026-01'])).toEqual([

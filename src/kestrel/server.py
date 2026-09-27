@@ -17,6 +17,7 @@ from .contract import Money
 from .profile import Profile
 from .views.accounts import AccountsView, AccountView, account_view, accounts_view
 from .views.home import HomeView, home_view
+from .views.plan import PlanView, plan_view
 from .views.shell import ShellView, shell_view
 from .views.strategy import StrategiesView, StrategyView, strategies_view, strategy_view
 
@@ -74,6 +75,11 @@ def create_app(profile: Profile, *, clock: Callable[[], datetime] = _utcnow,
         if view is None:
             raise HTTPException(status_code=404, detail=f"no such account: {account_id}")
         return view
+
+    @app.get("/api/plan", response_model=PlanView)
+    def plan() -> PlanView:
+        now = clock()
+        return plan_view(collect(profile, now), profile, now)
 
     @app.get("/api/strategies", response_model=StrategiesView)
     def strategies() -> StrategiesView:

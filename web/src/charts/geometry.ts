@@ -151,6 +151,33 @@ export function cellWash(value: number | null): number | null {
   return Math.min(45, Math.round(10 + Math.abs(value) * 10))
 }
 
+export interface Band {
+  bandStart: number // 0..1
+  bandEnd: number // 0..1
+  target: number | null // 0..1, clamped into the domain; null when the target has no aim
+  actual: number | null // 0..1, clamped into the domain; null when the actual is unknown
+  clamped: boolean // the actual sat outside the domain and was pulled to the nearest edge: draw an arrow marker
+}
+
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+
+/** A target's band, aim and actual as fractions of `domain` (low, high), for drawing a plan bar. A missing band
+ *  end opens to that edge (0 or 1); an actual outside the domain clamps to the nearest edge and sets `clamped`. */
+export function bandGeometry(low: number | null, high: number | null, target: number | null, actual: number | null,
+  domain: readonly [number, number]): Band {
+  const [lo, hi] = domain
+  const span = hi - lo || 1
+  const frac = (v: number) => clamp01((v - lo) / span)
+  const rawActual = actual == null ? null : (actual - lo) / span
+  return {
+    bandStart: low == null ? 0 : frac(low),
+    bandEnd: high == null ? 1 : frac(high),
+    target: target == null ? null : frac(target),
+    actual: rawActual == null ? null : clamp01(rawActual),
+    clamped: rawActual != null && (rawActual < 0 || rawActual > 1),
+  }
+}
+
 /** Consecutive "YYYY-MM" months grouped under their year, for the label row above a month grid. */
 export function yearSpans(months: string[]): { year: string; span: number }[] {
   const out: { year: string; span: number }[] = []
