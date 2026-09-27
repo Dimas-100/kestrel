@@ -43,36 +43,85 @@ def _with_staleness(sources: list[Source], cfg: SourceCfg, now: datetime) -> lis
     return out
 
 
+def _fit_note(detail: str, ignored: list[str]) -> str:
+    """`detail` plus a note naming the ids `ignored` (five at most, then "and N more"), shrunk like
+    `feed.problems()` until it fits `DETAIL_LIMIT`: fewer names, then no names at all, then — only if even a
+    nameless note doesn't fit after `detail` — a shortened `detail` (with "…"), so the note always shows."""
+    shown = min(5, len(ignored))
+    while True:
+        more = len(ignored) - shown
+        if shown:
+            note = f"ignored duplicate ids: {', '.join(ignored[:shown])}" + (f", and {more} more" if more else "")
+        else:
+            note = f"ignored {more} duplicate {'id' if more == 1 else 'ids'}"
+        combined = " · ".join(text for text in (detail, note) if text)
+        if len(combined) <= DETAIL_LIMIT or shown == 0:
+            break
+        shown -= 1
+    if len(combined) <= DETAIL_LIMIT:
+        return combined
+    room = DETAIL_LIMIT - len(note) - len(" · ")
+    short = detail[:room - 1] + "…" if room > 1 else ""
+    return " · ".join(text for text in (short, note) if text)
+
+
 def _noted(sources: list[Source], ignored: list[str]) -> list[Source]:
-    """The part's first source row, its detail naming the ids it lost (at most five), then the rest unchanged."""
+    """The part's first source row, its detail naming the ids it lost, fitted to the row (`_fit_note`), then the
+    rest unchanged."""
     if not sources:
         return sources
-    names = ", ".join(ignored[:5]) + (f", and {len(ignored) - 5} more" if len(ignored) > 5 else "")
     first = sources[0]
-    detail = " · ".join(text for text in (first.detail, f"ignored duplicate ids: {names}") if text)
-    return [first.model_copy(update={"detail": detail}), *sources[1:]]
+    return [first.model_copy(update={"detail": _fit_note(first.detail, ignored)}), *sources[1:]]
+
+
+def _dedupe_within(part: Snapshot) -> tuple[Snapshot, list[str]]:
+    """Two accounts, books or strategies of the same id within this one source: keep the first, drop the later
+    item itself. Its dependents (positions, trades, history, …) are keyed by that same id, so they stay — they end
+    up attached to the one that's kept."""
+
+    def first_only(items: list) -> tuple[list, list[str]]:
+        seen: set[str] = set()
+        kept: list = []
+        dupes: list[str] = []
+        for item in items:
+            if item.id in seen:
+                dupes.append(item.id)
+            else:
+                seen.add(item.id)
+                kept.append(item)
+        return kept, dupes
+
+    accounts, dup_accounts = first_only(part.accounts)
+    books, dup_books = first_only(part.books)
+    strategies, dup_strategies = first_only(part.strategies)
+    dupes = [*dup_accounts, *dup_books, *dup_strategies]
+    if not dupes:
+        return part, []
+    return part.model_copy(update={"accounts": accounts, "books": books, "strategies": strategies}), dupes
 
 
 def _without_duplicates(parts: list[Snapshot]) -> list[Snapshot]:
     """When a later source uses an account, book or strategy id an earlier one already has, the earlier one's item
     stays and the later one's goes, with everything that hangs off it: an account's holdings and history; a book's
-    history, positions, trades, trade charts and runs. Books keep pointing at the first strategy of their id."""
+    history, positions, trades, trade charts and runs. Books keep pointing at the first strategy of their id. Two
+    items of the same id within one source (`_dedupe_within`) are resolved the same way, first."""
     seen_accounts: set[str] = set()
     seen_books: set[str] = set()
     seen_strategies: set[str] = set()
     out = []
     for part in parts:
+        part, within = _dedupe_within(part)
         accounts = {a.id for a in part.accounts} & seen_accounts
         books = {b.id for b in part.books} & seen_books
         strategies = {s.id for s in part.strategies} & seen_strategies
         seen_accounts |= {a.id for a in part.accounts}
         seen_books |= {b.id for b in part.books}
         seen_strategies |= {s.id for s in part.strategies}
-        if not (accounts or books or strategies):
+        if not (accounts or books or strategies or within):
             out.append(part)
             continue
         ignored = [*(a.id for a in part.accounts if a.id in accounts), *(b.id for b in part.books if b.id in books),
-                   *(s.id for s in part.strategies if s.id in strategies)]
+                   *(s.id for s in part.strategies if s.id in strategies), *within]
         out.append(part.model_copy(update={
             "accounts": [a for a in part.accounts if a.id not in accounts],
             "holdings": [h for h in part.holdings if h.account_id not in accounts],

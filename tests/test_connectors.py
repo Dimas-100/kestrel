@@ -1,11 +1,13 @@
 """collect() and ids that two sources share: the first source in the profile keeps its item."""
 
 import datetime as dt
+import re
 
 from feed_fixture import desk, feed_file
 
 from kestrel.cli import main
 from kestrel.connectors import collect
+from kestrel.connectors.base import DETAIL_LIMIT
 from kestrel.profile import DEMO_PROFILE, Profile, SourceCfg
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
@@ -118,3 +120,30 @@ def test_the_demo_left_in_next_to_a_feed_of_the_same_data_counts_once(tmp_path, 
         ("copy", "4 accounts · 5 books · 4 strategies · 136 trades"),
         ("demo-portfolio", "ignored duplicate ids: roth, brokerage, trading, savings, rsi2-real, and 8 more"),
     ]  # the note goes on the later source's first row
+
+
+def test_the_duplicate_note_shrinks_to_fit_the_row(tmp_path):
+    # ten 35-char strategy ids: even five names plus "and N more" doesn't fit next to the source's own detail
+    ids = [f"strategy-{i:02d}-{'x' * 23}" for i in range(10)]
+    assert len(ids[0]) == 35
+    payload = desk(books=[], book_history=[], positions=[], trades=[], trade_charts=[], runs=[],
+                   strategies=[{"id": sid, "name": f"Strategy {i}"} for i, sid in enumerate(ids)])
+    first = feed_file(tmp_path, payload, "first.json")
+    later = feed_file(tmp_path, payload, "later.json")
+    snap = collect(profile_of(first, later), NOW)
+    detail = snap.sources[1].detail
+    assert len(detail) <= DETAIL_LIMIT
+    assert re.search(r"ignored duplicate ids: .*, and \d+ more$", detail)
+    assert len(snap.strategies) == 10  # the first source's strategies win; none of the later source's survive
+
+
+def test_duplicate_ids_within_one_source_keep_the_first_and_are_noted(tmp_path):
+    payload = desk(books=[
+        {"id": "x", "name": "First x", "money": "real", "strategy_id": "swing", "status": "running",
+         "started": "2026-01-01", "value": 100.0},
+        {"id": "x", "name": "Second x", "money": "paper", "strategy_id": "swing", "status": "running",
+         "started": "2026-01-02", "value": 200.0},
+    ])
+    snap = collect(profile_of(feed_file(tmp_path, payload)), NOW)
+    assert [(b.id, b.name) for b in snap.books] == [("x", "First x")]
+    assert "ignored duplicate ids: x" in snap.sources[0].detail
