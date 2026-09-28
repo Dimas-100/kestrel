@@ -45,14 +45,14 @@ export const NAV: { group: string; items: NavItem[] }[] = [
 ]
 
 const SIDEBAR_ID = 'sidebar'
+const MORE_SHEET_ID = 'more-sheet'
 
-const TABS: NavItem[] = [
-  { to: '/', label: 'Home', icon: 'home' },
-  { to: '/accounts', label: 'Accounts', icon: 'accounts' },
-  { to: '/books', label: 'Books', icon: 'books' },
-  { to: '/strategies', label: 'Strategies', icon: 'strategy' },
-  { to: '/settings', label: 'More', icon: 'more' },
-]
+/** The phone bottom bar keeps only these four; everything else in NAV lands in the "More" sheet, in NAV's own
+ *  order — so the sheet can never drift from the sidebar it stands in for. */
+const TAB_PATHS = new Set(['/', '/accounts', '/books', '/strategies'])
+const ALL_ITEMS: NavItem[] = NAV.flatMap((g) => g.items)
+const TABS: NavItem[] = ALL_ITEMS.filter((i) => TAB_PATHS.has(i.to))
+const MORE_ITEMS: NavItem[] = ALL_ITEMS.filter((i) => !TAB_PATHS.has(i.to))
 
 /** The breadcrumb for a path: its section and page. A page inside a section (/strategies/rsi2) keeps the section's
  *  crumb, as a link back to the section (`parent`). */
@@ -155,7 +155,10 @@ function TopBar({ pathname, shell, theme, onToggleTheme, onMenu, menuOpen, menuR
   )
 }
 
-function TabBar() {
+function TabBar({ pathname, moreOpen, onMore, moreTriggerRef }: {
+  pathname: string; moreOpen: boolean; onMore: () => void; moreTriggerRef: Ref<HTMLButtonElement>
+}) {
+  const moreActive = MORE_ITEMS.some((i) => pathname === i.to || pathname.startsWith(`${i.to}/`))
   return (
     <nav className="tabbar" aria-label="Tabs">
       {TABS.map((tab) => (
@@ -165,7 +168,40 @@ function TabBar() {
           {tab.label}
         </Link>
       ))}
+      <button type="button" ref={moreTriggerRef} onClick={onMore} aria-haspopup="dialog" aria-expanded={moreOpen}
+        aria-controls={MORE_SHEET_ID} aria-current={moreActive ? 'page' : undefined}
+        className="flex flex-col items-center justify-center gap-1 min-h-12 text-[11px] font-medium text-ink3 aria-[current=page]:text-ink1">
+        <Icon name="more" size={20} />
+        More
+      </button>
     </nav>
+  )
+}
+
+/** The phone-only sheet the "More" tab opens: everything NAV has that isn't one of the four main tabs. Closes on
+ *  Escape, on the scrim, and on navigating (the pathname effect in Shell). Tab wraps within it while open. */
+function MoreSheet({ open, onClose, sheetRef }: { open: boolean; onClose: () => void; sheetRef: Ref<HTMLDivElement> }) {
+  return (
+    <>
+      <div className="sheet-scrim" aria-hidden="true" onClick={onClose} />
+      <div className="sheet" id={MORE_SHEET_ID} role="dialog" aria-modal="true" aria-labelledby={`${MORE_SHEET_ID}-title`}
+        aria-hidden={!open} ref={sheetRef}>
+        <div className="flex items-center justify-between px-2 pt-1 pb-2">
+          <span id={`${MORE_SHEET_ID}-title`} className="label">More</span>
+          <button type="button" className="icon-btn" aria-label="Close menu" onClick={onClose}>
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+        <nav aria-label="More" className="flex flex-col gap-0.5">
+          {MORE_ITEMS.map((item) => (
+            <Link key={item.to} to={item.to} className="nav-item ease" activeProps={{ 'aria-current': 'page' }}>
+              <Icon name={item.icon} size={17} />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </>
   )
 }
 
@@ -174,16 +210,23 @@ export function Shell() {
   const app = shell.data?.app
   const [theme, toggleTheme] = useTheme(app?.theme ?? 'system')
   const [drawer, setDrawer] = useState(false)
+  const [more, setMore] = useState(false)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const menuRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLElement>(null)
   const drawerWasOpen = useRef(false)
+  const moreTriggerRef = useRef<HTMLButtonElement>(null)
+  const moreRef = useRef<HTMLDivElement>(null)
+  const moreWasOpen = useRef(false)
 
   // during render, not in an effect: the page below renders after this line and must format in this currency
   // from its first paint (setCurrency is idempotent)
   if (app) setCurrency(app.currency)
 
-  useEffect(() => setDrawer(false), [pathname]) // navigating closes the phone drawer
+  useEffect(() => {
+    setDrawer(false) // navigating closes the phone drawer and the More sheet
+    setMore(false)
+  }, [pathname])
   useEffect(() => {
     document.title = app?.name ?? 'kestrel'
   }, [app])
@@ -200,6 +243,33 @@ export function Shell() {
     return () => document.removeEventListener('keydown', onKey)
   }, [drawer])
   useEffect(() => {
+    // same shape as the drawer's effect above, plus a Tab wrap so keyboard focus never escapes the open sheet
+    if (more) moreRef.current?.querySelector<HTMLElement>('a')?.focus()
+    else if (moreWasOpen.current) moreTriggerRef.current?.focus()
+    moreWasOpen.current = more
+    if (!more) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMore(false)
+        return
+      }
+      if (event.key !== 'Tab' || !moreRef.current) return
+      const focusable = moreRef.current.querySelectorAll<HTMLElement>('a, button')
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [more])
+  useEffect(() => {
     // theme the whole document so overscroll and scrollbars match
     const root = document.documentElement
     root.classList.add('k')
@@ -210,7 +280,7 @@ export function Shell() {
   }, [theme, app])
 
   return (
-    <div className="shell" data-drawer={drawer ? 'open' : 'closed'}>
+    <div className="shell" data-drawer={drawer ? 'open' : 'closed'} data-sheet={more ? 'open' : 'closed'}>
       <Sidebar shell={shell.data} ref={sidebarRef} />
       <div className="scrim" aria-hidden="true" onClick={() => setDrawer(false)} />
       <div className="main">
@@ -226,7 +296,8 @@ export function Shell() {
           {shell.data || shell.isError ? <Outlet /> : <p className="text-ink3" role="status">Loading…</p>}
         </main>
       </div>
-      <TabBar />
+      <TabBar pathname={pathname} moreOpen={more} onMore={() => setMore(true)} moreTriggerRef={moreTriggerRef} />
+      <MoreSheet open={more} onClose={() => setMore(false)} sheetRef={moreRef} />
     </div>
   )
 }

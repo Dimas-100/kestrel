@@ -33,6 +33,7 @@ const PATHS: Record<string, ReactElement> = {
   calendar: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18" /><path d="M8 3v4" />
     <path d="M16 3v4" /></>),
   target: (<><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></>),
+  close: (<><path d="M6 6l12 12" /><path d="M18 6 6 18" /></>),
 }
 
 export type IconName = keyof typeof PATHS

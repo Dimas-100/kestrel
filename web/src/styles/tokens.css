@@ -132,7 +132,7 @@
 .grid12 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-content: start; }
 .span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; } .span-6 { grid-column: span 6; }
 .span-7 { grid-column: span 7; } .span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
-.menu-btn, .tabbar, .scrim { display: none; }
+.menu-btn, .tabbar, .scrim, .sheet, .sheet-scrim { display: none; }
 /* position: relative keeps absolutely positioned children (sr-only labels) inside the scroll box */
 .table-scroll { position: relative; overflow-x: auto; }
 
@@ -153,7 +153,16 @@
 @media (max-width: 640px) {
   .tabbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; left: 0; right: 0;
     bottom: 0; z-index: 25; height: 72px; padding: 6px 4px 14px; background: var(--side); border-top: 1px solid var(--line); }
+  .tabbar button { background: none; border: 0; cursor: pointer; font-family: inherit; }
   .content { padding-bottom: 96px; }
   .icon-btn { width: 44px; height: 44px; } /* touch targets */
   .seg button { min-height: 36px; }
+  /* the phone "More" sheet: off screen and hidden when closed, so its links leave the tab order */
+  .sheet { display: flex; flex-direction: column; position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+    max-height: 70vh; overflow-y: auto; background: var(--side); border-top: 1px solid var(--line);
+    border-radius: 14px 14px 0 0; padding: 10px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 24px rgb(0 0 0 / 0.28); transform: translateY(100%); visibility: hidden; }
+  .shell[data-sheet="open"] .sheet { transform: none; visibility: visible; }
+  .shell[data-sheet="open"] .sheet-scrim { display: block; position: fixed; inset: 0; z-index: 26;
+    background: rgb(0 0 0 / 0.45); }
 }
