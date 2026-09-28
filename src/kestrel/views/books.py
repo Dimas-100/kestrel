@@ -76,7 +76,9 @@ def book_rows(snapshot: Snapshot) -> list[BookRow]:
 
 
 class BooksRow(BookRow):
-    spark: list[float]  # the last 60 values of the book's history, oldest first
+    # the last 60 values of the book's growth since it started, in percent (the equity line's measure, so a deposit
+    # never reads as a gain), oldest first; the last is `since_pct`
+    spark: list[float]
 
 
 class BooksView(View):
@@ -143,7 +145,10 @@ class BookView(View):
 
 
 def _spark(points: list[ValuePoint]) -> list[float]:
-    return [p.value for p in points[-SPARK_POINTS:]]
+    if len(points) < 2:
+        return []
+    # rounded as since_pct is, so the line ends on the figure in the "since start" column
+    return [round((v - 1) * 100, 2) for v in growth_index(points)[-SPARK_POINTS:]]
 
 
 def _books_rows(snapshot: Snapshot) -> list[BooksRow]:

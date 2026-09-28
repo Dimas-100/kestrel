@@ -32,6 +32,17 @@ describe('Settings', { timeout: 15_000 }, () => {
     expect(about.textContent).toContain(`kestrel version${settingsFixture.version}`)
   })
 
+  it('shows a source’s last success in the profile’s time zone, not UTC', async () => {
+    // 02:30 UTC on the 26th is 22:30 on the 25th in New York, the fixture profile's zone
+    expect(settingsFixture.app.timezone).toBe('America/New_York')
+    const view: SettingsView = { ...settingsFixture,
+      sources: [{ ...settingsFixture.sources[0], last_success: '2026-09-26T02:30:00Z' }] }
+    renderApp('/settings', { settings: view })
+    const sources = await findPanel('Sources')
+    expect(rows(sources)[0]).toContain('· 22:30')
+    expect(rows(sources)[0]).not.toContain('02:30')
+  })
+
   it('lists every source, what it reads, and its live status — never a token value', async () => {
     renderApp('/settings')
     const sources = await findPanel('Sources')

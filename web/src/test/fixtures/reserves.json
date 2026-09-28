@@ -38,9 +38,11 @@
   },
   "spread": {
     "owed_rate_pct": 24.9,
+    "owed_name": "Credit card",
     "earned_rate_pct": 4.1,
     "yearly_cost": 159.36,
     "yearly_earned": 993.96,
-    "gap": 834.6
+    "pay_down": 640.0,
+    "pay_down_saves": 133.12
   }
 }

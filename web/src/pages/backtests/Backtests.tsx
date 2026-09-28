@@ -2,7 +2,9 @@
 import { useMemo, useState } from 'react'
 import { Empty } from '../../charts/marks'
 import { Missing, Panel, Seg, Stat } from '../../components/bits'
-import { type Backtest, type BacktestsView, type BacktestVerdict, type FamilyRow, useBacktests } from '../../lib/api'
+import {
+  type Backtest, type BacktestsView, type BacktestVerdict, type FamilyRow, useBacktests, useShell,
+} from '../../lib/api'
 import { num, pct, shortDate } from '../../lib/format'
 
 const SHOWN_FAMILIES = 25
@@ -65,7 +67,7 @@ function BestCell({ best }: { best: Backtest | null }) {
   )
 }
 
-function FamiliesPanel({ families, windows }: { families: FamilyRow[]; windows: string[] }) {
+function FamiliesPanel({ families, windows, tz }: { families: FamilyRow[]; windows: string[]; tz: string }) {
   const [all, setAll] = useState(false)
   const shown = all ? families : families.slice(0, SHOWN_FAMILIES)
   return (
@@ -90,7 +92,7 @@ function FamiliesPanel({ families, windows }: { families: FamilyRow[]; windows: 
                     {windows.map((w) => (
                       <td key={w}>{f.verdicts[w] ? <VerdictChip verdict={f.verdicts[w]} /> : <Missing />}</td>
                     ))}
-                    <td className="text-sm text-ink2">{shortDate(f.last_at)}</td>
+                    <td className="text-sm text-ink2">{shortDate(f.last_at, tz)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -108,7 +110,7 @@ function FamiliesPanel({ families, windows }: { families: FamilyRow[]; windows: 
   )
 }
 
-function ResultsPanel({ rows }: { rows: Backtest[] }) {
+function ResultsPanel({ rows, tz }: { rows: Backtest[]; tz: string }) {
   const [filter, setFilter] = useState<RowFilter>('all')
   const [query, setQuery] = useState('')
   const shown = useMemo(
@@ -144,7 +146,7 @@ function ResultsPanel({ rows }: { rows: Backtest[] }) {
                   <td className="r num">{b.trades == null ? <Missing /> : num(b.trades, 0)}</td>
                   <td className="r num">{b.avg_trade_pct == null ? <Missing /> : pct(b.avg_trade_pct, 2)}</td>
                   <td className="r num">{b.t_stat == null ? <Missing /> : num(b.t_stat, 2)}</td>
-                  <td className="text-sm text-ink2">{shortDate(b.at)}</td>
+                  <td className="text-sm text-ink2">{shortDate(b.at, tz)}</td>
                 </tr>
               ))}
             </tbody>
@@ -173,11 +175,13 @@ function TotalsRow({ totals }: { totals: BacktestsView['totals'] }) {
 
 export function Backtests() {
   const query = useBacktests()
+  const shell = useShell()
   if (query.isPending) return <p className="text-ink3" role="status">Loading the research record…</p>
   if (!query.data) {
     return <div role="alert" className="panel">Backtests couldn&rsquo;t load: {query.error.message}</div>
   }
   const view = query.data
+  const tz = shell.data?.app.timezone ?? 'UTC' // "at" and "last ran" are moments: dated in the profile's zone
   return (
     <>
       <header className="mb-5">
@@ -193,8 +197,8 @@ export function Backtests() {
       ) : (
         <div className="grid12">
           <TotalsRow totals={view.totals} />
-          <FamiliesPanel families={view.families} windows={view.windows} />
-          <ResultsPanel rows={view.rows} />
+          <FamiliesPanel families={view.families} windows={view.windows} tz={tz} />
+          <ResultsPanel rows={view.rows} tz={tz} />
         </div>
       )}
     </>

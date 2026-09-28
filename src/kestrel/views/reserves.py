@@ -39,10 +39,14 @@ class Totals(View):
 
 class Spread(View):
     owed_rate_pct: float  # the highest APR among debts with a balance
+    owed_name: str  # the debt that rate is on
     earned_rate_pct: float  # the best cash APY
+    # a year of each, shown apart and never netted: interest paid and interest earned are different money
     yearly_cost: float  # sum of each debt's own balance times its own rate
     yearly_earned: float  # sum of each cash account's own balance times its own rate
-    gap: float  # yearly_earned minus yearly_cost
+    # paying the dearest debt from cash: only when it costs more than the best cash earns and there is cash
+    pay_down: float | None  # the smaller of what that debt owes and all the cash
+    pay_down_saves: float | None  # pay_down x (owed_rate_pct - earned_rate_pct) / 100: a year's interest saved
 
 
 class ReservesView(View):
@@ -80,9 +84,14 @@ def reserves_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> Res
     cash_rated = [c for c in cash if c.rate_pct is not None]
     spread = None
     if debts_rated and cash_rated:
-        yearly_cost = round(sum(d.owed * d.rate_pct / 100 for d in debts_rated), 2)
-        yearly_earned = round(sum(c.value * c.rate_pct / 100 for c in cash_rated), 2)
-        spread = Spread(owed_rate_pct=max(d.rate_pct for d in debts_rated),
-                        earned_rate_pct=max(c.rate_pct for c in cash_rated), yearly_cost=yearly_cost,
-                        yearly_earned=yearly_earned, gap=round(yearly_earned - yearly_cost, 2))
+        dearest = max(debts_rated, key=lambda d: d.rate_pct)  # the first of a tie: the largest balance
+        best = max(c.rate_pct for c in cash_rated)
+        # the cash rate given up is the best one: the saving is never overstated
+        pay_down = round(min(dearest.owed, total_cash), 2) if dearest.rate_pct > best and total_cash > 0 else None
+        spread = Spread(
+            owed_rate_pct=dearest.rate_pct, owed_name=dearest.name, earned_rate_pct=best,
+            yearly_cost=round(sum(d.owed * d.rate_pct / 100 for d in debts_rated), 2),
+            yearly_earned=round(sum(c.value * c.rate_pct / 100 for c in cash_rated), 2), pay_down=pay_down,
+            pay_down_saves=round(pay_down * (dearest.rate_pct - best) / 100, 2) if pay_down is not None else None,
+        )
     return ReservesView(as_of=now, cash=cash, debts=debts, totals=totals, spread=spread)

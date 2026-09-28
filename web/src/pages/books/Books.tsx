@@ -7,8 +7,9 @@ import { type BooksRow, useBooks, useShell } from '../../lib/api'
 import { money, pct, shortDate, sinceLabel, timeHM } from '../../lib/format'
 import { BandBar, VERDICT } from '../home/BooksPanel'
 
-/** A tiny 60-point line, coloured by whether the book ended above or below where it started. */
-export function Spark({ values }: { values: number[] }) {
+/** A tiny 60-point line of the book's growth since it started (deposits left out), coloured and labelled by whether
+ *  the book is up or down since it started — its "since start" figure, not the ends of this window. */
+export function Spark({ values, up }: { values: number[]; up: boolean }) {
   if (values.length < 2) return <Missing />
   const w = 68
   const h = 22
@@ -19,9 +20,9 @@ export function Spark({ values }: { values: number[] }) {
   const x = (i: number) => (i / (values.length - 1)) * (w - pad * 2) + pad
   const y = (v: number) => h - pad - ((v - lo) / span) * (h - pad * 2)
   const d = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
-  const up = values[values.length - 1] >= values[0]
   return (
-    <svg width={w} height={h} aria-label={up ? 'trending up' : 'trending down'} role="img" style={{ display: 'block' }}>
+    <svg width={w} height={h} aria-label={up ? 'up since it started' : 'down since it started'} role="img"
+      style={{ display: 'block' }}>
       <path d={d} fill="none" stroke={up ? 'var(--up)' : 'var(--down)'} strokeWidth={1.5} strokeLinecap="round"
         strokeLinejoin="round" />
     </svg>
@@ -52,7 +53,7 @@ function Row({ b, tz, now }: { b: BooksRow; tz: string; now: string }) {
       </td>
       <td className="r num">{money(b.value)}</td>
       <td className="r">{b.since_pct == null ? <Missing /> : <Delta value={b.since_pct} digits={1}>{pct(b.since_pct)}</Delta>}</td>
-      <td><Spark values={b.spark} /></td>
+      <td>{b.since_pct == null ? <Missing /> : <Spark values={b.spark} up={b.since_pct >= 0} />}</td>
       <td className="r num">{b.trades}</td>
       <td style={{ paddingLeft: 28 }}>
         {b.band_lo != null && b.band_hi != null && b.per_trade_pct != null && (

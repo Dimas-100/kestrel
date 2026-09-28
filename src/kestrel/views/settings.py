@@ -12,6 +12,7 @@ from typing import Literal
 from .. import __version__
 from ..contract import CONTRACT_VERSION, Snapshot, Source
 from ..profile import App, BenchmarkCfg, Profile, SourceCfg, You, source_config
+from ..urls import shown_url
 from ._base import View
 
 # SourceCfg's own defaults, repeated here for a source row this profile no longer configures (a connector's own
@@ -26,7 +27,9 @@ class SourceRow(View):
     id: str
     label: str
     kind: str
-    reads: str  # a url or a path as configured, "<program file name> <its arguments>" for a command, or "" (demo)
+    # a url without its query or fragment, a path as configured, "<program file name> <its arguments>" for a
+    # command, or "" (demo)
+    reads: str
     stale_after: str
     refresh: str | None = None  # only a command reuses its last answer
     timeout: float | None = None  # seconds; only a feed (url, path or command) times out
@@ -67,7 +70,10 @@ def _source_row(source: Source, cfg: SourceCfg | None) -> SourceRow:
             refresh = getattr(cfg, "refresh", None) or DEFAULT_REFRESH
             timeout = float(getattr(cfg, "timeout", None) or DEFAULT_COMMAND_TIMEOUT)
         elif url:
-            reads = url
+            try:
+                reads = shown_url(url)  # never its query or fragment, where a key can hide
+            except ValueError:  # the profile refuses such an address; if one got here, show nothing of it
+                reads = ""
             token_env = getattr(cfg, "token_env", None)
             timeout = float(getattr(cfg, "timeout", None) or DEFAULT_FEED_TIMEOUT)
         elif path:

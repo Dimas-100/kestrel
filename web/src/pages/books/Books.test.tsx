@@ -14,8 +14,16 @@ describe('Books', { timeout: 15_000 }, () => {
     const first = within(rows[0])
     expect(first.getByText('Mean reversion')).toBeTruthy()
     expect(first.getByRole('link', { name: 'Mean reversion' }).getAttribute('href')).toBe('/books/rsi2-real')
-    expect(first.getByRole('img', { name: /trending (up|down)/ })).toBeTruthy()
+    expect(first.getByRole('img', { name: /(up|down) since it started/ })).toBeTruthy()
     expect(within(rows[1]).getByText('PAPER')).toBeTruthy() // the second row is the first paper book
+  })
+
+  it('colours the sparkline by the return since the book started, not by where the line ends', async () => {
+    // a line that ends above where it starts, on a book that is down since it started: down, in words and colour
+    const row = { ...booksFixture.rows[0], since_pct: -3.42, spark: [-6.18, -5.02, -3.42] }
+    renderApp('/books', { books: { ...booksFixture, rows: [row] } })
+    const spark = await screen.findByRole('img', { name: 'down since it started' })
+    expect(spark.querySelector('path')?.getAttribute('stroke')).toBe('var(--down)')
   })
 
   it('says so when there are no books yet', async () => {

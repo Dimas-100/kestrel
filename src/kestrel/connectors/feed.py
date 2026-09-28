@@ -28,6 +28,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from .. import __version__
 from ..contract import Snapshot, Source, check_version
+from ..urls import shown_url
 from .base import DETAIL_LIMIT, ConnectorError
 from .command import DEFAULT_REFRESH, cached_run
 from .command import DEFAULT_TIMEOUT as COMMAND_TIMEOUT
@@ -72,12 +73,6 @@ def read_file(path: Path) -> bytes:
     if len(body) > MAX_BYTES:
         raise ConnectorError("the feed file is more than 20 MB")
     return body
-
-
-def _shown(url: str) -> str:
-    """A URL fit to show a person: no user name or password and no query, either of which could carry a secret."""
-    parts = urlsplit(url)
-    return urlunsplit((parts.scheme, parts.netloc.rpartition("@")[2], parts.path, "", ""))
 
 
 class _TooBig(ConnectorError):
@@ -497,7 +492,7 @@ class FeedConnector:
                     location = response.getheader("Location")
                     if location:
                         try:
-                            where = f" to {_shown(urljoin(url, location))}"
+                            where = f" to {shown_url(urljoin(url, location))}"
                         except ValueError:  # an address urllib can't read: don't repeat it, or why
                             where = ""
                         raise ConnectorError(f"the feed redirected{where}; kestrel doesn't follow redirects "

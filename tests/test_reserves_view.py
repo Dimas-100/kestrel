@@ -86,7 +86,37 @@ def test_spread_sums_each_lines_own_balance_at_its_own_rate():
     assert v.spread.owed_rate_pct == 20.0 and v.spread.earned_rate_pct == 4.0
     assert v.spread.yearly_cost == pytest.approx(1000 * 0.20 + 500 * 0.10)
     assert v.spread.yearly_earned == pytest.approx(2000 * 0.04 + 1000 * 0.01)
-    assert v.spread.gap == pytest.approx(v.spread.yearly_earned - v.spread.yearly_cost)
+    assert not hasattr(v.spread, "gap")  # a year's cost and a year's earnings are shown apart, never netted
+
+
+def test_paying_the_dearest_debt_from_cash_saves_the_rate_difference_on_what_moves():
+    s = snap(
+        account("card_a", "debt", 1286.73, rate_pct=27.49, name="Card A"),
+        account("card_b", "debt", 422.18, rate_pct=18.9, name="Card B"),
+        account("savings", "cash", 3417.52, rate_pct=4.35), account("checking", "cash", 812.40),
+    )
+    v = reserves_view(s, Profile(), NOW)
+    # a year of each, apart: 1,286.73 x 27.49% + 422.18 x 18.9% owed; 3,417.52 x 4.35% earned
+    assert (v.spread.yearly_cost, v.spread.yearly_earned) == (433.51, 148.66)
+    # the dearest debt is all covered by the 4,229.92 of cash: 1,286.73 x (27.49 - 4.35)%
+    assert (v.spread.owed_name, v.spread.pay_down, v.spread.pay_down_saves) == ("Card A", 1286.73, 297.75)
+
+
+def test_paying_down_moves_no_more_than_the_cash_there_is():
+    s = snap(account("card", "debt", 1286.73, rate_pct=27.49, name="Card"),
+             account("savings", "cash", 612.08, rate_pct=3.9))
+    v = reserves_view(s, Profile(), NOW)
+    assert (v.spread.pay_down, v.spread.pay_down_saves) == (612.08, 144.39)  # 612.08 x (27.49 - 3.9)%
+
+
+def test_no_pay_down_when_cash_earns_more_than_the_debt_costs_or_there_is_no_cash():
+    cheap = reserves_view(snap(account("loan", "debt", 5000.0, rate_pct=3.5),
+                               account("savings", "cash", 2500.0, rate_pct=4.35)), Profile(), NOW)
+    assert cheap.spread is not None and (cheap.spread.pay_down, cheap.spread.pay_down_saves) == (None, None)
+    overdrawn = reserves_view(snap(account("card", "debt", 900.0, rate_pct=24.0),
+                                   account("savings", "cash", 0.0, rate_pct=4.0),
+                                   account("checking", "cash", -35.17)), Profile(), NOW)
+    assert overdrawn.spread is not None and (overdrawn.spread.pay_down, overdrawn.spread.pay_down_saves) == (None, None)
 
 
 def test_no_cash_or_debt_is_an_empty_view():

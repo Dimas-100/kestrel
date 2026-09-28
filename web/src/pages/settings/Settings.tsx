@@ -56,7 +56,7 @@ function timingText(source: SettingsSource): string {
   return parts.join(' · ')
 }
 
-function SourcesPanel({ sources, now }: { sources: SettingsSource[]; now: Date }) {
+function SourcesPanel({ sources, now, tz }: { sources: SettingsSource[]; now: Date; tz: string }) {
   return (
     <Panel id="sources" title="Sources" subtitle="What each one reads, and its live status" span={12}>
       {sources.length === 0 ? (
@@ -89,7 +89,7 @@ function SourcesPanel({ sources, now }: { sources: SettingsSource[]; now: Date }
                         <span>{status.text}</span>
                       </div>
                       <div className="num text-xs text-ink3 mt-0.5">
-                        {s.last_success ? `${ago(s.last_success, now)} ago · ${timeHM(s.last_success, 'UTC')}` : 'never'}
+                        {s.last_success ? `${ago(s.last_success, now)} ago · ${timeHM(s.last_success, tz)}` : 'never'}
                       </div>
                     </td>
                     <td className="text-sm text-ink2">{s.detail || <Missing />}</td>
@@ -122,7 +122,7 @@ export function Settings() {
       <div className="grid12">
         <YouPanel you={view.you} app={view.app} />
         <AboutPanel view={view} />
-        <SourcesPanel sources={view.sources} now={now} />
+        <SourcesPanel sources={view.sources} now={now} tz={view.app.timezone} />
       </div>
     </>
   )

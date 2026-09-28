@@ -117,8 +117,8 @@ Strategies · More; More lists the rest. Every page has an honest empty state th
 ### 4.1 Books (`/books`) and Book (`/books/<id>`)
 
 - **Books:** every book, real first then paper: money badge, name and strategy, status, value, since start, a
-  60-point sparkline of its value, trades, per-trade result against the expected band, slots in use, next run. Totals
-  for real and paper money above the table.
+  60-point sparkline of its growth since it started (deposits left out, coloured by the since-start sign), trades,
+  per-trade result against the expected band, slots in use, next run. Totals for real and paper money above the table.
 - **Book:** a header (name, money badge, status, strategy link, started, next run); **equity** — the book's value since
   it started against the benchmark from the same day, with its return and worst drop; **drawdown** under it on the same
   time axis; a **scorecard** (trades, win rate, average trade / win / loss, total P/L, best and worst trade, and the
@@ -139,8 +139,11 @@ Strategies · More; More lists the rest. Every page has an honest empty state th
 
 Cash and debt accounts: balance, rate, and for a credit line its limit and utilization. Totals: cash, owed, cash
 after debts, overall utilization. **The spread:** the highest rate owed against the best rate earned, and what a year
-of each costs or earns at today's balances. Home's net worth subtracts debt; the allocation waffle stays about what is
-owned, with a line under it for what is owed.
+of each costs or earns at today's balances, shown apart and never netted (interest paid and interest earned are
+different money). When the dearest debt costs more than the best cash earns and there is cash: "Paying $X of the
+<debt> from cash would save about $Y a year", X the smaller of that debt and all the cash, Y = X × (its rate − the best
+cash rate) / 100 — the best rate given up, so the saving is never overstated. Home's net worth subtracts debt; the
+allocation waffle stays about what is owned, with a line under it for what is owed.
 
 ### 4.4 Calendar (`/calendar`)
 
@@ -161,9 +164,10 @@ alert, by level; every source with its status, last success, age and `stale_afte
 ### 4.7 Settings (`/settings`)
 
 Read-only: who (name), the look (theme, accent, gain/loss colours, density), currency, time zone, benchmark; every
-source with its kind, what it reads (URL, path, or the command's file name and arguments), `stale_after`, `refresh`,
-`timeout`, the name of a token variable (never its value), and its live status; the contract version, kestrel's
-version and which profile file is in use (or "demo data").
+source with its kind, what it reads (a URL without its query or fragment, a path, or the command's file name and
+arguments), `stale_after`, `refresh`, `timeout`, the name of a token variable (never its value), and its live status
+(times in the profile's time zone); the contract version, kestrel's version and which profile file is in use (or "demo
+data").
 
 ## 5. The `rails` connector
 

@@ -89,7 +89,7 @@ function AlertsPanel({ alerts }: { alerts: ActivityView['alerts'] }) {
   )
 }
 
-function SourcesPanel({ sources }: { sources: ActivitySource[] }) {
+function SourcesPanel({ sources, tz }: { sources: ActivitySource[]; tz: string }) {
   return (
     <Panel id="sources" title="Sources" subtitle="Every place your money data comes from" span={12}>
       {sources.length === 0 ? (
@@ -118,7 +118,7 @@ function SourcesPanel({ sources }: { sources: ActivitySource[] }) {
                         <Icon name={status.name} size={14} />{status.text}
                       </span>
                     </td>
-                    <td className="text-ink2 text-xs">{s.last_success ? shortDate(s.last_success) : <Missing />}</td>
+                    <td className="text-ink2 text-xs">{s.last_success ? shortDate(s.last_success, tz) : <Missing />}</td>
                     <td className="r num text-xs">{s.age_text ?? <Missing />}</td>
                     <td className="r num text-xs">{s.stale_after ?? <Missing />}</td>
                   </tr>
@@ -150,7 +150,7 @@ export function Activity() {
       <div className="grid12">
         <RunsPanel days={v.days} counts={v.counts} tz={tz} />
         <AlertsPanel alerts={v.alerts} />
-        <SourcesPanel sources={v.sources} />
+        <SourcesPanel sources={v.sources} tz={tz} />
       </div>
     </>
   )

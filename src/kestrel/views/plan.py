@@ -126,14 +126,16 @@ def _percent_row_fields(t: Target, account: Account | None,
     """(actual for display, status, gap, gap_unit) for a "%" target.
 
     The feed's own `actual` is trusted at face value (it already measured the share). Otherwise kestrel computes it
-    from holdings — but only when the account is known, has a positive value, and has reported at least one
-    holding; anything else is unknown, never a fake 0%. Status and the gap are both decided on the UNROUNDED ratio
-    (see `_edge_decide`) — `actual` is rounded only for display, after status and gap are already settled.
+    from holdings — but only when the target names symbols to sum, and the account is known, has a positive value,
+    and has reported at least one holding; anything else is unknown, never a fake 0%. Status and the gap are both
+    decided on the UNROUNDED ratio (see `_edge_decide`) — `actual` is rounded only for display, after status and gap
+    are already settled.
     """
     has_money = account is not None and account.value > 0
     if t.actual is not None:
         exact_value = t.actual
-    elif account is None or account.value <= 0 or not any(h.account_id == account.id for h in holdings):
+    elif (not t.symbols or account is None or account.value <= 0
+          or not any(h.account_id == account.id for h in holdings)):
         return None, "unknown", None, None
     else:
         exact_value = _held_sum(t, account, holdings) / account.value * 100

@@ -373,7 +373,7 @@ export interface StrategyView {
 // --- the Books pages (src/kestrel/views/books.py) ---------------------------------------------------------------
 
 export interface BooksRow extends BookRow {
-  spark: number[] // the last 60 values of the book's history, oldest first
+  spark: number[] // the last 60 values of the growth since the book started, in percent; the last is since_pct
 }
 
 export interface BooksView {
@@ -879,10 +879,12 @@ export interface DebtLine {
 
 export interface Spread {
   owed_rate_pct: number
+  owed_name: string // the debt that rate is on
   earned_rate_pct: number
-  yearly_cost: number
+  yearly_cost: number // a year of interest on every rated debt, shown apart from what cash earns (never netted)
   yearly_earned: number
-  gap: number // yearly_earned minus yearly_cost
+  pay_down: number | null // paying the dearest debt from cash: the smaller of what it owes and all the cash
+  pay_down_saves: number | null // a year's interest that would save, at the best cash rate given up
 }
 
 export interface ReservesView {

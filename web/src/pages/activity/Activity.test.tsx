@@ -41,6 +41,16 @@ describe('Activity', { timeout: 15_000 }, () => {
     expect(within(sourcesPanel).getByText('connection refused')).toBeTruthy()
   })
 
+  it('dates a source’s last success in the profile’s time zone, not UTC', async () => {
+    // 02:30 UTC on Saturday the 26th is 22:30 on Friday the 25th in New York, the shell's zone
+    const late = { ...activityFixture, sources: [{ ...activityFixture.sources[0], last_success: '2026-09-26T02:30:00Z' }] }
+    renderApp('/activity', { activity: late })
+    const heading = await screen.findByRole('heading', { name: 'Sources' })
+    const sourcesPanel = heading.closest('section') as HTMLElement
+    expect(within(sourcesPanel).getByText('Fri 25 Sep')).toBeTruthy()
+    expect(within(sourcesPanel).queryByText('Sat 26 Sep')).toBeNull()
+  })
+
   it('says so when there is no activity yet', async () => {
     renderApp('/activity', { activity: { as_of: activityFixture.as_of, days: [], counts: {}, alerts: [], sources: [] } })
     expect(await screen.findByText('No runs recorded yet. They appear once a scheduled task reports in.')).toBeTruthy()

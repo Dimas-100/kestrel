@@ -19,15 +19,22 @@ export function SpreadPanel({ totals, spread }: { totals: ReservesView['totals']
         </Stat>
       </div>
       {spread && (
-        <p className="text-sm text-ink2 mt-4 pt-3.5 border-t border-line">
-          The highest rate you pay is <span className="num text-ink1">{num(spread.owed_rate_pct, 1)}%</span>; the best
-          rate you earn is <span className="num text-ink1">{num(spread.earned_rate_pct, 1)}%</span>.{' '}
-          {spread.gap >= 0
-            ? <>At today&rsquo;s balances, that leaves about{' '}
-              <span className="num text-ink1">{money(spread.gap)}</span> a year in your favor.</>
-            : <>At today&rsquo;s balances, closing that gap is worth about{' '}
-              <span className="num text-ink1">{money(-spread.gap)}</span> a year.</>}
-        </p>
+        // a year of interest paid and a year earned, apart: they are different money, so they are never netted
+        <div className="text-sm text-ink2 mt-4 pt-3.5 border-t border-line">
+          <p>
+            The highest rate you pay is <span className="num text-ink1">{num(spread.owed_rate_pct, 1)}%</span>, on{' '}
+            {spread.owed_name}; the best rate you earn is{' '}
+            <span className="num text-ink1">{num(spread.earned_rate_pct, 1)}%</span>. At today&rsquo;s balances, a
+            year of interest costs about <span className="num text-ink1">{money(spread.yearly_cost)}</span> on what
+            you owe and earns about <span className="num text-ink1">{money(spread.yearly_earned)}</span> on your cash.
+          </p>
+          {spread.pay_down != null && spread.pay_down_saves != null && (
+            <p className="mt-1.5">
+              Paying <span className="num text-ink1">{money(spread.pay_down)}</span> of the {spread.owed_name} from
+              cash would save about <span className="num text-ink1">{money(spread.pay_down_saves)}</span> a year.
+            </p>
+          )}
+        </div>
       )}
     </Panel>
   )

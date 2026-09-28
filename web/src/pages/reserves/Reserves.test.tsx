@@ -20,12 +20,23 @@ describe('Reserves', { timeout: 15_000 }, () => {
     expect((table as HTMLTableElement).style.minWidth).toBe('480px')
   })
 
-  it('shows the spread sentence with both rates and a yearly figure', async () => {
-    renderApp('/reserves')
+  it('shows a year of interest owed and earned apart, never netted, and what paying from cash would save', async () => {
+    const { unmount } = renderApp('/reserves')
     const summary = await screen.findByRole('region', { name: 'Cash and debt' })
-    expect(summary.textContent).toContain('The highest rate you pay is 24.9%')
+    expect(summary.textContent).toContain('The highest rate you pay is 24.9%, on Credit card')
     expect(summary.textContent).toContain('the best rate you earn is 4.1%')
-    expect(summary.textContent).toContain('$834.60 a year in your favor')
+    expect(summary.textContent).toContain('At today’s balances, a year of interest costs about $159.36 on what you owe '
+      + 'and earns about $993.96 on your cash.')
+    // 640.00 x (24.9 - 4.1)%, worked out by the view
+    expect(summary.textContent).toContain('Paying $640.00 of the Credit card from cash would save about $133.12 a year.')
+    expect(summary.textContent).not.toMatch(/in your favor|closing that gap/)
+    unmount()
+    const noPayDown: ReservesView = { ...reservesFixture,
+      spread: { ...reservesFixture.spread!, pay_down: null, pay_down_saves: null } }
+    renderApp('/reserves', { reserves: noPayDown })
+    const again = await screen.findByRole('region', { name: 'Cash and debt' })
+    expect(again.textContent).toContain('a year of interest costs about $159.36')
+    expect(again.textContent).not.toContain('Paying')
   })
 
   it('shows a credit balance as text, not a negative dollar amount', async () => {

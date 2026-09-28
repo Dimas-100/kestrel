@@ -50,6 +50,20 @@ describe('Backtests', { timeout: 15_000 }, () => {
     }
   })
 
+  it('dates a result and a family’s last run in the profile’s time zone, not UTC', async () => {
+    // 02:30 UTC on Saturday the 26th is 22:30 on Friday the 25th in New York, the shell's zone
+    const at = '2026-09-26T02:30:00Z'
+    const row = bt({ id: 'late', name: 'Late night', family: 'Night owl', at })
+    const family: FamilyRow = { family: 'Night owl', candidates: 1, best: row, verdicts: { develop: 'pass' },
+      last_at: at }
+    renderApp('/backtests', { backtests: { ...backtestsFixture, families: [family], rows: [row] } })
+    for (const name of ['Families', 'Results']) {
+      const region = await findPanel(name)
+      expect(within(region).getByText('Fri 25 Sep')).toBeTruthy()
+      expect(within(region).queryByText('Sat 26 Sep')).toBeNull()
+    }
+  })
+
   it('lists every family with its best result and a chip per window', async () => {
     renderApp('/backtests')
     const families = await findPanel('Families')

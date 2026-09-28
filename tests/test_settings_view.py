@@ -32,6 +32,15 @@ def test_a_url_source_shows_the_url_and_only_its_tokens_variable_name():
     assert row.timeout == 5.0 and row.refresh is None  # a url never reuses an answer
 
 
+def test_a_url_source_never_shows_its_query_or_fragment():
+    # a key in the query string is a secret like any token: the page shows the address, never what follows it
+    cfg = SourceCfg(id="desk", kind="feed", label="Desk",
+                    url="https://feeds.example.com/v2/feed?api_key=SECRET123&user=alex#frag-SECRET456")
+    row = view(cfg, Source(id="desk", label="Desk", kind="feed", status="ok")).sources[0]
+    assert row.reads == "https://feeds.example.com/v2/feed"
+    assert "SECRET" not in row.model_dump_json()
+
+
 def test_the_token_value_never_appears_even_when_it_is_in_the_environment(monkeypatch):
     monkeypatch.setenv("KESTREL_DESK_TOKEN", "super-secret-value")
     cfg = SourceCfg(id="desk", kind="feed", label="Desk", url="https://example.com/feed",

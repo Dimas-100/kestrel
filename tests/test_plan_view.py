@@ -73,6 +73,21 @@ def test_no_holdings_at_all_for_the_account_is_unknown_not_a_fake_zero_percent()
     assert row.actual is None and row.status == "unknown" and row.gap is None and row.gap_unit is None
 
 
+def test_a_percent_target_with_no_symbols_and_no_actual_is_unknown_not_a_fake_zero_percent():
+    # "Growth core" names nothing to sum and the feed sent no actual: there is no share to show, and no gap, and
+    # nothing for Home's Needs you — not 0% "under the low end"
+    t = Target(id="core", account_id="a", label="Growth core", symbols=[], low=50, high=70)
+    s = snap(accounts=[account("a", 10437.29)], holdings=[holding("a", "VTI", 4218.66)], targets=[t])
+    plan = plan_view(s, Profile(), NOW)
+    row = plan.accounts[0].rows[0]
+    assert (row.actual, row.status, row.gap, row.gap_unit, row.gap_text) == (None, "unknown", None, None, "")
+    assert plan.counts.off_plan == 0 and target_attention(s) == []
+    # the same target with the feed's own measure is judged as usual
+    measured = t.model_copy(update={"actual": 44.6})
+    row = plan_view(snap(accounts=[account("a", 10437.29)], targets=[measured]), Profile(), NOW).accounts[0].rows[0]
+    assert (row.actual, row.status) == (44.6, "under")
+
+
 def test_ratio_target_uses_feed_actual():
     t = Target(id="cover", label="Cash cover", unit="x", target=6, low=4, actual=7.5)
     s = snap(targets=[t])

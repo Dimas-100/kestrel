@@ -29,7 +29,7 @@ def test_books_view_real_first_then_paper_with_totals(demo_snapshot):
     assert v.as_of == NOW
 
 
-def test_spark_is_last_60_values():
+def test_spark_is_the_last_60_values_of_the_growth_since_the_book_started():
     days = [dt.date(2026, 1, 1) + dt.timedelta(days=i) for i in range(70)]
     points = [ValuePoint(date=d, value=100 + i) for i, d in enumerate(days)]
     book = Book(id="b", name="B", money="real", strategy_id="s", status="running", started=days[0],
@@ -38,8 +38,26 @@ def test_spark_is_last_60_values():
     v = books_view(snap, Profile(), NOW)
     row = v.rows[0]
     assert len(row.spark) == 60
-    assert row.spark[0] == points[10].value
-    assert row.spark[-1] == points[-1].value
+    # percent since the first point, like the Book page's equity line: 110 and 169 on a start of 100
+    assert (row.spark[0], row.spark[-1]) == (10.0, 69.0)
+    assert row.spark[-1] == row.since_pct
+
+
+def test_a_losing_book_funded_every_ten_days_has_a_spark_that_ends_below_its_start():
+    days = [dt.date(2026, 6, 1) + dt.timedelta(days=i) for i in range(80)]
+    points, value = [], 1000.0
+    for i, day in enumerate(days):
+        flow = 500.0 if i % 10 == 5 else 0.0
+        value = round(value * 0.997 + flow, 2)  # losing 0.3% a day, topped up every ten days
+        points.append(ValuePoint(date=day, value=value, net_flow=flow))
+    assert points[-1].value > points[-60].value  # its balance rose: the deposits outran the losses
+    book = Book(id="b", name="B", money="paper", strategy_id="s", status="running", started=days[0],
+                value=points[-1].value)
+    snap = Snapshot(generated_at=NOW, books=[book], book_history=[Series(id="b", points=points)])
+    row = books_view(snap, Profile(), NOW).rows[0]
+    assert row.since_pct < 0
+    assert row.spark[-1] < row.spark[0]  # the deposits never read as gains
+    assert row.spark[-1] == row.since_pct
 
 
 def test_book_view_equity_and_drawdown_share_dates(demo_snapshot):
