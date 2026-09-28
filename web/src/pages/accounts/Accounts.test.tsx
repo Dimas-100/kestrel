@@ -48,6 +48,19 @@ describe('Accounts', { timeout: 15_000 }, () => {
       'The market added▲ up +$23,065.11', 'Now$168,278.24'])
   })
 
+  it('says under the growth when some accounts have no history, and nothing when all do', async () => {
+    expect(accountsFixture.no_history).toBe(0) // every demo account has a history
+    const { unmount } = renderApp('/accounts')
+    expect((await findPanel('Growth')).textContent).not.toContain('no history')
+    unmount()
+    for (const [n, text] of [[1, "1 account has no history: counted at today's balance"],
+      [3, "3 accounts have no history: counted at today's balance"]] as const) {
+      const { unmount: done } = renderApp('/accounts', { accounts: { ...accountsFixture, no_history: n } })
+      expect(within(await findPanel('Growth')).getByText(text)).toBeTruthy()
+      done()
+    }
+  })
+
   it('shows dashes for a window without enough history', async () => {
     renderApp('/accounts', { accounts: { ...accountsFixture, growth: { ...accountsFixture.growth, ytd: null } } })
     const growth = await findPanel('Growth')

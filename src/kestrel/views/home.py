@@ -6,7 +6,7 @@ import datetime as dt
 from typing import Literal
 from urllib.parse import quote
 
-from ..contract import Book, Snapshot, Source, ValuePoint
+from ..contract import Account, Book, Snapshot, Source, ValuePoint
 from ..metrics import growth_index, largest_remainder, max_drawdown_pct, sum_series
 from ..profile import Profile
 from ._base import View as View  # noqa: F401 - re-exported: other view modules import View from here
@@ -25,7 +25,7 @@ class Delta(View):
 
 
 class NetWorth(View):
-    total: float  # everything owned less everything owed
+    total: float  # everything owned less everything owed: always the last of `points` when there are any
     owed: float  # what the debt accounts owe, already taken off `total`; 0 with none, below 0 for a card paid past zero
     debt_accounts: int  # how many accounts that owed comes from (for "Owed: $X across N accounts")
     today: Delta
@@ -33,6 +33,7 @@ class NetWorth(View):
     year: Delta
     year_flows: float
     points: list[ValuePoint]  # the client draws the "starting value + deposits" line from net_flow
+    no_history: int  # accounts with no history of their own, counted at today's balance on every date of `points`
 
 
 class Slice(View):
@@ -119,12 +120,13 @@ class HomeView(View):
 
 
 def _delta(points: list[ValuePoint], since: dt.date) -> Delta:
-    """Money change from the last point before `since` to the latest point (deposits included)."""
+    """Money change from the last point before `since` to the latest point (deposits included). A percent only of a
+    base above zero: of a net worth below zero it would read backwards."""
     if not points:
         return Delta(amount=0.0, pct=None)
     base = next((p.value for p in reversed(points) if p.date < since), points[0].value)
     amount = points[-1].value - base
-    return Delta(amount=round(amount, 2), pct=round(amount / base * 100, 2) if base else None)
+    return Delta(amount=round(amount, 2), pct=round(amount / base * 100, 2) if base > 0 else None)
 
 
 def owed_points(points: list[ValuePoint]) -> list[ValuePoint]:
@@ -133,11 +135,32 @@ def owed_points(points: list[ValuePoint]) -> list[ValuePoint]:
     return [ValuePoint(date=p.date, value=-p.value, net_flow=p.net_flow) for p in points]
 
 
+def _history_of(snapshot: Snapshot) -> dict[str, list[ValuePoint]]:
+    """Each account's history, leaving out one with no points: that account has no history."""
+    return {s.id: list(s.points) for s in snapshot.account_history if s.points}
+
+
+def no_history(snapshot: Snapshot) -> list[Account]:
+    """The accounts with no history of their own (a bank feed that reports only today's balance)."""
+    history = _history_of(snapshot)
+    return [a for a in snapshot.accounts if a.id not in history]
+
+
 def net_points(snapshot: Snapshot) -> list[ValuePoint]:
-    """Every account's history added up by date, what the debt accounts owe counting against it."""
-    history = {s.id: s.points for s in snapshot.account_history}
-    return sum_series([owed_points(history[a.id]) if a.category == "debt" else history[a.id]
-                       for a in snapshot.accounts if a.id in history])
+    """Every account's history added up by date, what the debt accounts owe counting against it.
+
+    An account with no history joins as a flat line at today's balance (below zero when it is owed) across every
+    date, with no flows: so the last point is the net worth every page shows as its total, and the flat line adds
+    nothing to market growth."""
+    history = _history_of(snapshot)
+    series = [owed_points(history[a.id]) if a.category == "debt" else history[a.id]
+              for a in snapshot.accounts if a.id in history]
+    first = min((p.date for s in series for p in s), default=None)
+    if first is not None:
+        # one point on the first date: sum_series carries it forward, and a series there from the start brings no flow
+        series += [[ValuePoint(date=first, value=-a.value if a.category == "debt" else a.value)]
+                   for a in no_history(snapshot)]
+    return sum_series(series)
 
 
 def _day_pct(points: list[ValuePoint]) -> float | None:
@@ -282,7 +305,7 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
         debt_accounts=sum(1 for a in snapshot.accounts if a.category == "debt"),
         today=_delta(net, today), month=_delta(net, today.replace(day=1)), year=_delta(net, dt.date(today.year, 1, 1)),
         year_flows=round(sum(p.net_flow for p in net[1:] if p.date >= dt.date(today.year, 1, 1)), 2),
-        points=net,
+        points=net, no_history=len(no_history(snapshot)),
     )
     # the waffle is what is owned; what is owed is net worth's business
     values = {c: sum(a.value for a in snapshot.accounts if a.category == c) for c in OWNED}

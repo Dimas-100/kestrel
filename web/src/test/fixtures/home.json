@@ -1333,7 +1333,8 @@
         "value": 168278.24,
         "net_flow": -88.02
       }
-    ]
+    ],
+    "no_history": 0
   },
   "allocation": [
     {

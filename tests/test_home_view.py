@@ -65,6 +65,50 @@ def test_an_overpaid_card_adds_to_net_worth_and_no_debt_owes_nothing():
     assert home_view(_tiny([held], []), Profile(), NOW).net_worth.owed == 0.0
 
 
+def _bank_feed_household():
+    """A brokerage with history (a collector) next to a checking account and a card from a bank feed that reports
+    only today's balance."""
+    d = dt.date
+    days = [d(2026, 9, 23), d(2026, 9, 24), d(2026, 9, 25)]
+    brokerage = [ValuePoint(date=days[0], value=9812.37), ValuePoint(date=days[1], value=9904.15),
+                 ValuePoint(date=days[2], value=10406.88, net_flow=500)]
+    accounts = [Account(id="brokerage", name="Brokerage", category="long_term", value=10406.88, as_of=NOW),
+                Account(id="checking", name="Checking", category="cash", value=4218.66, cash=4218.66, as_of=NOW),
+                Account(id="card", name="Card", category="debt", value=1187.29, as_of=NOW)]
+    return _tiny(accounts, [Series(id="brokerage", points=brokerage)])
+
+
+def test_an_account_without_history_joins_net_worth_flat_at_todays_balance():
+    nw = home_view(_bank_feed_household(), Profile(), NOW).net_worth
+    # 10,406.88 + 4,218.66 - 1,187.29: the hero and the chart's last point are one figure
+    assert nw.total == 13438.25
+    assert nw.points[-1].value == nw.total
+    # checking and the card sit at today's balance on every date (3,031.37 together), with no flows of their own
+    assert [(p.value, p.net_flow) for p in nw.points] == [(12843.74, 0.0), (12935.52, 0.0), (13438.25, 500.0)]
+    assert nw.no_history == 2
+    # a flat line moves nothing: the day's change is the brokerage's alone, 502.73 of it
+    assert nw.today.amount == 502.73
+    assert nw.year_flows == 500.0
+
+
+def test_every_account_with_history_leaves_no_count():
+    lt = Account(id="lt", name="Index fund", category="long_term", value=512.34, as_of=NOW)
+    history = [Series(id="lt", points=[ValuePoint(date=dt.date(2026, 9, 24), value=500.11),
+                                       ValuePoint(date=dt.date(2026, 9, 25), value=512.34)])]
+    assert home_view(_tiny([lt], history), Profile(), NOW).net_worth.no_history == 0
+
+
+def test_a_change_of_a_net_worth_below_zero_has_no_percent():
+    # what is owed (2,000, no history) outweighs what is held: a percent of a negative base would read backwards
+    lt = Account(id="lt", name="Index fund", category="long_term", value=512.34, as_of=NOW)
+    card = Account(id="card", name="Card", category="debt", value=2000, as_of=NOW)
+    history = [Series(id="lt", points=[ValuePoint(date=dt.date(2026, 9, 24), value=500.11),
+                                       ValuePoint(date=dt.date(2026, 9, 25), value=512.34)])]
+    nw = home_view(_tiny([lt, card], history), Profile(), NOW).net_worth
+    assert nw.total == nw.points[-1].value == -1487.66
+    assert (nw.today.amount, nw.today.pct) == (12.23, None)
+
+
 def test_allocation_fills_exactly_one_hundred_cells(demo_home):
     assert sum(s.cells for s in demo_home.allocation) == 100
     assert [s.category for s in demo_home.allocation] == ["long_term", "trading", "cash"]

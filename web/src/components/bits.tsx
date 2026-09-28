@@ -65,6 +65,17 @@ export function Seg<T extends string>({ label, options, value, onChange, labels 
   )
 }
 
+/** Under a chart of every account together: how many accounts have no history of their own, and so are drawn flat
+ *  at today's balance. Nothing when every account has a history. */
+export function NoHistoryNote({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <p className="text-xs text-ink3 mt-2">
+      {count === 1 ? '1 account has' : `${count} accounts have`} no history: counted at today's balance
+    </p>
+  )
+}
+
 /** "—" for a missing value (design-system rule), in muted ink */
 export function Missing() {
   return <span style={{ color: 'var(--ink3)' }}>—</span>

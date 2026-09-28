@@ -142,7 +142,7 @@ export function Accounts() {
         </div>
       ) : (
         <div className="grid12">
-          <GrowthPanel growth={v.growth} asOf={v.as_of} />
+          <GrowthPanel growth={v.growth} asOf={v.as_of} noHistory={v.no_history} />
           <AccountsPanel accounts={v.accounts} />
           <EverythingPanel rows={v.holdings} />
         </div>

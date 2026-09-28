@@ -9,7 +9,7 @@ from typing import Literal
 from ..contract import Category, Holding, Snapshot, ValuePoint
 from ..profile import Profile
 from ._base import View
-from .home import _day_pct, net_points
+from .home import _day_pct, net_points, no_history
 
 Window = Literal["ytd", "1y", "all"]
 WINDOWS: tuple[Window, ...] = ("ytd", "1y", "all")
@@ -52,7 +52,8 @@ class AccountsView(View):
     as_of: dt.datetime
     count: int
     total: float  # everything owned less everything owed: the net worth
-    growth: dict[Window, Growth | None]  # all accounts together, what is owed counting against them
+    growth: dict[Window, Growth | None]  # all accounts together, what is owed counting against them; "Now" is `total`
+    no_history: int  # accounts with no history of their own: counted in the growth at today's balance, flat
     accounts: list[AccountLine]  # largest first, then what is owed
     holdings: list[CombinedHolding]  # largest first
 
@@ -182,7 +183,8 @@ def accounts_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> Acc
         ))
     rows.sort(key=lambda r: (r.category == "debt", -r.value, r.name))
     return AccountsView(as_of=now, count=len(rows), total=round(owned - owed, 2),
-                        growth=growths(net_points(snapshot), today), accounts=rows,
+                        growth=growths(net_points(snapshot), today), no_history=len(no_history(snapshot)),
+                        accounts=rows,
                         holdings=combined_holdings(snapshot))
 
 

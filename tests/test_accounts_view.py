@@ -154,6 +154,23 @@ def test_debt_account_has_no_market_growth():
     assert [f.amount for f in one.flows] == [100.0, -60.0]  # what went in and out stays listed
 
 
+def test_an_account_without_history_counts_at_todays_balance_and_adds_no_market_growth():
+    # a brokerage from a collector, a checking account and a card from a bank feed with no history
+    brokerage = points((d(2026, 9, 23), 9812.37, 0), (d(2026, 9, 24), 9904.15, 0), (d(2026, 9, 25), 10406.88, 500))
+    checking = Account(id="checking", name="Checking", category="cash", value=4218.66, cash=4218.66, as_of=NOW)
+    card = Account(id="card", name="Card", category="debt", value=1187.29, as_of=NOW)
+    snap = Snapshot(generated_at=NOW, accounts=[account("brokerage", 10406.88), checking, card],
+                    account_history=[Series(id="brokerage", points=brokerage)])
+    view = accounts_view(snap, Profile(), NOW)
+    assert view.total == 13438.25
+    everything = view.growth["all"]
+    assert everything is not None and everything.end == view.total  # the header and "Now" agree
+    # the flat accounts are in the start and the end alike: the market's share is the brokerage's alone
+    assert (everything.start, everything.deposits, everything.market) == (12843.74, 500.0, 94.51)
+    assert growth(brokerage, d(2026, 9, 23)).market == 94.51
+    assert view.no_history == 2
+
+
 def test_no_accounts_is_an_empty_page_and_an_unknown_account_is_none():
     view = accounts_view(Snapshot(generated_at=NOW), Profile(), NOW)
     assert (view.count, view.total, view.accounts, view.holdings) == (0, 0, [], [])

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { baseline, RANGES, type Range, windowPoints } from '../../charts/geometry'
 import { LineChart, LineKey } from '../../charts/LineChart'
-import { Delta, Panel, Seg, Stat } from '../../components/bits'
+import { Delta, NoHistoryNote, Panel, Seg, Stat } from '../../components/bits'
 import type { NetWorth } from '../../lib/api'
 import { compactMoney, monthLabel, money, pct, shortDate, signedMoney, splitCents } from '../../lib/format'
 
@@ -78,6 +78,7 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
             </table>
           </div>
         )}
+        {points.length > 0 && <NoHistoryNote count={nw.no_history} />}
       </div>
     </Panel>
   )

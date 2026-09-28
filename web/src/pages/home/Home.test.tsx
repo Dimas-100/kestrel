@@ -39,6 +39,20 @@ describe('Home', { timeout: 15_000 }, () => {
     }
   })
 
+  it('says under the chart when some accounts have no history, and nothing when all do', async () => {
+    expect(homeFixture.net_worth.no_history).toBe(0) // every demo account has a history
+    const { unmount } = renderApp('/')
+    expect((await screen.findByRole('region', { name: 'Net worth' })).textContent).not.toContain('no history')
+    unmount()
+    for (const [n, text] of [[1, "1 account has no history: counted at today's balance"],
+      [2, "2 accounts have no history: counted at today's balance"]] as const) {
+      const { unmount: done } = renderApp('/', { home: { ...homeFixture, net_worth: { ...homeFixture.net_worth,
+        no_history: n } } })
+      expect(within(await screen.findByRole('region', { name: 'Net worth' })).getByText(text)).toBeTruthy()
+      done()
+    }
+  })
+
   it('opens an account from Where it sits', async () => {
     renderApp('/')
     const where = await screen.findByRole('region', { name: 'Where it sits' })

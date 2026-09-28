@@ -57,6 +57,7 @@ export interface NetWorth {
   year: Delta
   year_flows: number
   points: ValuePoint[]
+  no_history: number // accounts with no history, counted at today's balance on every date of points
 }
 
 export interface Slice {
@@ -535,7 +536,8 @@ export interface AccountsView {
   as_of: string
   count: number
   total: number
-  growth: Record<Window, Growth | null>
+  growth: Record<Window, Growth | null> // "Now" is total
+  no_history: number // accounts with no history, counted in the growth at today's balance
   accounts: AccountLine[]
   holdings: CombinedHolding[]
 }

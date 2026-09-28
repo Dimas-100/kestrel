@@ -67,8 +67,10 @@ about the same number.
 card; its `value` is the amount owed, and below zero when the balance is in your favour (a card paid past zero is
 money owed to you). Net worth is everything owned less everything owed, signed, so a credit balance adds. A debt
 account's history carries what it owes, and its `net_flow` keeps its meaning — money in (a payment) minus money out
-(a charge) — so a payment from checking nets to nothing and only interest reads as a change of its own. Two optional
-fields:
+(a charge) — so a payment from checking nets to nothing and only interest reads as a change of its own. An account
+with no `account_history` (a bank feed that reports only today's balance) is drawn flat at today's balance across the
+net worth history, with no flows: the history's last point is the net worth every page shows, the flat line adds
+nothing to market growth, and the chart says how many accounts are counted that way. Two optional fields:
 
 | Field | Meaning |
 |---|---|

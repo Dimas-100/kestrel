@@ -2,7 +2,7 @@
 import { type ReactNode, useState } from 'react'
 import { GrowthBar, GrowthTable, PART_LABEL } from '../../charts/GrowthBar'
 import { Empty } from '../../charts/marks'
-import { BookMark, Delta, Missing, Panel, Seg, Stat } from '../../components/bits'
+import { BookMark, Delta, Missing, NoHistoryNote, Panel, Seg, Stat } from '../../components/bits'
 import type { Growth, Window } from '../../lib/api'
 import { money, signedMoney, sinceLabel } from '../../lib/format'
 
@@ -44,8 +44,11 @@ export function GrowthTiles({ g, asOf, className = 'grid-cols-2' }: { g: Growth 
   )
 }
 
-/** Every account together: the four figures for the window, then the same split as one bar. */
-export function GrowthPanel({ growth, asOf }: { growth: Record<Window, Growth | null>; asOf: string }) {
+/** Every account together: the four figures for the window, then the same split as one bar. `noHistory` accounts
+ *  have no history of their own and are in every figure at today's balance. */
+export function GrowthPanel({ growth, asOf, noHistory = 0 }: {
+  growth: Record<Window, Growth | null>; asOf: string; noHistory?: number
+}) {
   const [period, setPeriod] = useState<Window>('ytd')
   const [view, setView] = useState<(typeof VIEWS)[number]>('Chart')
   const g = growth[period]
@@ -75,6 +78,7 @@ export function GrowthPanel({ growth, asOf }: { growth: Record<Window, Growth | 
       ) : (
         <div className="mt-4"><GrowthTable growth={g} /></div>
       )}
+      {g != null && <NoHistoryNote count={noHistory} />}
     </Panel>
   )
 }
