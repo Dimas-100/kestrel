@@ -41,8 +41,11 @@ export function AllocationPanel({ slices, accounts, owed, debtAccounts }: {
           <Link key={a.id} to="/accounts/$accountId" params={{ accountId: a.id }}
             className="flex items-center gap-2.5 h-[42px] border-t border-line">
             <span className="w-2 h-2 rounded-full flex-none" style={{ background: CATEGORY_COLOR[a.category] }} />
-            <span className="text-[13px] font-medium truncate text-ink1">{a.name}</span>
-            <span className="text-[11px] text-ink3 hidden sm:inline">{CATEGORY_WORD[a.category]}</span>
+            {/* flex-1 min-w-0: the name is what identifies the row, so it claims space first and truncates last
+                (screenshot pass, 2026-09-28) -- at 1200px, without this, the fixed-width category word and value
+                left it almost no room at all */}
+            <span className="text-[13px] font-medium truncate text-ink1 flex-1 min-w-0">{a.name}</span>
+            <span className="text-[11px] text-ink3 hidden sm:inline flex-none">{CATEGORY_WORD[a.category]}</span>
             <div className="ml-auto text-right">
               <div className="num text-[13px] text-ink1">{money(a.value)}</div>
               <div className="text-[11px]">

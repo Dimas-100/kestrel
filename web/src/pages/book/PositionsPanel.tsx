@@ -13,7 +13,10 @@ export function PositionsPanel({ v }: { v: BookView }) {
         <Empty>No open positions.</Empty>
       ) : (
         <div className="table-scroll overflow-y-auto mt-3.5" style={{ maxHeight: 230 }}>
-          <table className="tbl" style={{ minWidth: 640 }}>
+          {/* 480, not 640 (screenshot pass, 2026-09-28): 640 was sized for "resting (level not reported)" on one
+              line; now that it wraps, this 8-column table's own content is ~488px even at 1440px wide, so the
+              taller floor hid Days and P/L behind an unscrolled edge with no visible scrollbar to say so */}
+          <table className="tbl" style={{ minWidth: 480 }}>
             <thead>
               <tr>
                 <th>Symbol</th><th className="r">Qty</th><th className="r">Entry</th><th className="r">Last</th>
@@ -35,14 +38,16 @@ export function PositionsPanel({ v }: { v: BookView }) {
                         <Icon name="shield" size={13} />No stop
                       </span>
                     ) : p.stop_price == null ? (
-                      <span className="text-xs text-ink3 whitespace-nowrap">resting (level not reported)</span>
+                      // no whitespace-nowrap: letting this one wrap two lines (the row is tall enough) keeps
+                      // the table from needing to scroll to show the columns after it, such as P/L
+                      <span className="text-xs text-ink3">resting (level not reported)</span>
                     ) : (
                       <span className="num">{num(p.stop_price)}</span>
                     )}
                   </td>
                   <td className="r num">{p.room_pct == null ? <Missing /> : `${num(p.room_pct, 1)}%`}</td>
                   <td className="r num">{p.days}</td>
-                  <td className="r"><Delta value={p.pnl}>{signedMoney(p.pnl)}</Delta></td>
+                  <td className="r" style={{ whiteSpace: 'nowrap' }}><Delta value={p.pnl}>{signedMoney(p.pnl)}</Delta></td>
                 </tr>
               ))}
             </tbody>

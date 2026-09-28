@@ -86,7 +86,10 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                   <td className="r num">{num(p.last_price)}</td>
                   <td className="r num">
                     {p.stop_price != null ? num(p.stop_price)
-                      : p.stop_resting ? <span className="text-ink3 text-xs whitespace-nowrap">resting (level not reported)</span>
+                      // no whitespace-nowrap here: this is the one label long enough to want the column's own
+                      // width, and letting it wrap two lines (the row is tall enough) keeps the table from
+                      // needing to scroll to show the columns after it, such as P/L
+                      : p.stop_resting ? <span className="text-ink3 text-xs">resting (level not reported)</span>
                       : <span className="text-ink3">—</span>}
                   </td>
                   <td style={{ paddingLeft: 16 }}>
@@ -111,7 +114,7 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                       <span className="text-xs text-ink3">{p.note || '—'}</span>
                     )}
                   </td>
-                  <td className="r"><Delta value={p.pnl}>{signedMoney(p.pnl)}</Delta></td>
+                  <td className="r" style={{ whiteSpace: 'nowrap' }}><Delta value={p.pnl}>{signedMoney(p.pnl)}</Delta></td>
                 </tr>
               ))}
             </tbody>

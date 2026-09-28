@@ -14,6 +14,10 @@ describe('Reserves', { timeout: 15_000 }, () => {
     const debt = screen.getByRole('region', { name: 'Debt' })
     expect(within(debt).getByText('Credit card')).toBeTruthy()
     expect(within(debt).getByText('12.8%')).toBeTruthy()
+    // 480, not 520 (screenshot pass, 2026-09-28): a floor taller than this panel's own ~510px content width at
+    // 1440px forces a needless horizontal scroll on desktop
+    const table = within(debt).getByRole('table')
+    expect((table as HTMLTableElement).style.minWidth).toBe('480px')
   })
 
   it('shows the spread sentence with both rates and a yearly figure', async () => {

@@ -15,8 +15,19 @@ describe('Book', { timeout: 15_000 }, () => {
     expect(screen.getByRole('heading', { name: 'All trades' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Runs' })).toBeTruthy()
     // MSFT's stop rests but its level isn't reported: worded plainly, no alarm flag
-    expect(screen.getByText('resting (level not reported)')).toBeTruthy()
+    const restingLabel = screen.getByText('resting (level not reported)')
+    expect(restingLabel).toBeTruthy()
     expect(screen.queryByText('No stop')).toBeNull()
+    // it wraps rather than forcing the Stop column wide (screenshot pass, 2026-09-28), and the P/L figure beside
+    // it stays on one line
+    expect(restingLabel.className).not.toMatch(/whitespace-nowrap/)
+    const pnlCell = restingLabel.closest('tr')?.querySelector('td:last-child') as HTMLElement
+    expect(pnlCell.style.whiteSpace).toBe('nowrap')
+    // 480, not 640 (screenshot pass, 2026-09-28): 640 was sized for the old one-line resting label and hid the
+    // Days and P/L columns behind an unscrolled edge on a 1440px desktop panel
+    const positionsTable = screen.getByRole('heading', { name: 'Open positions' }).closest('.panel')
+      ?.querySelector('table') as HTMLTableElement
+    expect(positionsTable.style.minWidth).toBe('480px')
     expect(screen.getAllByText(`${bookFixture.trades.length} closed trades`)).toHaveLength(2) // scorecard + trades table
   })
 

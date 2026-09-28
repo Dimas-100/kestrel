@@ -17,7 +17,10 @@ export function DebtPanel({ debts }: { debts: DebtLine[] }) {
         <Empty>No debt accounts yet.</Empty>
       ) : (
         <div className="table-scroll mt-3.5">
-          <table className="tbl" style={{ minWidth: 520 }}>
+          {/* 480, not the 640-ish a 5-numeric-column table might suggest: at span-6 this panel's own content width
+              is ~510px even at 1440px wide, so a taller floor forces a needless horizontal scroll on desktop
+              (screenshot pass, 2026-09-28) -- narrower layouts still scroll here, which is `.table-scroll`'s job */}
+          <table className="tbl" style={{ minWidth: 480 }}>
             <thead>
               <tr><th>Account</th><th className="r">Owed</th><th className="r">Limit</th><th className="r">Utilization</th>
                 <th className="r">Rate</th></tr>

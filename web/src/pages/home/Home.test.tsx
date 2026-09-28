@@ -51,6 +51,17 @@ describe('Home', { timeout: 15_000 }, () => {
     expect(owed.textContent).toBe('Owed: $640.00 across 1 account')
   })
 
+  it('gives the account name priority over its category word when the row is tight', async () => {
+    // screenshot pass, 2026-09-28: at 1200px this span-4 panel has room for barely more than the name, so the
+    // name (flex-1, min-w-0) must claim space before the fixed category word does, or it truncates far worse
+    renderApp('/')
+    const where = await screen.findByRole('region', { name: 'Where it sits' })
+    const roth = within(where).getByRole('link', { name: /^Roth IRA/ })
+    const nameSpan = within(roth).getByText('Roth IRA')
+    expect(nameSpan.className).toMatch(/\bflex-1\b/)
+    expect(nameSpan.className).toMatch(/\bmin-w-0\b/)
+  })
+
   it('says nothing is owed when nothing is', async () => {
     const none = { ...homeFixture, net_worth: { ...homeFixture.net_worth, owed: 0, debt_accounts: 0 } }
     renderApp('/', { home: none })
@@ -78,10 +89,22 @@ describe('Home', { timeout: 15_000 }, () => {
     renderApp('/')
     const positions = await screen.findByRole('region', { name: 'Open positions' })
     const msft = within(positions).getAllByRole('row').find((r) => r.textContent?.includes('MSFT')) as HTMLElement
-    expect(within(msft).getByText('resting (level not reported)')).toBeTruthy()
+    const restingLabel = within(msft).getByText('resting (level not reported)')
+    expect(restingLabel).toBeTruthy()
     expect(within(msft).queryByText('No stop')).toBeNull()
+    // the label wraps rather than forcing the Stop column wide (screenshot pass, 2026-09-28): it must NOT carry
+    // whitespace-nowrap, or the table needs to scroll to show P/L on a 1440px desktop panel
+    expect(restingLabel.className).not.toMatch(/whitespace-nowrap/)
     const needsYou = within(await screen.findByRole('region', { name: 'Needs you' })).getAllByRole('listitem')
     expect(needsYou.some((li) => li.textContent?.includes('MSFT'))).toBe(false)
+  })
+
+  it('keeps a P/L figure on one line even though the resting-stop label above it wraps', async () => {
+    renderApp('/')
+    const positions = await screen.findByRole('region', { name: 'Open positions' })
+    const msft = within(positions).getAllByRole('row').find((r) => r.textContent?.includes('MSFT')) as HTMLElement
+    const pnlCell = msft.querySelector('td:last-child') as HTMLElement
+    expect(pnlCell.style.whiteSpace).toBe('nowrap')
   })
 
   it('flags a real position with a genuinely missing stop: the shield icon and "No stop"', async () => {
