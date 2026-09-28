@@ -34,7 +34,7 @@ export function Plan() {
         <div className="grid12">
           <TargetsPanel accounts={v.accounts} unscoped={v.unscoped} />
           <ThesesPanel theses={v.theses} />
-          <GoalsPanel goals={v.goals} now={v.as_of} />
+          <GoalsPanel goals={v.goals} />
         </div>
       )}
     </>

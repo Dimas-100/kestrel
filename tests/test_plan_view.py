@@ -5,7 +5,7 @@ import pytest
 from kestrel.connectors import collect
 from kestrel.contract import Account, Goal, Holding, Series, Snapshot, Target, Thesis, ValuePoint
 from kestrel.profile import DEMO_PROFILE, Profile
-from kestrel.views.plan import plan_view, target_attention, thesis_attention, thesis_rows
+from kestrel.views.plan import _months_between, plan_view, target_attention, thesis_attention, thesis_rows
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
 TODAY = dt.date(2026, 9, 25)
@@ -121,6 +121,38 @@ def test_a_percentage_just_under_the_edge_is_not_rounded_onto_the_band():
     assert row.gap == pytest.approx(40.0)
 
 
+def test_holdings_exactly_at_the_band_edge_is_on_plan_not_a_float_glitch():
+    # 570 of 1,000 is exactly 57%: computed as a float, 570 / 1000 * 100 can land on 56.99999999999999, which is
+    # strictly < 57 — a raw comparison would misfire "under" (or, at a high edge, "over") for a value that landed
+    # exactly on the line. The decision must be immune to that: both a low-edge and a high-edge target at the same
+    # value must read "on", with a $0.00 gap.
+    low_t = Target(id="lo", account_id="a", label="X", symbols=["X"], low=57, high=None)
+    high_t = Target(id="hi", account_id="a", label="X", symbols=["X"], low=None, high=57)
+    s = snap(accounts=[account("a", 1000)], holdings=[holding("a", "X", 570)], targets=[low_t, high_t])
+    rows = {r.id: r for r in plan_view(s, Profile(), NOW).accounts[0].rows}
+    assert rows["lo"].status == "on" and rows["lo"].gap == 0.0
+    assert rows["hi"].status == "on" and rows["hi"].gap == 0.0
+
+
+def test_a_wide_sweep_of_exact_band_edges_never_misfires_off_plan():
+    # the reviewer's own sweep: every (value, edge) pair where held lands exactly on the edge, at cent precision,
+    # over a range of edges and account sizes, must read "on" — this is the regression test for the 51 false
+    # off-plan rows the float-equality bug produced
+    false_off = []
+    for value in (1000, 2000, 10000, 5000, 1234.5, 100):
+        for edge in range(1, 100):
+            held = round(edge * value / 100, 2)
+            if abs(held - edge * value / 100) > 1e-9:
+                continue  # a cent-rounding case, not an exact edge — out of scope for this sweep
+            for t in (Target(id="lo", account_id="a", label="X", symbols=["X"], low=edge, high=None),
+                     Target(id="hi", account_id="a", label="X", symbols=["X"], low=None, high=edge)):
+                s = snap(accounts=[account("a", value)], holdings=[holding("a", "X", held)], targets=[t])
+                row = plan_view(s, Profile(), NOW).accounts[0].rows[0]
+                if row.status != "on":
+                    false_off.append((value, edge, held, row.status, row.gap))
+    assert false_off == []
+
+
 def test_unscoped_percent_target_gap_is_percentage_points_only():
     # an unscoped target with a feed-sent actual: kestrel has no account value to turn the gap into money
     t = Target(id="t", label="Whole book", symbols=["SPY"], target=60, low=55, high=65, actual=40)
@@ -216,6 +248,14 @@ def test_goal_single_account_id_on_a_debt_account_is_signed():
     assert row.current == -2000.0
 
 
+def test_reached_goal_with_a_zero_target_shows_full_progress():
+    # a debt payoff goal (target 0) that has been reached (the card is at 0) must show 100% progress, not 0% —
+    # the target<=0 guard that avoids a division by zero must not also override an already-reached goal
+    g = Goal(id="g6", label="Card paid off", target=0, category="debt")
+    row = plan_view(snap(accounts=[account("card", 0.0, "debt")], goals=[g]), Profile(), NOW).goals[0]
+    assert row.reached is True and row.progress_pct == 100.0
+
+
 def test_goal_deposits_measure_sums_net_flow_since_year_start():
     points = [ValuePoint(date=d(2026, 1, 5), value=1100, net_flow=100),
              ValuePoint(date=d(2026, 6, 1), value=1300, net_flow=200),
@@ -254,6 +294,33 @@ def test_overdue_goal_not_reached_has_no_months_left_or_monthly_needed():
     g = Goal(id="g4", label="Overdue", target=10000, account_id="a", by=d(2025, 6, 30))
     row = plan_view(snap(accounts=[account("a", 5000)], goals=[g]), Profile(), NOW).goals[0]
     assert row.months_left is None and row.monthly_needed is None and row.reached is False
+
+
+def test_months_between_is_monotonic_across_a_month_boundary():
+    # the reviewer's own repro: with `by` fixed at 2027-06-15, walking `start` across 2026-09-29 -> 09-30 -> 10-01
+    # -> 10-02 must never go up then back down (8, 8, 9, 8 was the bug — the 1st of a month got a free "+1" bonus
+    # that the 2nd did not, even though less time had passed by the 2nd)
+    by = d(2027, 6, 15)
+    days = [d(2026, 9, 29), d(2026, 9, 30), d(2026, 10, 1), d(2026, 10, 2)]
+    assert [_months_between(day, by) for day in days] == [8, 8, 8, 8]
+
+
+def test_months_between_never_increases_as_the_start_date_advances():
+    # a broader sweep across several month boundaries (including a short February and a year boundary), one day at
+    # a time: months_left must be non-increasing as "today" moves forward, whatever `by` is
+    for by in (d(2027, 6, 15), d(2027, 2, 28), d(2030, 12, 31), d(2027, 6, 30)):
+        start = d(2026, 9, 20)
+        previous = _months_between(start, by)
+        for _ in range(45):  # walks well past a month boundary either way
+            start += dt.timedelta(days=1)
+            current = _months_between(start, by)
+            assert current <= previous, (by, start, previous, current)
+            previous = current
+
+
+def test_months_between_still_counts_a_full_calendar_year_as_twelve():
+    # 1 January to 31 December of the same year: the monotonic rule must still give 12, not 11
+    assert _months_between(d(2027, 1, 1), d(2027, 12, 31)) == 12
 
 
 def test_theses_sorted_by_health_and_held_flag():

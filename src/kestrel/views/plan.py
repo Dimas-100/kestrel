@@ -89,31 +89,35 @@ def _held_sum(t: Target, account: Account, holdings) -> float:
     return sum(h.value for h in holdings if h.account_id == account.id and h.symbol in t.symbols)
 
 
-def _status_from(value: float | None, low: float | None, high: float | None) -> Status:
-    if value is None:
-        return "unknown"
-    if low is not None and value < low:
-        return "under"
-    if high is not None and value > high:
-        return "over"
-    return "on"
+REL_TOL = 1e-9  # for a comparison with no money to round to the cent: an actual the feed measured, not one kestrel
+# divided, so a relative floating-point tolerance is enough to absorb representation noise without hiding a real gap
 
 
-def _band_gap(status: Status, low: float | None, high: float | None, exact_value: float, has_money: bool,
-             account_value: float | None) -> tuple[float | None, GapUnit | None]:
-    """Money to the nearest band end, from the UNROUNDED percentage (`exact_value`) and the account's own value —
-    never from a percentage already rounded for display, which can drift by a cent or more. Percentage points when
-    there is no positive account value to convert against (a feed-sent actual with no real denominator, or an
-    account known to be worth 0 or less)."""
-    if status == "unknown":
-        return None, None
-    unit: GapUnit = "money" if has_money else "pts"
-    if status == "on":
-        return 0.0, unit
-    edge = low if status == "under" else high
-    points = edge - exact_value
-    gap = round(points / 100 * account_value, 2) if has_money else round(points, 2)
-    return gap, unit
+def _edge_decide(low: float | None, high: float | None, exact_value: float, has_money: bool,
+                 account_value: float | None) -> tuple[Status, float]:
+    """Status and gap decided from the SIGN of the gap itself, at cent precision when there is money to convert
+    against — never from a raw `exact_value < low` / `> high` comparison, which can misfire at an exact band edge
+    (570 / 1000 * 100 can compute as 56.99999999999999, strictly less than 57). Without money to convert against,
+    the same test runs on the points/ratio gap with a small relative tolerance, since that value came straight from
+    a feed rather than from kestrel's own division."""
+    def gap_to(edge: float) -> float:
+        points = edge - exact_value
+        return round(points / 100 * account_value, 2) if has_money else points
+
+    low_gap = None if low is None else gap_to(low)
+    high_gap = None if high is None else gap_to(high)
+    if has_money:
+        under = low_gap is not None and low_gap > 0
+        over = high_gap is not None and high_gap < 0
+    else:
+        tol = REL_TOL * max(abs(exact_value), 1.0)
+        under = low_gap is not None and low_gap > tol
+        over = high_gap is not None and high_gap < -tol
+    if under:
+        return "under", low_gap
+    if over:
+        return "over", high_gap
+    return "on", 0.0
 
 
 def _percent_row_fields(t: Target, account: Account | None,
@@ -122,21 +126,19 @@ def _percent_row_fields(t: Target, account: Account | None,
 
     The feed's own `actual` is trusted at face value (it already measured the share). Otherwise kestrel computes it
     from holdings — but only when the account is known, has a positive value, and has reported at least one
-    holding; anything else is unknown, never a fake 0%. Status is decided on the UNROUNDED ratio (a value that
-    rounds onto a band edge must not read as "on plan"), and a money gap is computed from that same unrounded ratio
-    — `actual` is rounded only for display, after status and gap are already settled.
+    holding; anything else is unknown, never a fake 0%. Status and the gap are both decided on the UNROUNDED ratio
+    (see `_edge_decide`) — `actual` is rounded only for display, after status and gap are already settled.
     """
     has_money = account is not None and account.value > 0
     if t.actual is not None:
-        status = _status_from(t.actual, t.low, t.high)
-        gap, gap_unit = _band_gap(status, t.low, t.high, t.actual, has_money, account.value if account else None)
-        return round(t.actual, 2), status, gap, gap_unit
-    if account is None or account.value <= 0 or not any(h.account_id == account.id for h in holdings):
+        exact_value = t.actual
+    elif account is None or account.value <= 0 or not any(h.account_id == account.id for h in holdings):
         return None, "unknown", None, None
-    exact_pct = _held_sum(t, account, holdings) / account.value * 100
-    status = _status_from(exact_pct, t.low, t.high)
-    gap, gap_unit = _band_gap(status, t.low, t.high, exact_pct, True, account.value)
-    return round(exact_pct, 2), status, gap, gap_unit
+    else:
+        exact_value = _held_sum(t, account, holdings) / account.value * 100
+    status, gap = _edge_decide(t.low, t.high, exact_value, has_money, account.value if has_money else None)
+    gap_unit: GapUnit = "money" if has_money else "pts"
+    return round(exact_value, 2), status, round(gap, 2), gap_unit
 
 
 def _gap_text(status: Status) -> str:
@@ -145,13 +147,11 @@ def _gap_text(status: Status) -> str:
 
 def _target_row(t: Target, account: Account | None, holdings) -> TargetRow:
     if t.unit == "x":
-        status = _status_from(t.actual, t.low, t.high)
-        gap = None
-        gap_unit: GapUnit | None = None
-        if status != "unknown":
-            gap_unit = "x"
-            gap = 0.0 if status == "on" else round((t.low if status == "under" else t.high) - t.actual, 2)
-        actual = round(t.actual, 2) if t.actual is not None else None
+        if t.actual is None:
+            actual, status, gap, gap_unit = None, "unknown", None, None
+        else:
+            status, raw_gap = _edge_decide(t.low, t.high, t.actual, False, None)
+            actual, gap, gap_unit = round(t.actual, 2), round(raw_gap, 2), "x"
     else:
         actual, status, gap, gap_unit = _percent_row_fields(t, account, holdings)
     return TargetRow(id=t.id, label=t.label, symbols=list(t.symbols), unit=t.unit, target=t.target, low=t.low,
@@ -246,13 +246,14 @@ def _goal_deposits(scope_ids: list[str], history: dict[str, list[ValuePoint]], s
 
 
 def _months_between(start: dt.date, by: dt.date) -> int:
-    """Whole months from `start` to `by` (0 or more): a month counts once its day-of-month comes round, except when
-    `start` is itself the 1st of a month — a full month available from day one, not a partial one worth skipping."""
-    months = (by.year - start.year) * 12 + (by.month - start.month)
-    if by.day < start.day:
+    """Whole months from `start` up to and including `by` (0 or more), decided by the day-of-month rule applied to
+    the day AFTER `by` — so a fixed `by` counts down by exactly one each time `start` crosses a monthly boundary,
+    never up then back down around the 1st (an earlier version special-cased `start` landing on the 1st, which
+    made a fixed `by` look one month further away on the 1st than on the 2nd — not monotonic as time passes)."""
+    end = by + dt.timedelta(days=1)
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if end.day < start.day:
         months -= 1
-    if start.day == 1:
-        months += 1
     return max(0, months)
 
 
@@ -277,8 +278,11 @@ def _goal_row(g: Goal, accounts: list[Account], history: dict[str, list[ValuePoi
     else:
         # signed: a debt account in the scope reduces the total, never adds to it (owed isn't owned)
         current = round(sum(_signed(by_id[i]) for i in scope_ids), 2)
-    progress = 0.0 if g.target <= 0 else round(min(100.0, max(0.0, current / g.target * 100)), 1)
     reached = current >= g.target
+    # a reached goal is 100% regardless of the target (a debt-payoff goal's target is often 0, which the
+    # division-by-zero guard below would otherwise show as 0% even once the debt is actually paid off)
+    progress = 100.0 if reached else \
+        (0.0 if g.target <= 0 else round(min(100.0, max(0.0, current / g.target * 100)), 1))
     overdue = g.by is not None and g.by < today and not reached
     months_left = None if g.by is None or overdue else _months_between(_goal_pace_start(g, today), g.by)
     monthly_needed = None if reached or months_left is None else round((g.target - current) / max(1, months_left), 2)

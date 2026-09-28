@@ -4,8 +4,7 @@ import { Panel } from '../../components/bits'
 import type { GoalRow } from '../../lib/api'
 import { longDate, money, num } from '../../lib/format'
 
-export function GoalsPanel({ goals, now }: { goals: GoalRow[]; now: string }) {
-  const nowMs = new Date(now).getTime()
+export function GoalsPanel({ goals }: { goals: GoalRow[] }) {
   return (
     <Panel id="goals" title="Goals" span={5}>
       {goals.length === 0 ? (
@@ -14,7 +13,9 @@ export function GoalsPanel({ goals, now }: { goals: GoalRow[]; now: string }) {
         <ul>
           {goals.map((g) => {
             const missing = g.missing_accounts.length > 0
-            const overdue = !missing && g.by != null && !g.reached && new Date(g.by).getTime() < nowMs
+            // the backend's own answer, not a client-side date comparison: it already knows "overdue" means
+            // by is set, not reached, and (as a consequence) there is no months_left to show
+            const overdue = !missing && g.by != null && g.months_left == null && !g.reached
             return (
               <li key={g.id} className="py-3 border-t border-line">
                 <div className="flex items-baseline justify-between gap-3 flex-wrap">
