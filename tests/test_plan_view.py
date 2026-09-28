@@ -309,6 +309,39 @@ def test_overdue_goal_not_reached_has_no_months_left_or_monthly_needed():
     g = Goal(id="g4", label="Overdue", target=10000, account_id="a", by=d(2025, 6, 30))
     row = plan_view(snap(accounts=[account("a", 5000)], goals=[g]), Profile(), NOW).goals[0]
     assert row.months_left is None and row.monthly_needed is None and row.reached is False
+    assert row.overdue is True
+
+
+def test_overdue_is_the_views_own_answer_a_far_date_or_a_reached_goal_is_not_overdue():
+    goals = [Goal(id="far", label="Someday", target=1_000_000, account_id="a", by=d(9999, 12, 31)),
+             Goal(id="done", label="Done late", target=4000, account_id="a", by=d(2025, 6, 30)),
+             Goal(id="open", label="No date", target=9000, account_id="a")]
+    rows = plan_view(snap(accounts=[account("a", 5127.44)], goals=goals), Profile(), NOW).goals
+    assert [(r.id, r.overdue) for r in rows] == [("far", False), ("done", False), ("open", False)]
+
+
+def test_a_goal_says_what_it_measures():
+    goals = [Goal(id="v", label="Grow", target=9000, account_id="a"),
+             Goal(id="dep", label="Save", target=9000, account_id="a", measure="deposits")]
+    history = [Series(id="a", points=[ValuePoint(date=d(2026, 2, 3), value=5127.44, net_flow=312.18)])]
+    rows = plan_view(snap(accounts=[account("a", 5127.44)], goals=goals, account_history=history), Profile(),
+                     NOW).goals
+    assert [r.measure for r in rows] == ["value", "deposits"]
+
+
+def test_a_deposits_goal_over_an_account_with_no_history_is_unknown_not_zero():
+    # the checking account comes from a bank feed with no history: what was deposited there can't be known
+    savings = [ValuePoint(date=d(2026, 2, 3), value=5127.44, net_flow=312.18)]
+    accounts = [account("savings", 5127.44, "cash"), account("checking", 2211.09, "cash")]
+    g = Goal(id="dep", label="Save this year", target=6000, category="cash", measure="deposits", by=d(2026, 12, 31))
+    row = plan_view(snap(accounts=accounts, goals=[g], account_history=[Series(id="savings", points=savings)]),
+                    Profile(), NOW).goals[0]
+    assert (row.current, row.progress_pct, row.monthly_needed, row.reached) == (None, None, None, False)
+    assert row.unknown_reason == "no deposit history for Checking"
+    # with every account's history in, it is known again: 312.18 of 6,000
+    known = plan_view(snap(accounts=accounts[:1], goals=[g], account_history=[Series(id="savings", points=savings)]),
+                      Profile(), NOW).goals[0]
+    assert (known.current, known.unknown_reason) == (312.18, "")
 
 
 def test_months_between_is_monotonic_across_a_month_boundary():

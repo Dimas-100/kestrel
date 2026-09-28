@@ -61,7 +61,7 @@ def test_positions_carry_their_latest_fill_price_opened_date_and_any_resting_sto
     assert set(by_symbol) == {"ACME", "GLOBEX", "INITCO"}
     acme = by_symbol["ACME"]
     assert (acme.quantity, acme.entry_price, acme.last_price, acme.stop_price) == (10, 25.0, 27.5, 22.5)
-    assert acme.opened == dt.date(2026, 9, 18)  # its earliest BUY fill
+    assert acme.opened == dt.date(2026, 9, 18)  # the BUY that opened it
     globex = by_symbol["GLOBEX"]
     assert (globex.last_price, globex.stop_price) == (40.0, None)
     initco = by_symbol["INITCO"]
@@ -97,7 +97,7 @@ def test_book_history_picks_up_an_equity_point_when_a_run_row_reports_one(fixtur
     assert history["rails-paper"] == [ValuePoint(date=dt.date(2026, 9, 20), value=8770.5)]
 
 
-def test_closed_trades_are_matched_fifo_including_a_partial_close_and_two_buys_averaged(fixture_snapshot):
+def test_closed_trades_include_a_partial_close_and_two_buys_averaged(fixture_snapshot):
     by_symbol = {t.symbol: t for t in fixture_snapshot.trades}
     assert set(by_symbol) == {"ACME", "ZETA"}  # ORPHAN's sell matches no buy at all: skipped, not invented
     assert all(t.book_id == "rails-paper" for t in fixture_snapshot.trades)
@@ -113,6 +113,54 @@ def test_closed_trades_are_matched_fifo_including_a_partial_close_and_two_buys_a
     assert zeta.entry_price == pytest.approx(16.0) and zeta.exit_price == 25.0 and zeta.quantity == 10
     assert (zeta.opened, zeta.closed) == (dt.date(2026, 9, 15), dt.date(2026, 9, 17))
     assert zeta.pnl == pytest.approx(90.0) and zeta.return_pct == pytest.approx(56.25)  # (250-160) / 160 * 100
+
+
+def _fill(side, quantity, price, ts, symbol="WIDG", **extra):
+    return {"client_order_id": f"{side}-{ts}", "symbol": symbol, "side": side, "quantity": quantity, "price": price,
+            "ts": f"2026-09-{ts}T14:31:00+00:00", **extra}
+
+
+def _widg(tmp_path):
+    """Two buys, a partial sell, a top-up, a sell to flat, then a new position with a partial sell: 20 @ 15.40 held."""
+    fills = [_fill("BUY", 40, 12.35, "01"), _fill("BUY", 60, 13.10, "03"), _fill("SELL", 30, 14.02, "05"),
+             _fill("BUY", 20, 12.20, "08"), _fill("SELL", 90, 11.87, "10"),
+             _fill("BUY", 25, 15.40, "14"), _fill("SELL", 5, 16.05, "16")]
+    state = {"cash": 4660.15, "positions": {"WIDG": {"quantity": 20, "avg_cost": 15.40}}, "open_orders": {},
+             "fills": fills, "as_of": "2026-09-20"}
+    (tmp_path / "paper.json").write_text(json.dumps(state), encoding="utf-8")
+    return connector(tmp_path).snapshot(NOW)
+
+
+def test_closed_trades_are_matched_at_the_average_cost_trading_rails_keeps(tmp_path):
+    trades = _widg(tmp_path).trades
+    rows = [(t.opened.day, t.closed.day, t.entry_price, t.exit_price, t.quantity, t.pnl, t.return_pct) for t in trades]
+    assert rows == [
+        # 40 @ 12.35 + 60 @ 13.10 average 12.80; 30 sold at 14.02: 1.22 a share (FIFO would say 1.67, from 12.35)
+        (1, 5, 12.8, 14.02, 30, 36.6, 9.53),
+        # the 70 left at 12.80 and 20 more @ 12.20 average 12.6667 (1,140.00 for 90); all 90 sold at 11.87
+        (1, 10, 12.6667, 11.87, 90, -71.7, -6.29),
+        # flat, then a new position from the 14th: 25 @ 15.40, 5 sold at 16.05
+        (14, 16, 15.4, 16.05, 5, 3.25, 4.22),
+    ]
+    # the realized P/L reconciles with trading-rails' cash: 1,569.15 in from sells - 1,909.00 out on buys, plus the
+    # 308.00 still held at its cost
+    assert round(sum(t.pnl for t in trades), 2) == round(1569.15 - 1909.00 + 20 * 15.40, 2) == -31.85
+
+
+def test_a_position_opened_and_priced_from_the_buy_that_started_it_after_it_was_last_flat(tmp_path):
+    widg, = _widg(tmp_path).positions
+    assert widg.opened == dt.date(2026, 9, 14)  # not the 1st: the symbol was flat on the 10th
+    assert widg.last_price == 16.05  # the newest fill since the 14th
+
+
+def test_a_position_the_fills_dont_reach_never_takes_a_price_or_a_date_from_one_that_closed(tmp_path):
+    # a round trip that ended flat on the 5th, then 3 held that no fill explains (the state file was seeded)
+    state = {"cash": 1000.0, "positions": {"WIDG": {"quantity": 3, "avg_cost": 101.37}}, "open_orders": {},
+             "fills": [_fill("BUY", 10, 50.11, "01"), _fill("SELL", 10, 55.62, "05")], "as_of": "2026-09-20"}
+    (tmp_path / "paper.json").write_text(json.dumps(state), encoding="utf-8")
+    widg, = connector(tmp_path).snapshot(NOW).positions
+    assert widg.last_price == 101.37  # its own average cost, never the closed round trip's 55.62
+    assert widg.opened == dt.date(2026, 9, 20)  # the book's fallback date, never the closed round trip's 1st
 
 
 def test_a_future_fill_with_commission_nets_it_out_of_pnl(tmp_path):

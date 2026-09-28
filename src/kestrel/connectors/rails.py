@@ -4,15 +4,16 @@ by their own keys, in `folder` (`paper.json` and `runs.jsonl`).
 
 trading-rails' state never persists a "last price" (it is always priced fresh, live, against its own bar source,
 which kestrel has no access to and must not import): the best a read-only reader can do is the price of that
-symbol's most recent fill, falling back to the position's average cost when there has never been one (a position
-the state file was seeded with, say). Likewise the run log names no strategy of its own today; a future log that
-sends one (top-level `strategy`, on its newest row) is honoured, and otherwise the book is simply "rails" — the
-generic stand-in name, not a guess.
+symbol's most recent fill since its current position opened, falling back to the position's average cost when the
+fills don't reach that far (a position the state file was seeded with, say). Likewise the run log names no strategy
+of its own today; a future log that sends one (top-level `strategy`, on its newest row) is honoured, and otherwise
+the book is simply "rails" — the generic stand-in name, not a guess.
 """
 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -94,28 +95,6 @@ def _read_runs(path: Path) -> list[dict]:
     return sorted(rows, key=lambda r: r["ts"])
 
 
-def _last_price(symbol: str, avg_cost: float, fills: list[dict]) -> float:
-    """The most recent fill's price for this symbol (fills are appended in time order, so the last match is the
-    latest); the position's average cost — the best kestrel can do without a live price — when there is none."""
-    for fill in reversed(fills):
-        if fill.get("symbol") == symbol:
-            try:
-                return float(fill["price"])
-            except (KeyError, TypeError, ValueError):
-                continue
-    return avg_cost
-
-
-def _opened(symbol: str, fills: list[dict], fallback: date) -> date:
-    for fill in fills:
-        if fill.get("symbol") == symbol and fill.get("side") == "BUY":
-            try:
-                return _parse_time(fill["ts"]).date()
-            except (KeyError, TypeError, ValueError):
-                continue
-    return fallback
-
-
 def _stop_price(symbol: str, open_orders: dict) -> float | None:
     for order in open_orders.values():
         if not isinstance(order, dict):
@@ -129,8 +108,87 @@ def _stop_price(symbol: str, open_orders: dict) -> float | None:
     return None
 
 
-def _positions(state: dict, fallback_date: date) -> list[Position]:
-    fills = [f for f in (state.get("fills") or []) if isinstance(f, dict)]
+def _valid_fill(fill: object) -> bool:
+    if not (isinstance(fill, dict) and isinstance(fill.get("symbol"), str) and fill.get("side") in ("BUY", "SELL")):
+        return False
+    try:
+        float(fill["quantity"])
+        float(fill["price"])
+        _parse_time(fill["ts"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return True
+
+
+EPSILON = 1e-9  # a quantity this small is none: fills are floats, and a position sold down to it is flat
+
+
+@dataclass
+class _Held:
+    """One symbol's position as its fills build it, the way trading-rails' PaperBroker keeps it: a buy moves the
+    average cost, a sell leaves it where it is, and a position sold to nothing starts afresh with the next buy."""
+
+    quantity: float = 0.0
+    avg_cost: float = 0.0
+    commission_per_share: float = 0.0  # buy commissions carried with the shares, averaged the same way
+    opened: str | None = None  # the ts of the buy that opened the current position
+    last_price: float | None = None  # the newest fill's price since then
+
+
+def _replay(fills: list[dict]) -> tuple[dict[str, _Held], list[Trade]]:
+    """Every valid fill in time order: each symbol's current position, and the trades its sells closed.
+
+    Sells are matched at the AVERAGE COST held at the time of the sale - trading-rails keeps `avg_cost` unchanged on
+    a sell - so the entry price is that average and the P/L is (sell - average) x quantity, less the sell's own
+    commission and the sold shares' part of the buy commissions: the realized P/L then adds up to what trading-rails'
+    cash says. A trade opens on the buy that opened its position (after the symbol was last flat). A sell with no
+    position to match (the fill history doesn't reach back far enough) is skipped, never invented an entry for; one
+    larger than the position closes only what was held. trading-rails' own fills carry no commission today
+    (`PaperBroker._apply` charges its `CostModel.commission` but never persists it per fill); a `commission` key, if
+    a future format ever sends one, is netted out of the P/L."""
+    held: dict[str, _Held] = {}
+    trades: list[Trade] = []
+    valid = sorted((f for f in fills if _valid_fill(f)), key=lambda f: _parse_time(f["ts"]))
+    for fill in valid:
+        symbol, quantity, price = fill["symbol"], float(fill["quantity"]), float(fill["price"])
+        try:
+            commission = float(fill.get("commission") or 0.0)
+        except (TypeError, ValueError):
+            commission = 0.0
+        position = held.setdefault(symbol, _Held())
+        if fill["side"] == "BUY":
+            if quantity <= EPSILON:
+                continue
+            if position.quantity <= EPSILON:  # flat: this buy opens a new position
+                position = held[symbol] = _Held(opened=fill["ts"])
+            total = position.quantity + quantity
+            position.avg_cost = (position.quantity * position.avg_cost + quantity * price) / total
+            position.commission_per_share = (position.quantity * position.commission_per_share + commission) / total
+            position.quantity = total
+            position.last_price = price
+            continue
+        if position.quantity <= EPSILON or quantity <= EPSILON:
+            continue  # an unmatched sell: skipped, not invented
+        matched = min(quantity, position.quantity)
+        cost = matched * position.avg_cost
+        commissions = commission * (matched / quantity) + position.commission_per_share * matched
+        pnl = (price - position.avg_cost) * matched - commissions
+        trades.append(Trade(
+            book_id=BOOK_ID, symbol=symbol, opened=_parse_time(position.opened).date(),
+            closed=_parse_time(fill["ts"]).date(), entry_price=round(position.avg_cost, 4), exit_price=price,
+            quantity=matched, pnl=round(pnl, 2), return_pct=round(pnl / cost * 100, 2) if cost else 0.0,
+        ))
+        position.quantity -= matched
+        position.last_price = price
+        if position.quantity <= EPSILON:
+            held[symbol] = _Held()  # flat: nothing of it carries into the next position
+    return held, sorted(trades, key=lambda t: (t.closed, t.opened, t.symbol))
+
+
+def _positions(state: dict, held: dict[str, _Held], fallback_date: date) -> list[Position]:
+    """The state file's positions. Each opens on the buy that started it and is priced at its newest fill since
+    then; one the fills don't explain (they end flat, or never reach it) opens on `fallback_date` at its own average
+    cost - never a date or a price from a position that has since closed."""
     open_orders = state.get("open_orders") or {}
     positions = state.get("positions") or {}
     out = []
@@ -147,74 +205,14 @@ def _positions(state: dict, fallback_date: date) -> list[Position]:
             avg_cost = float(pos.get("avg_cost", 0.0))
         except (TypeError, ValueError):
             avg_cost = 0.0
+        replayed = held.get(symbol)
+        known = (replayed is not None and replayed.quantity > EPSILON and replayed.opened is not None
+                 and replayed.last_price is not None)
         out.append(Position(book_id=BOOK_ID, symbol=symbol, quantity=quantity, entry_price=avg_cost,
-                            last_price=_last_price(symbol, avg_cost, fills),
-                            stop_price=_stop_price(symbol, open_orders), opened=_opened(symbol, fills, fallback_date)))
+                            last_price=replayed.last_price if known else avg_cost,
+                            stop_price=_stop_price(symbol, open_orders),
+                            opened=_parse_time(replayed.opened).date() if known else fallback_date))
     return sorted(out, key=lambda p: p.symbol)
-
-
-def _valid_fill(fill: object) -> bool:
-    if not (isinstance(fill, dict) and isinstance(fill.get("symbol"), str) and fill.get("side") in ("BUY", "SELL")):
-        return False
-    try:
-        float(fill["quantity"])
-        float(fill["price"])
-        _parse_time(fill["ts"])
-    except (KeyError, TypeError, ValueError):
-        return False
-    return True
-
-
-def _closed_trades(fills: list[dict]) -> list[Trade]:
-    """Closed trades, matched FIFO per symbol: a SELL fill consumes the oldest open BUY lot(s) first, so its
-    entry_price is the weighted average of whatever it draws from — one buy, or several averaged together. A SELL
-    that finds no matching BUY lot at all (a position the log's fill history doesn't reach back far enough to
-    explain) is skipped — never invented an entry for; one that only partly matches produces a trade for the
-    matched quantity alone. trading-rails' own fills carry no commission today (`PaperBroker._apply` charges its
-    `CostModel.commission` but never persists it per fill); a `commission` key, if a future format ever sends one,
-    is netted out of pnl."""
-    by_symbol: dict[str, list[dict]] = {}
-    for fill in fills:
-        if _valid_fill(fill):
-            by_symbol.setdefault(fill["symbol"], []).append(fill)
-
-    trades: list[Trade] = []
-    for symbol, symbol_fills in by_symbol.items():
-        lots: list[dict] = []  # each: quantity remaining, price, opened ts, commission per share
-        for fill in sorted(symbol_fills, key=lambda f: f["ts"]):
-            quantity = float(fill["quantity"])
-            price = float(fill["price"])
-            try:
-                commission = float(fill.get("commission") or 0.0)
-            except (TypeError, ValueError):
-                commission = 0.0
-            if fill["side"] == "BUY":
-                lots.append({"quantity": quantity, "price": price, "ts": fill["ts"],
-                            "commission_per_share": commission / quantity if quantity else 0.0})
-                continue
-            remaining, matched, cost, buy_commission, opened_ts = quantity, 0.0, 0.0, 0.0, None
-            while remaining > 1e-9 and lots:
-                lot = lots[0]
-                take = min(lot["quantity"], remaining)
-                cost += take * lot["price"]
-                buy_commission += take * lot["commission_per_share"]
-                opened_ts = lot["ts"] if opened_ts is None else opened_ts
-                matched += take
-                remaining -= take
-                lot["quantity"] -= take
-                if lot["quantity"] <= 1e-9:
-                    lots.pop(0)
-            if matched <= 1e-9:
-                continue  # an unmatched sell: skipped, not invented
-            sell_commission = commission * (matched / quantity) if quantity else 0.0
-            proceeds = matched * price
-            pnl = proceeds - cost - buy_commission - sell_commission
-            trades.append(Trade(
-                book_id=BOOK_ID, symbol=symbol, opened=_parse_time(opened_ts).date(),
-                closed=_parse_time(fill["ts"]).date(), entry_price=round(cost / matched, 4), exit_price=price,
-                quantity=matched, pnl=round(pnl, 2), return_pct=round(pnl / cost * 100, 2) if cost else 0.0,
-            ))
-    return sorted(trades, key=lambda t: (t.closed, t.opened, t.symbol))
 
 
 def _value(state: dict, positions: list[Position]) -> float:
@@ -299,7 +297,9 @@ class RailsConnector:
                 pass
         started = _row_date(rows[0]) if rows else fallback_date
 
-        positions = _positions(state, started)
+        fills = [f for f in (state.get("fills") or []) if isinstance(f, dict)]
+        held, trades = _replay(fills)
+        positions = _positions(state, held, started)
         strategy_id, strategy_name = _strategy_of(rows[-1] if rows else None)
         # PaperBroker.armed() is always True (it is in-memory play money, never gated): "running" is simply a fact,
         # never a guess at a status the state file doesn't record.
@@ -315,5 +315,5 @@ class RailsConnector:
 
         equity = _equity_points(rows)
         return Snapshot(generated_at=now, sources=[source], books=[book], positions=positions,
-                        trades=_closed_trades(state.get("fills") or []), strategies=[strategy], runs=_runs(rows),
+                        trades=trades, strategies=[strategy], runs=_runs(rows),
                         book_history=[Series(id=BOOK_ID, points=equity)] if equity else [])

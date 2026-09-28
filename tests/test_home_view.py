@@ -216,6 +216,16 @@ def test_every_comparison_line_starts_on_the_same_day():
     assert c.gap_pts == pytest.approx(-0.76)  # 4.0 - 4.76 over the shared period, not 4.0 - 10.0
 
 
+def test_a_real_position_with_no_stop_links_to_its_own_book():
+    book = Book(id="swing/real", name="Swing", money="real", strategy_id="s", status="running",
+                started=dt.date(2026, 1, 1), value=1000)
+    pos = Position(book_id="swing/real", symbol="KLAC", quantity=1, entry_price=512.4, last_price=518.07,
+                   opened=dt.date(2026, 9, 24))
+    item, = home_view(_tiny([], [], books=[book], positions=[pos]), Profile(), NOW).attention
+    assert (item.level, item.title) == ("serious", "KLAC has no resting stop")
+    assert item.link == "/books/swing%2Freal"  # the book's own page, its id escaped so it stays one path segment
+
+
 def test_a_paper_position_without_a_stop_is_not_an_alarm():
     book = Book(id="p", name="Paper", money="paper", strategy_id="s", status="running", started=dt.date(2026, 1, 1),
                 value=1000)

@@ -3,7 +3,15 @@ import datetime as dt
 import pytest
 
 from kestrel.contract import ValuePoint
-from kestrel.metrics import expected_band, growth_index, largest_remainder, max_drawdown_pct, rsi, sum_series
+from kestrel.metrics import (
+    expected_band,
+    growth_index,
+    largest_remainder,
+    max_drawdown_pct,
+    opening_on,
+    rsi,
+    sum_series,
+)
 
 
 def vp(day, value, flow=0.0):
@@ -52,6 +60,15 @@ def test_largest_remainder_always_totals_exactly():
     assert largest_remainder([71.53, 12.40, 16.07]) == [72, 12, 16]
     assert sum(largest_remainder([1, 1, 1])) == 100
     assert largest_remainder([0, 0]) == [0, 0]
+
+
+def test_opening_on_starts_a_series_on_a_day_with_the_value_held_then():
+    points = [vp(1, 100.25), vp(3, 103.5, 2.0), vp(5, 101.75)]
+    # the 4th has no point: it opens with the 3rd's value, and its flow (before the 4th) is left behind
+    assert [(p.date.day, p.value, p.net_flow) for p in opening_on(points, dt.date(2026, 9, 4))] == [
+        (4, 103.5, 0.0), (5, 101.75, 0.0)]
+    # before the series begins there is nothing held yet: the series as it is
+    assert opening_on(points, dt.date(2026, 8, 31)) == points
 
 
 def test_sum_series_carries_forward_a_missing_day():

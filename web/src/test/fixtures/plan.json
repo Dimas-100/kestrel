@@ -434,6 +434,7 @@
       "id": "roth-grow",
       "label": "Grow the Roth IRA",
       "scope_text": "Roth IRA",
+      "measure": "value",
       "current": 67890.81,
       "target": 100000.0,
       "progress_pct": 67.9,
@@ -441,12 +442,15 @@
       "months_left": 51,
       "monthly_needed": 629.59,
       "reached": false,
-      "missing_accounts": []
+      "overdue": false,
+      "missing_accounts": [],
+      "unknown_reason": ""
     },
     {
       "id": "cash-year",
       "label": "A year of spending in cash",
       "scope_text": "Cash accounts",
+      "measure": "value",
       "current": 30895.98,
       "target": 42000.0,
       "progress_pct": 73.6,
@@ -454,12 +458,15 @@
       "months_left": 15,
       "monthly_needed": 740.27,
       "reached": false,
-      "missing_accounts": []
+      "overdue": false,
+      "missing_accounts": [],
+      "unknown_reason": ""
     },
     {
       "id": "net-worth",
       "label": "Net worth milestone",
       "scope_text": "Net worth",
+      "measure": "value",
       "current": 168278.24,
       "target": 250000.0,
       "progress_pct": 67.3,
@@ -467,12 +474,15 @@
       "months_left": 33,
       "monthly_needed": 2476.42,
       "reached": false,
-      "missing_accounts": []
+      "overdue": false,
+      "missing_accounts": [],
+      "unknown_reason": ""
     },
     {
       "id": "long-term-together",
       "label": "Long-term accounts combined",
       "scope_text": "Brokerage, Roth IRA",
+      "measure": "value",
       "current": 119554.55,
       "target": 200000.0,
       "progress_pct": 59.8,
@@ -480,12 +490,15 @@
       "months_left": 63,
       "monthly_needed": 1276.91,
       "reached": false,
-      "missing_accounts": []
+      "overdue": false,
+      "missing_accounts": [],
+      "unknown_reason": ""
     },
     {
       "id": "save-this-year",
       "label": "Save into savings this year",
       "scope_text": "High-yield savings",
+      "measure": "deposits",
       "current": 1350.0,
       "target": 1800.0,
       "progress_pct": 75.0,
@@ -493,7 +506,9 @@
       "months_left": 3,
       "monthly_needed": 150.0,
       "reached": false,
-      "missing_accounts": []
+      "overdue": false,
+      "missing_accounts": [],
+      "unknown_reason": ""
     }
   ],
   "counts": {

@@ -832,14 +832,17 @@ export interface GoalRow {
   id: string
   label: string
   scope_text: string
-  current: number | null // null when a scoped account isn't in any source (see missing_accounts)
+  measure: 'value' | 'deposits' // a value today, or deposits since the goal's year began
+  current: number | null // null when unknown: see missing_accounts and unknown_reason
   target: number
   progress_pct: number | null // null when current is unknown
   by: string | null
   months_left: number | null
-  monthly_needed: number | null
+  monthly_needed: number | null // a straight line: for a value goal, before any market growth
   reached: boolean
+  overdue: boolean // by has passed and it isn't reached (the view's answer; a far placeholder date never is)
   missing_accounts: string[] // account id(s) this goal names that no source sent
+  unknown_reason: string // why current is unknown when no account is missing ("" otherwise)
 }
 
 export interface PlanView {

@@ -7,7 +7,7 @@ from typing import Literal
 from urllib.parse import quote
 
 from ..contract import Account, Book, Snapshot, Source, ValuePoint
-from ..metrics import growth_index, largest_remainder, max_drawdown_pct, sum_series
+from ..metrics import growth_index, largest_remainder, max_drawdown_pct, opening_on, sum_series
 from ..profile import Profile
 from ._base import View as View  # noqa: F401 - re-exported: other view modules import View from here
 from .books import MIN_TRADES_FOR_VERDICT as MIN_TRADES_FOR_VERDICT  # noqa: F401 - re-exported for strategy.py
@@ -183,13 +183,6 @@ def _window(points: list[ValuePoint], start: dt.date) -> list[ValuePoint]:
     return [p for p in points if p.date >= start]
 
 
-def _from(points: list[ValuePoint], start: dt.date) -> list[ValuePoint]:
-    """The points after `start`, opening on `start` with the value held then (the last point on or before it)."""
-    before = [p for p in points if p.date <= start]
-    after = [p for p in points if p.date > start]
-    return [ValuePoint(date=start, value=before[-1].value), *after] if before else after
-
-
 def _line(key, label, points: list[ValuePoint], dates: list[dt.date]) -> Line | None:
     if len(points) < 2:
         return None
@@ -225,7 +218,7 @@ def _comparison(snapshot: Snapshot, profile: Profile, today: dt.date, real_books
         # every line is measured from the same day: the latest first date, so a book opened in July is not
         # set against an index fund's whole year
         start = max(firsts)
-        trading, long_term, bench = _from(trading, start), _from(long_term, start), _from(bench, start)
+        trading, long_term, bench = opening_on(trading, start), opening_on(long_term, start), opening_on(bench, start)
     dates = sorted({p.date for p in next((s for s in (trading, long_term, bench) if drawable(s)), [])})
     lines = [
         line for line in (
@@ -270,8 +263,10 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
     for p in snapshot.positions:
         book = books.get(p.book_id)
         if book is not None and book.money == "real" and p.stop_price is None and p.stop_resting is not True:
+            # the position's own book; its id is escaped so an odd id can't bend the link into another path
             items.append(Attention(level="serious", title=f"{p.symbol} has no resting stop",
-                                   detail=f"{book.name} · real — no protective stop on record", link="/books"))
+                                   detail=f"{book.name} · real — no protective stop on record",
+                                   link=f"/books/{quote(p.book_id, safe='')}"))
     for source in snapshot.sources:
         item = _source_attention(source, now, tz)
         if item:

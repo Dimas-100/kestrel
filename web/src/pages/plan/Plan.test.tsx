@@ -4,6 +4,7 @@ import type { PlanView } from '../../lib/api'
 import { planFixture, renderApp } from '../../test/renderApp'
 
 const rows = (region: HTMLElement) => [...region.querySelectorAll('li')]
+const goal = planFixture.goals[0]
 
 describe('Plan', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -42,7 +43,7 @@ describe('Plan', { timeout: 15_000 }, () => {
     expect(within(goals).getByText('Grow the Roth IRA')).toBeTruthy()
     const bars = within(goals).getAllByRole('progressbar')
     expect(bars.length).toBe(planFixture.goals.length)
-    expect(within(goals).getAllByText(/a month would reach it/).length).toBeGreaterThan(0)
+    expect(within(goals).getAllByText(/a month/).length).toBeGreaterThan(0)
   })
 
   it('shows a zero-value known account’s gap in points, never a bogus dollar figure', async () => {
@@ -83,10 +84,42 @@ describe('Plan', { timeout: 15_000 }, () => {
     expect(within(targets).queryByRole('link', { name: 'gone' })).toBeNull() // never a link to a nonexistent account
   })
 
+  it('says a straight-line monthly amount is before any market growth, or is deposits', async () => {
+    // a long way off, the straight line leaves out what the market adds: it says so, not "would reach it"
+    renderApp('/plan', { plan: { ...planFixture, goals: [
+      { ...goal, id: 'far', label: 'A million', measure: 'value', current: 12400.51, target: 1000000,
+        by: '2064-06-30', months_left: 449, monthly_needed: 2198.95 },
+      { ...goal, id: 'dep', label: 'Save', measure: 'deposits', current: 1187.6, target: 3000, by: '2026-12-31',
+        months_left: 3, monthly_needed: 604.13 },
+    ] } })
+    const goals = await screen.findByRole('region', { name: 'Goals' })
+    expect(within(goals).getByText('about $2,198.95 a month, before any market growth')).toBeTruthy()
+    expect(within(goals).getByText('about $604.13 a month in deposits')).toBeTruthy()
+    expect(within(goals).queryByText(/would reach it/)).toBeNull()
+  })
+
+  it('shows a deposits goal it cannot see as "—" with the reason, and no progress bar', async () => {
+    renderApp('/plan', { plan: { ...planFixture, goals: [{ ...goal, measure: 'deposits', current: null,
+      progress_pct: null, monthly_needed: null, months_left: null, unknown_reason: 'no deposit history for Checking' }] } })
+    const goals = await screen.findByRole('region', { name: 'Goals' })
+    expect(within(goals).getByText(/no deposit history for Checking/).textContent).toBe('— · no deposit history for Checking')
+    expect(within(goals).queryByRole('progressbar')).toBeNull()
+    expect(within(goals).queryByText(/\$0/)).toBeNull()
+  })
+
+  it('never calls a far placeholder date overdue', async () => {
+    renderApp('/plan', { plan: { ...planFixture, goals: [{ ...goal, by: '9999-12-31', months_left: null,
+      monthly_needed: null, overdue: false }] } })
+    const goals = await screen.findByRole('region', { name: 'Goals' })
+    expect(within(goals).queryByText(/was due/)).toBeNull()
+    expect(within(goals).getByText('by 31 Dec 9999')).toBeTruthy()
+  })
+
   it('shows a goal with a missing account as "—" and names the missing id, with no progress bar', async () => {
     const v: PlanView = { ...planFixture,
-      goals: [{ id: 'g', label: 'Grow', scope_text: 'gone', current: null, target: 100000, progress_pct: null,
-        by: '2030-12-31', months_left: null, monthly_needed: null, reached: false, missing_accounts: ['gone'] }] }
+      goals: [{ id: 'g', label: 'Grow', scope_text: 'gone', measure: 'value', current: null, target: 100000,
+        progress_pct: null, by: '2030-12-31', months_left: null, monthly_needed: null, reached: false, overdue: false,
+        missing_accounts: ['gone'], unknown_reason: '' }] }
     renderApp('/plan', { plan: v })
     const goals = await screen.findByRole('region', { name: 'Goals' })
     expect(within(goals).getByText(/account not in any source: gone/)).toBeTruthy()
@@ -95,12 +128,13 @@ describe('Plan', { timeout: 15_000 }, () => {
 
   it('shows an overdue, unreached goal as "was due", never a monthly pace', async () => {
     const v: PlanView = { ...planFixture,
-      goals: [{ id: 'g4', label: 'Overdue', scope_text: 'A', current: 5000, target: 10000, progress_pct: 50,
-        by: '2025-06-30', months_left: null, monthly_needed: null, reached: false, missing_accounts: [] }] }
+      goals: [{ id: 'g4', label: 'Overdue', scope_text: 'A', measure: 'value', current: 5000, target: 10000,
+        progress_pct: 50, by: '2025-06-30', months_left: null, monthly_needed: null, reached: false, overdue: true,
+        missing_accounts: [], unknown_reason: '' }] }
     renderApp('/plan', { plan: v })
     const goals = await screen.findByRole('region', { name: 'Goals' })
     expect(within(goals).getByText('was due 30 Jun 2025')).toBeTruthy()
-    expect(within(goals).queryByText(/a month would reach it/)).toBeNull()
+    expect(within(goals).queryByText(/a month/)).toBeNull()
   })
 
   it('names an investing feed in the empty state', async () => {

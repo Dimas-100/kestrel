@@ -14,13 +14,14 @@ ROWS_LIMIT = 200  # the page lists only the newest results; a real feed can carr
 _VERDICT_RANK = {"pass": 0, "pending": 1, "fail": 2, "refused": 3}
 # the research pipeline's own order, earliest stage first; a window this doesn't name sorts after all of these
 _PIPELINE = ("explore", "develop", "confirm", "holdout", "paper", "live")
+_STAGE = {w: i for i, w in enumerate(_PIPELINE)}
 
 
 class Totals(View):
     results: int
     candidates: int  # distinct name, across every window
     families: int
-    passes_by_window: dict[str, int]
+    passes_by_window: dict[str, int]  # in the pipeline's order, like `windows`
 
 
 class FamilyRow(View):
@@ -45,19 +46,25 @@ def _windows_order(backtests: list[Backtest]) -> list[str]:
     all of those, alphabetically. Recency plays no part: a family can pass an early stage recently while an older
     pass sits in a later stage, and the later stage is still the furthest along."""
     present = {b.window for b in backtests if b.window}
-    stage = {w: i for i, w in enumerate(_PIPELINE)}
-    return sorted(present, key=lambda w: (stage.get(w, len(_PIPELINE)), w))
+    return sorted(present, key=lambda w: (_STAGE.get(w, len(_PIPELINE)), w))
 
 
-def _best(backtests: list[Backtest], rank: dict[str, int]) -> Backtest:
-    """The furthest window (highest `rank`) with a pass, ties broken by the higher t-stat; with no pass, the newest
-    result of any verdict."""
+def _best(backtests: list[Backtest]) -> Backtest:
+    """The furthest pipeline stage with a pass, ties broken by the higher t-stat; with no pass, the newest result of
+    any verdict. A window the pipeline doesn't name ranks below every stage it does: its column sorts last, but that
+    says nothing about how far along it is."""
     passes = [b for b in backtests if b.verdict == "pass"]
     if not passes:
         return max(backtests, key=lambda b: b.at)
-    furthest = max(rank.get(b.window, -1) for b in passes)
-    at_furthest = [b for b in passes if rank.get(b.window, -1) == furthest]
+    furthest = max(_STAGE.get(b.window, -1) for b in passes)
+    at_furthest = [b for b in passes if _STAGE.get(b.window, -1) == furthest]
     return max(at_furthest, key=lambda b: b.t_stat if b.t_stat is not None else float("-inf"))
+
+
+def _passes_by_window(backtests: list[Backtest], windows: list[str]) -> dict[str, int]:
+    """Passes per window, in the pipeline's order (the columns' order); a pass with no window at all comes last."""
+    counts = Counter(b.window for b in backtests if b.verdict == "pass")
+    return {w: counts[w] for w in [*windows, ""] if counts[w]}
 
 
 def _verdicts(backtests: list[Backtest]) -> dict[str, Verdict]:
@@ -74,7 +81,6 @@ def _verdicts(backtests: list[Backtest]) -> dict[str, Verdict]:
 def backtests_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> BacktestsView:
     backtests = snapshot.backtests
     windows = _windows_order(backtests)
-    rank = {w: i for i, w in enumerate(windows)}
 
     by_family: dict[str, list[Backtest]] = defaultdict(list)
     for b in backtests:
@@ -85,14 +91,14 @@ def backtests_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> Ba
         key=lambda kv: (not any(b.verdict == "pass" for b in kv[1]), -max(b.at for b in kv[1]).timestamp()),
     )
     families = [
-        FamilyRow(family=family, candidates=len({b.name for b in group}), best=_best(group, rank),
+        FamilyRow(family=family, candidates=len({b.name for b in group}), best=_best(group),
                   verdicts=_verdicts(group), last_at=max(b.at for b in group))
         for family, group in ordered_families
     ]
 
     totals = Totals(
         results=len(backtests), candidates=len({b.name for b in backtests}), families=len(by_family),
-        passes_by_window=dict(Counter(b.window for b in backtests if b.verdict == "pass")),
+        passes_by_window=_passes_by_window(backtests, windows),
     )
     rows = sorted(backtests, key=lambda b: b.at, reverse=True)[:ROWS_LIMIT]
     return BacktestsView(as_of=now, totals=totals, windows=windows, families=families, rows=rows)

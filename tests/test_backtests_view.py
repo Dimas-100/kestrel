@@ -103,6 +103,31 @@ def test_best_falls_back_to_the_newest_result_when_nothing_passed():
     assert family.best is not None and family.best.id == "d2"
 
 
+def test_best_ranks_a_window_the_pipeline_doesnt_name_below_every_stage_it_does():
+    # "zzz-custom" sorts after "develop" as a column, but that says nothing about how far along it is: a develop pass
+    # is the best result even though the custom one is newer and has the higher t
+    data = [
+        bt("dev", "A", "F", "develop", "pass", 30, t_stat=2.14),
+        bt("custom", "B", "F", "zzz-custom", "pass", 2, t_stat=5.87),
+    ]
+    view = backtests_view(snap(data), Profile(), NOW)
+    assert view.windows == ["develop", "zzz-custom"]
+    assert view.families[0].best.id == "dev"
+    # with no pipeline pass at all, the custom pass is still the best there is
+    only = backtests_view(snap([bt("custom", "B", "F", "zzz-custom", "pass", 2, t_stat=5.87),
+                                bt("dev", "A", "F", "develop", "fail", 1)]), Profile(), NOW)
+    assert only.families[0].best.id == "custom"
+
+
+def test_passes_by_window_follow_the_pipeline_order():
+    data = [
+        bt("c1", "A", "F", "confirm", "pass", 1), bt("x1", "B", "F", "aaa-custom", "pass", 2),
+        bt("d1", "C", "F", "develop", "pass", 3), bt("c2", "D", "G", "confirm", "pass", 4),
+    ]
+    view = backtests_view(snap(data), Profile(), NOW)
+    assert list(view.totals.passes_by_window.items()) == [("develop", 1), ("confirm", 2), ("aaa-custom", 1)]
+
+
 def test_verdict_per_window_is_the_best_seen_pass_then_pending_then_fail_then_refused():
     data = [
         bt("a", "A", "F", "develop", "fail", 10),

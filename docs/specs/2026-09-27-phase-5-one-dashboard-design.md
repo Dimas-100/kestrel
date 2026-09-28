@@ -131,8 +131,10 @@ Strategies · More; More lists the rest. Every page has an honest empty state th
   as a tick, the actual as a dot), the status, and the gap in money ("$212 under the low end"). Rows off plan first.
 - **Theses:** symbol and name, health (an icon plus the word, never colour alone) with its reasons, conviction, days
   since the last review, whether it is held (and in which accounts), and the "wrong if" conditions behind a disclosure.
-- **Goals:** each goal's current value, target, progress bar, the date, and the monthly amount that would reach it by
-  then (when there is a date).
+- **Goals:** each goal's current value, target, progress bar, the date, and the straight-line monthly amount that
+  would reach it by then (when there is a date), said for what it is: "about $X a month, before any market growth" for
+  a value goal, "about $X a month in deposits" for a deposits goal. "Overdue" is the view's answer (`by` passed, not
+  reached). A deposits goal over an account with no history is unknown ("—" and why), never $0.
 - **Needs you** (Home) gains: a target off plan (warning), a thesis with health `alert` (warning) or `watch` (note).
 
 ### 4.3 Reserves (`/reserves`)

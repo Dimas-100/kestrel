@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import math
 from collections.abc import Sequence
 
@@ -85,6 +86,15 @@ def sum_series(series: Sequence[Sequence[ValuePoint]]) -> list[ValuePoint]:
                 total += last[i]
         out.append(ValuePoint(date=day, value=round(total, 2), net_flow=round(flow, 2)))
     return out
+
+
+def opening_on(points: Sequence[ValuePoint], start: dt.date) -> list[ValuePoint]:
+    """The points after `start`, opening on `start` with the value held then (the last point on or before it), so
+    lines that begin on different days can be measured from one. A series that begins after `start` is returned as
+    it is: nothing was held on `start`."""
+    before = [p for p in points if p.date <= start]
+    after = [p for p in points if p.date > start]
+    return [ValuePoint(date=start, value=before[-1].value), *after] if before else after
 
 
 def rsi(closes: Sequence[float], period: int = 2) -> list[float | None]:

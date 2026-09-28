@@ -61,14 +61,21 @@ class GoalRow(View):
     id: str
     label: str
     scope_text: str
-    current: float | None  # None when a scoped account isn't in any source (see `missing_accounts`)
+    measure: Literal["value", "deposits"]  # what `current` is: a value today, or deposits since the goal's year began
+    # None when a scoped account isn't in any source (see `missing_accounts`), or a deposits goal can't see every
+    # scoped account's deposits (see `unknown_reason`)
+    current: float | None
     target: float
     progress_pct: float | None  # 0..100, capped; None when current is unknown
     by: dt.date | None
     months_left: int | None  # None without `by`, or once `by` is overdue and not reached
-    monthly_needed: float | None  # None without `by`, once reached, overdue, or current is unknown
+    # a straight line to the target: for a value goal, before any market growth; None without `by`, once reached,
+    # overdue, or current is unknown
+    monthly_needed: float | None
     reached: bool
+    overdue: bool  # `by` has passed and the goal isn't reached (a far placeholder date such as 9999-12-31 never is)
     missing_accounts: list[str] = []  # account id(s) this goal names that no source sent; current is None when set
+    unknown_reason: str = ""  # why current is unknown when no account is missing ("" otherwise)
 
 
 class Counts(View):
@@ -278,10 +285,14 @@ def _goal_pace_start(g: Goal, today: dt.date) -> dt.date:
 def _goal_row(g: Goal, accounts: list[Account], history: dict[str, list[ValuePoint]], today: dt.date) -> GoalRow:
     by_id = {a.id: a for a in accounts}
     scope_ids, scope_text, missing = _goal_scope(g, accounts)
-    if missing:
-        return GoalRow(id=g.id, label=g.label, scope_text=scope_text, current=None, target=g.target,
-                       progress_pct=None, by=g.by, months_left=None, monthly_needed=None, reached=False,
-                       missing_accounts=missing)
+    # deposits are read from history: an account with none (a bank feed with only today's balance) hides its own,
+    # and a sum over the rest would be a number kestrel can't stand behind
+    blind = sorted(by_id[i].name for i in scope_ids if not history.get(i)) if g.measure == "deposits" else []
+    if missing or blind:
+        return GoalRow(id=g.id, label=g.label, scope_text=scope_text, measure=g.measure, current=None,
+                       target=g.target, progress_pct=None, by=g.by, months_left=None, monthly_needed=None,
+                       reached=False, overdue=False, missing_accounts=missing,
+                       unknown_reason="" if missing else f"no deposit history for {', '.join(blind)}")
     if g.measure == "deposits":
         start = dt.date((g.by or today).year, 1, 1)
         current = _goal_deposits(scope_ids, history, start, today)
@@ -296,9 +307,9 @@ def _goal_row(g: Goal, accounts: list[Account], history: dict[str, list[ValuePoi
     overdue = g.by is not None and g.by < today and not reached
     months_left = None if g.by is None or overdue else _months_between(_goal_pace_start(g, today), g.by)
     monthly_needed = None if reached or months_left is None else round((g.target - current) / max(1, months_left), 2)
-    return GoalRow(id=g.id, label=g.label, scope_text=scope_text, current=current, target=g.target,
-                  progress_pct=progress, by=g.by, months_left=months_left, monthly_needed=monthly_needed,
-                  reached=reached, missing_accounts=[])
+    return GoalRow(id=g.id, label=g.label, scope_text=scope_text, measure=g.measure, current=current,
+                   target=g.target, progress_pct=progress, by=g.by, months_left=months_left,
+                   monthly_needed=monthly_needed, reached=reached, overdue=overdue, missing_accounts=[])
 
 
 def target_attention(snapshot: Snapshot) -> list[Attention]:

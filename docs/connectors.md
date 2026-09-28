@@ -339,18 +339,20 @@ stale_after = "36h"
   about the install.
 - **One paper book**, `rails-paper`: its value is the account's cash plus each position's quantity times a price for
   it. trading-rails never persists a "last price" (it always prices live, against a bar source kestrel can't reach),
-  so the price used is that symbol's most recent fill in `paper.json`'s `fills`, or the position's average cost when
-  there has never been one. Its `started` date is the first row of `runs.jsonl`, or, without a run log yet, the
-  state file's own `as_of`.
-- **Positions** carry their quantity, average cost, that same last price, their opened date (their earliest BUY
-  fill, or the book's `started` without one), and a resting protective stop when `paper.json`'s `open_orders` has
-  one for that symbol.
-- **Closed trades** are matched FIFO, per symbol, from `paper.json`'s `fills`: a SELL fill consumes the oldest open
-  BUY lot(s) first, so its entry price is the weighted average of whatever it draws from — one buy, or several
-  averaged together. A SELL that only partly closes a lot produces a trade for the sold quantity alone; a SELL that
-  matches no BUY at all (the fill history doesn't reach back far enough to explain a position that's already there)
-  is left out — never given an invented entry. `fills` carries no commission today; a `commission` a future format
-  might send is netted out of the trade's `pnl`.
+  so the price used is that symbol's most recent fill in `paper.json`'s `fills` since its current position opened,
+  or the position's average cost when the fills don't reach that far. Its `started` date is the first row of
+  `runs.jsonl`, or, without a run log yet, the state file's own `as_of`.
+- **Positions** carry their quantity, average cost, that same last price, their opened date (the BUY that started
+  the current position, after the symbol was last flat, or the book's `started` when the fills don't explain it),
+  and a resting protective stop when `paper.json`'s `open_orders` has one for that symbol. Nothing from a position
+  that has since closed — its date or its last price — carries into a new one.
+- **Closed trades** are matched at the average cost, per symbol, from `paper.json`'s `fills`, the way trading-rails
+  keeps it: a BUY moves the average, a SELL leaves it where it is. A trade's entry price is the average held at the
+  time of the sale, its `pnl` is (sell − average) × quantity less commissions, and it opens on the BUY that started
+  its position — so the realized P/L adds up to what trading-rails' cash says. A SELL larger than the position closes
+  only what was held; a SELL with no position at all (the fill history doesn't reach back far enough) is left out —
+  never given an invented entry. `fills` carries no commission today; a `commission` a future format might send is
+  netted out of the trade's `pnl` (a BUY's is carried with its shares, like the average).
 - **A strategy stub**, id and name from the run log's own `strategy` field on its newest row when a future log sends
   one, else `rails` / "trading-rails": today's run log names no strategy of its own.
 - **Runs**, one per cycle in `runs.jsonl` (its rows share one timestamp per cycle): `done`, or `failed` when one of

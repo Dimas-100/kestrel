@@ -13,7 +13,7 @@ from statistics import fmean
 from typing import Literal
 
 from ..contract import Benchmark, Run, Snapshot, Trade, ValuePoint
-from ..metrics import expected_band, growth_index, max_drawdown_pct
+from ..metrics import expected_band, growth_index, max_drawdown_pct, opening_on
 from ..profile import Profile
 from ._base import View
 
@@ -165,13 +165,6 @@ def books_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> BooksV
     )
 
 
-def _from(points: list[ValuePoint], start: dt.date) -> list[ValuePoint]:
-    """The points from `start` on, opening on `start` with the value held then (the last point on or before it)."""
-    before = [p for p in points if p.date <= start]
-    after = [p for p in points if p.date > start]
-    return [ValuePoint(date=start, value=before[-1].value), *after] if before else after
-
-
 def _equity(history: list[ValuePoint], benchmark: Benchmark | None) -> EquitySeries:
     if len(history) < 2:
         return EquitySeries(dates=[], values=[], benchmark=[], return_pct=0.0, max_drop_pct=0.0)
@@ -179,7 +172,7 @@ def _equity(history: list[ValuePoint], benchmark: Benchmark | None) -> EquitySer
     dates = [p.date for p in history]
     bench_values: list[float | None] = [None] * len(dates)
     if benchmark is not None:
-        aligned = _from(list(benchmark.points), dates[0])
+        aligned = opening_on(benchmark.points, dates[0])
         if len(aligned) >= 2:
             bench_idx = growth_index(aligned)
             by_date = {p.date: i for p, i in zip(aligned, bench_idx)}
