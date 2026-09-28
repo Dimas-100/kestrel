@@ -94,6 +94,8 @@ def _demo(args: argparse.Namespace) -> int:
     from .views.books import book_view, books_view
     from .views.calendar import calendar_view
     from .views.home import home_view
+    from .views.plan import plan_view
+    from .views.reserves import reserves_view
     from .views.settings import settings_view
     from .views.shell import shell_view
     from .views.strategy import strategies_view, strategy_view
@@ -118,6 +120,10 @@ def _demo(args: argparse.Namespace) -> int:
         _emit(backtests_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view == "settings":
         _emit(settings_view(snapshot, DEMO_PROFILE, now, "demo data").model_dump_json(indent=2))
+    elif args.view == "plan":
+        _emit(plan_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
+    elif args.view == "reserves":
+        _emit(reserves_view(snapshot, DEMO_PROFILE, now).model_dump_json(indent=2))
     elif args.view in ("strategy", "account", "book"):
         if not args.id:
             example = {"strategy": "rsi2", "account": "roth", "book": "rsi2-real"}[args.view]
@@ -157,7 +163,8 @@ def main(argv: list[str] | None = None) -> int:
         which.add_argument("--demo", action="store_true", help="show the demo data, whatever profile.toml says")
     demo = sub.add_parser("demo", help="print the demo data as JSON (an example feed payload)")
     demo.add_argument("--view", choices=["snapshot", "home", "shell", "strategies", "strategy", "accounts", "account",
-                                         "books", "book", "activity", "calendar", "backtests", "settings"],
+                                         "books", "book", "activity", "calendar", "backtests", "settings", "plan",
+                                         "reserves"],
                       default="snapshot")
     demo.add_argument("--id", help="the strategy, account or book the view shows, e.g. rsi2, roth or rsi2-real")
     demo.add_argument("--book", choices=["real", "paper"], default="real", help="the money --view strategy shows")

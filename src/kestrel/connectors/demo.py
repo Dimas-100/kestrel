@@ -375,6 +375,11 @@ def _goals(today: date) -> list[Goal]:
              by=date(today.year + 1, 12, 31), note="Twelve months of rent and card spending"),
         Goal(id="net-worth", label="Net worth milestone", target=250000.0, by=date(today.year + 3, 6, 30),
              note="Everything owned, less what is owed"),
+        Goal(id="long-term-together", label="Long-term accounts combined", target=200000.0,
+             account_ids=["roth", "brokerage"], by=date(today.year + 5, 12, 31),
+             note="Roth IRA and brokerage together"),
+        Goal(id="save-this-year", label="Save into savings this year", target=12 * 150.0, account_id="savings",
+             measure="deposits", by=date(today.year, 12, 31), note="What goes into savings each month"),
     ]
 
 

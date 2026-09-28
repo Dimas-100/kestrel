@@ -32,6 +32,7 @@ class Delta(View):
 class NetWorth(View):
     total: float  # everything owned less everything owed
     owed: float  # what the debt accounts owe, already taken off `total`; 0 with none, below 0 for a card paid past zero
+    debt_accounts: int  # how many accounts that owed comes from (for "Owed: $X across N accounts")
     today: Delta
     month: Delta
     year: Delta
@@ -243,6 +244,8 @@ def _source_attention(source: Source, now: dt.datetime, tz: dt.tzinfo) -> Attent
 
 def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[str, int | None],
                now: dt.datetime, tz: dt.tzinfo) -> list[Attention]:
+    from .plan import target_attention, thesis_attention  # local: plan.py imports this module at load time
+
     books = {b.id: b for b in snapshot.books}
     items: list[Attention] = []
     for p in snapshot.positions:
@@ -263,6 +266,10 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
             items.append(Attention(level="note", title=f"{row.name} is below its expected band", detail=detail,
                                    link=f"/strategies/{quote(books[row.id].strategy_id, safe='')}"))
     items.extend(Attention(level=a.level, title=a.title, detail=a.detail, link=a.link) for a in snapshot.alerts)
+    # Plan's items are appended last, after every source and book item: a stable sort keeps ties in insertion
+    # order, so a widening set of off-plan targets or theses can never push a source's own warning further down
+    items.extend(target_attention(snapshot))
+    items.extend(thesis_attention(snapshot))
     order = {"serious": 0, "warning": 1, "note": 2}
     return sorted(items, key=lambda a: order[a.level])
 
@@ -276,6 +283,7 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
     owed = sum(a.value for a in snapshot.accounts if a.category == "debt")
     net_worth = NetWorth(
         total=round(owned - owed, 2), owed=round(owed, 2),
+        debt_accounts=sum(1 for a in snapshot.accounts if a.category == "debt"),
         today=_delta(net, today), month=_delta(net, today.replace(day=1)), year=_delta(net, dt.date(today.year, 1, 1)),
         year_flows=round(sum(p.net_flow for p in net[1:] if p.date >= dt.date(today.year, 1, 1)), 2),
         points=net,

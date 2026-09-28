@@ -1,0 +1,504 @@
+{
+  "as_of": "2026-09-25T21:08:00Z",
+  "accounts": [
+    {
+      "account_id": "roth",
+      "name": "Roth IRA",
+      "known": true,
+      "rows": [
+        {
+          "id": "roth-xlp",
+          "label": "XLP",
+          "symbols": [
+            "XLP"
+          ],
+          "unit": "%",
+          "target": 20.0,
+          "low": 18.0,
+          "high": 22.0,
+          "actual": 16.0,
+          "status": "under",
+          "gap": 1357.86,
+          "gap_unit": "money",
+          "gap_text": "under the low end",
+          "note": "Staples to soften the drops"
+        },
+        {
+          "id": "roth-xlv",
+          "label": "XLV",
+          "symbols": [
+            "XLV"
+          ],
+          "unit": "%",
+          "target": 15.0,
+          "low": 12.0,
+          "high": 18.0,
+          "actual": 21.0,
+          "status": "over",
+          "gap": -2036.71,
+          "gap_unit": "money",
+          "gap_text": "over the high end",
+          "note": "A health care tilt"
+        },
+        {
+          "id": "roth-spy",
+          "label": "SPY",
+          "symbols": [
+            "SPY"
+          ],
+          "unit": "%",
+          "target": 60.0,
+          "low": 55.0,
+          "high": 65.0,
+          "actual": 62.0,
+          "status": "on",
+          "gap": 0.0,
+          "gap_unit": "money",
+          "gap_text": "on plan",
+          "note": "The core: the whole market"
+        }
+      ]
+    },
+    {
+      "account_id": "brokerage",
+      "name": "Brokerage",
+      "known": true,
+      "rows": [
+        {
+          "id": "brokerage-ko",
+          "label": "KO",
+          "symbols": [
+            "KO"
+          ],
+          "unit": "%",
+          "target": 5.0,
+          "low": 3.0,
+          "high": 7.0,
+          "actual": 5.0,
+          "status": "on",
+          "gap": 0.0,
+          "gap_unit": "money",
+          "gap_text": "on plan",
+          "note": "A dividend holding"
+        },
+        {
+          "id": "brokerage-spy",
+          "label": "SPY",
+          "symbols": [
+            "SPY"
+          ],
+          "unit": "%",
+          "target": 40.0,
+          "low": 35.0,
+          "high": 45.0,
+          "actual": 38.0,
+          "status": "on",
+          "gap": 0.0,
+          "gap_unit": "money",
+          "gap_text": "on plan",
+          "note": "The core: the whole market"
+        },
+        {
+          "id": "brokerage-stocks",
+          "label": "Single stocks",
+          "symbols": [
+            "COST",
+            "HD"
+          ],
+          "unit": "%",
+          "target": null,
+          "low": 15.0,
+          "high": 25.0,
+          "actual": 22.0,
+          "status": "on",
+          "gap": 0.0,
+          "gap_unit": "money",
+          "gap_text": "on plan",
+          "note": "Two companies held for the long run"
+        },
+        {
+          "id": "brokerage-xlk",
+          "label": "XLK",
+          "symbols": [
+            "XLK"
+          ],
+          "unit": "%",
+          "target": 20.0,
+          "low": 15.0,
+          "high": 25.0,
+          "actual": 22.0,
+          "status": "on",
+          "gap": 0.0,
+          "gap_unit": "money",
+          "gap_text": "on plan",
+          "note": "Technology, capped"
+        }
+      ]
+    }
+  ],
+  "unscoped": [
+    {
+      "id": "cash-runway",
+      "label": "Cash runway",
+      "symbols": [],
+      "unit": "x",
+      "target": 6.0,
+      "low": 4.0,
+      "high": null,
+      "actual": 8.8,
+      "status": "on",
+      "gap": 0.0,
+      "gap_unit": "x",
+      "gap_text": "on plan",
+      "note": "Months of spending the cash accounts cover"
+    }
+  ],
+  "theses": [
+    {
+      "symbol": "HD",
+      "name": "Home Depot",
+      "health": "alert",
+      "reasons": [
+        "Comparable sales fell for a third quarter",
+        "The price closed below its 200-day average"
+      ],
+      "conviction": "medium",
+      "status": "active",
+      "opened": "2024-08-26",
+      "last_reviewed": "2026-09-18",
+      "days_since_review": 7,
+      "held": true,
+      "held_value": 5166.29,
+      "account_names": [
+        "Brokerage"
+      ],
+      "wrong_if": [
+        "Comparable sales fall for a fourth quarter",
+        "Home sales stay near their lows for another year"
+      ]
+    },
+    {
+      "symbol": "XLE",
+      "name": "Energy sector fund",
+      "health": "watch",
+      "reasons": [
+        "Oil fell for three months in a row",
+        "Two large holdings cut their buyback plans"
+      ],
+      "conviction": "low",
+      "status": "active",
+      "opened": "2025-07-22",
+      "last_reviewed": "2026-08-26",
+      "days_since_review": 30,
+      "held": true,
+      "held_value": 4133.01,
+      "account_names": [
+        "Brokerage"
+      ],
+      "wrong_if": [
+        "Oil stays under 60 a barrel for six months",
+        "The fund's dividend is cut"
+      ]
+    },
+    {
+      "symbol": "COST",
+      "name": "Costco",
+      "health": "ok",
+      "reasons": [
+        "Membership renewals held above 90 %",
+        "Margins steady for four quarters"
+      ],
+      "conviction": "high",
+      "status": "active",
+      "opened": "2023-12-10",
+      "last_reviewed": "2026-09-04",
+      "days_since_review": 21,
+      "held": true,
+      "held_value": 6198.95,
+      "account_names": [
+        "Brokerage"
+      ],
+      "wrong_if": [
+        "The renewal rate falls below 88 %",
+        "Comparable sales shrink for two quarters",
+        "It costs more than 60 times earnings while growing under 8 % a year"
+      ]
+    },
+    {
+      "symbol": "SPY",
+      "name": "S&P 500 index fund",
+      "health": "ok",
+      "reasons": [
+        "The index core: its only risk is the market's own"
+      ],
+      "conviction": "high",
+      "status": "active",
+      "opened": "2024-04-28",
+      "last_reviewed": "2026-09-11",
+      "days_since_review": 14,
+      "held": true,
+      "held_value": 61723.68,
+      "account_names": [
+        "Brokerage",
+        "Roth IRA"
+      ],
+      "wrong_if": [
+        "It trails a world index fund by 20 points over five years",
+        "Its yearly cost rises above 0.10 %"
+      ]
+    },
+    {
+      "symbol": "CAT",
+      "name": "Caterpillar",
+      "health": "none",
+      "reasons": [],
+      "conviction": "low",
+      "status": "active",
+      "opened": "2026-09-23",
+      "last_reviewed": "2026-09-23",
+      "days_since_review": 2,
+      "held": true,
+      "held_value": 2849.7,
+      "account_names": [
+        "Trading account"
+      ],
+      "wrong_if": [
+        "It closes under its stop",
+        "It falls below its 200-day average before the bounce"
+      ]
+    },
+    {
+      "symbol": "JPM",
+      "name": "JPMorgan Chase",
+      "health": "none",
+      "reasons": [],
+      "conviction": "low",
+      "status": "active",
+      "opened": "2026-09-24",
+      "last_reviewed": "2026-09-24",
+      "days_since_review": 1,
+      "held": true,
+      "held_value": 2978.5,
+      "account_names": [
+        "Trading account"
+      ],
+      "wrong_if": [
+        "It closes under its stop",
+        "It falls below its 200-day average before the bounce"
+      ]
+    },
+    {
+      "symbol": "KO",
+      "name": "Coca-Cola",
+      "health": "none",
+      "reasons": [],
+      "conviction": "high",
+      "status": "active",
+      "opened": "2023-06-13",
+      "last_reviewed": "2026-03-29",
+      "days_since_review": 180,
+      "held": true,
+      "held_value": 2583.15,
+      "account_names": [
+        "Brokerage"
+      ],
+      "wrong_if": [
+        "Volumes shrink for a year",
+        "The dividend grows slower than prices for three years",
+        "It pays out more than it earns"
+      ]
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft",
+      "health": "none",
+      "reasons": [],
+      "conviction": "low",
+      "status": "active",
+      "opened": "2026-09-25",
+      "last_reviewed": "2026-09-25",
+      "days_since_review": 0,
+      "held": true,
+      "held_value": 3074.4,
+      "account_names": [
+        "Trading account"
+      ],
+      "wrong_if": [
+        "It closes under its stop",
+        "It falls below its 200-day average before the bounce"
+      ]
+    },
+    {
+      "symbol": "PG",
+      "name": "Procter & Gamble",
+      "health": "none",
+      "reasons": [],
+      "conviction": "low",
+      "status": "active",
+      "opened": "2026-09-22",
+      "last_reviewed": "2026-09-22",
+      "days_since_review": 3,
+      "held": true,
+      "held_value": 3101.6,
+      "account_names": [
+        "Trading account"
+      ],
+      "wrong_if": [
+        "It closes under its stop",
+        "It falls below its 200-day average before the bounce"
+      ]
+    },
+    {
+      "symbol": "XLI",
+      "name": "Industrials sector fund",
+      "health": "none",
+      "reasons": [],
+      "conviction": "low",
+      "status": "active",
+      "opened": "2025-11-29",
+      "last_reviewed": "2026-07-12",
+      "days_since_review": 75,
+      "held": true,
+      "held_value": 2066.46,
+      "account_names": [
+        "Brokerage"
+      ],
+      "wrong_if": [
+        "Factory orders shrink for two quarters",
+        "It trails the S&P 500 by 10 points over two years"
+      ]
+    },
+    {
+      "symbol": "XLK",
+      "name": "Technology sector fund",
+      "health": "none",
+      "reasons": [],
+      "conviction": "medium",
+      "status": "active",
+      "opened": "2024-10-25",
+      "last_reviewed": "2026-07-27",
+      "days_since_review": 60,
+      "held": true,
+      "held_value": 11365.75,
+      "account_names": [
+        "Brokerage"
+      ],
+      "wrong_if": [
+        "Its five largest names pass 60 % of the fund",
+        "Its holdings' earnings grow slower than the market's for a year"
+      ]
+    },
+    {
+      "symbol": "XLP",
+      "name": "Consumer staples sector fund",
+      "health": "none",
+      "reasons": [],
+      "conviction": "medium",
+      "status": "active",
+      "opened": "2025-04-03",
+      "last_reviewed": "2026-06-22",
+      "days_since_review": 95,
+      "held": true,
+      "held_value": 10862.49,
+      "account_names": [
+        "Roth IRA"
+      ],
+      "wrong_if": [
+        "It falls as far as the market in the next 10 % drop",
+        "Its dividend is cut"
+      ]
+    },
+    {
+      "symbol": "XLV",
+      "name": "Health care sector fund",
+      "health": "none",
+      "reasons": [],
+      "conviction": "medium",
+      "status": "active",
+      "opened": "2025-01-23",
+      "last_reviewed": "2026-05-28",
+      "days_since_review": 120,
+      "held": true,
+      "held_value": 14257.06,
+      "account_names": [
+        "Roth IRA"
+      ],
+      "wrong_if": [
+        "Drug-price rules cut the sector's earnings by a fifth",
+        "It trails the S&P 500 by 15 points over three years"
+      ]
+    }
+  ],
+  "goals": [
+    {
+      "id": "roth-grow",
+      "label": "Grow the Roth IRA",
+      "scope_text": "Roth IRA",
+      "current": 67890.81,
+      "target": 100000.0,
+      "progress_pct": 67.9,
+      "by": "2030-12-31",
+      "months_left": 51,
+      "monthly_needed": 629.59,
+      "reached": false,
+      "missing_accounts": []
+    },
+    {
+      "id": "cash-year",
+      "label": "A year of spending in cash",
+      "scope_text": "Cash accounts",
+      "current": 30895.98,
+      "target": 42000.0,
+      "progress_pct": 73.6,
+      "by": "2027-12-31",
+      "months_left": 15,
+      "monthly_needed": 740.27,
+      "reached": false,
+      "missing_accounts": []
+    },
+    {
+      "id": "net-worth",
+      "label": "Net worth milestone",
+      "scope_text": "Net worth",
+      "current": 168278.24,
+      "target": 250000.0,
+      "progress_pct": 67.3,
+      "by": "2029-06-30",
+      "months_left": 33,
+      "monthly_needed": 2476.42,
+      "reached": false,
+      "missing_accounts": []
+    },
+    {
+      "id": "long-term-together",
+      "label": "Long-term accounts combined",
+      "scope_text": "Brokerage, Roth IRA",
+      "current": 119554.55,
+      "target": 200000.0,
+      "progress_pct": 59.8,
+      "by": "2031-12-31",
+      "months_left": 63,
+      "monthly_needed": 1276.91,
+      "reached": false,
+      "missing_accounts": []
+    },
+    {
+      "id": "save-this-year",
+      "label": "Save into savings this year",
+      "scope_text": "High-yield savings",
+      "current": 1350.0,
+      "target": 1800.0,
+      "progress_pct": 75.0,
+      "by": "2026-12-31",
+      "months_left": 3,
+      "monthly_needed": 150.0,
+      "reached": false,
+      "missing_accounts": []
+    }
+  ],
+  "counts": {
+    "off_plan": 2,
+    "theses_alert": 1,
+    "theses_watch": 1
+  }
+}

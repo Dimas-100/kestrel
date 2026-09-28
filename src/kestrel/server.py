@@ -21,6 +21,8 @@ from .views.backtests import BacktestsView, backtests_view
 from .views.books import BooksView, BookView, book_view, books_view
 from .views.calendar import CalendarView, calendar_view
 from .views.home import HomeView, home_view
+from .views.plan import PlanView, plan_view
+from .views.reserves import ReservesView, reserves_view
 from .views.settings import SettingsView, settings_view
 from .views.shell import ShellView, shell_view
 from .views.strategy import StrategiesView, StrategyView, strategies_view, strategy_view
@@ -92,6 +94,16 @@ def create_app(profile: Profile, *, profile_origin: str = "demo data", clock: Ca
         if view is None:
             raise HTTPException(status_code=404, detail=f"no such book: {book_id}")
         return view
+
+    @app.get("/api/plan", response_model=PlanView)
+    def plan() -> PlanView:
+        now = clock()
+        return plan_view(collect(profile, now), profile, now)
+
+    @app.get("/api/reserves", response_model=ReservesView)
+    def reserves() -> ReservesView:
+        now = clock()
+        return reserves_view(collect(profile, now), profile, now)
 
     @app.get("/api/strategies", response_model=StrategiesView)
     def strategies() -> StrategiesView:

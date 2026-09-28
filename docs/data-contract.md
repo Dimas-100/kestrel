@@ -127,7 +127,8 @@ the payload is dropped and the source shows as `error`. Everything else in an ev
 | `id` | unique |
 | `label` | display text |
 | `target` | the amount to reach |
-| `account_id`, `category` | what it measures: an account, or a category, or neither for net worth |
+| `account_id`, `account_ids`, `category` | what it measures: one account, a few accounts, a category, or none of these for net worth (at most one may be set) |
+| `measure` | `value` (the current value of what it measures) or `deposits` (money moved in since 1 January of the goal's year — `by`'s year, or this year) |
 | `by` | the date to reach it by, optional |
 | `note` | why |
 

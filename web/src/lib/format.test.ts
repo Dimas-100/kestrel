@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  ago, compactMoney, money, monthLabel, num, pct, setCurrency, shortDate, signedMoney, sinceLabel, splitCents, timeHM,
+  ago, compactMoney, longDate, money, monthLabel, num, pct, setCurrency, shortDate, signedMoney, sinceLabel,
+  splitCents, timeHM,
 } from './format'
 
 describe('money', () => {
@@ -66,6 +67,10 @@ describe('dates', () => {
     expect(monthLabel('2026-09-25', true)).toBe('25 Sep')
     expect(sinceLabel('2026-09-10', '2026-09-25T21:08:00Z')).toBe('10 Sep')
     expect(sinceLabel('2025-07-27', '2026-09-25T21:08:00Z')).toBe('Jul 2025')
+  })
+  it('always shows the year for a due date, however far off', () => {
+    expect(longDate('2030-12-31')).toBe('31 Dec 2030')
+    expect(longDate('2025-06-30')).toBe('30 Jun 2025') // an overdue date needs its year just as much
   })
   it('formats times in the profile zone', () => {
     expect(timeHM('2026-09-25T21:08:00Z', 'America/New_York')).toBe('17:08')

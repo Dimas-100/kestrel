@@ -254,16 +254,28 @@ class Event(Model):
 
 
 class Goal(Model):
-    """An amount to reach. It measures an account, or a category, or, with neither, net worth; kestrel works out the
-    current value and the progress."""
+    """An amount to reach. It measures an account, several accounts, a category, or, with none of those, net worth;
+    kestrel works out the current value and the progress."""
 
     id: str
     label: str
     target: float
     account_id: str | None = None
+    account_ids: list[str] = []
     category: Category | None = None
+    # "value": the current value of what it measures; "deposits": money moved in since the start of the goal's
+    # year (its `by`'s year, or this year), measured against `target` the same way
+    measure: Literal["value", "deposits"] = "value"
     by: dt.date | None = None
     note: str = ""
+
+    @model_validator(mode="after")
+    def _one_scope(self) -> Goal:
+        scopes = sum([self.account_id is not None, bool(self.account_ids), self.category is not None])
+        if scopes > 1:
+            raise ValueError("a goal can measure one account, a few accounts, or a category — pick only one "
+                              "of account_id, account_ids and category (or none of them, for net worth)")
+        return self
 
 
 class Exposure(Model):

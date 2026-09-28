@@ -3,11 +3,12 @@
   "summary": {
     "day_change": -81.32,
     "gap_pts": 2.94,
-    "needs_you": 2
+    "needs_you": 5
   },
   "net_worth": {
     "total": 168278.24,
     "owed": 640.0,
+    "debt_accounts": 1,
     "today": {
       "amount": -81.32,
       "pct": -0.05
@@ -2219,10 +2220,34 @@
       "link": "/settings"
     },
     {
+      "level": "warning",
+      "title": "XLV is over plan in Roth IRA",
+      "detail": "over the high end",
+      "link": "/plan"
+    },
+    {
+      "level": "warning",
+      "title": "XLP is under plan in Roth IRA",
+      "detail": "under the low end",
+      "link": "/plan"
+    },
+    {
+      "level": "warning",
+      "title": "HD: thesis needs a look",
+      "detail": "Comparable sales fell for a third quarter",
+      "link": "/plan"
+    },
+    {
       "level": "note",
       "title": "Opening leader is below its expected band",
       "detail": "11 of 30 paper trades · reviewed at 30",
       "link": "/strategies/leader"
+    },
+    {
+      "level": "note",
+      "title": "XLE: thesis needs a look",
+      "detail": "Oil fell for three months in a row",
+      "link": "/plan"
     }
   ],
   "books": [

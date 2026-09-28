@@ -27,6 +27,8 @@ GENERATED = [
     (ROOT / "web" / "src" / "test" / "fixtures" / "calendar.json", ["demo", "--view", "calendar", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "backtests.json", ["demo", "--view", "backtests", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "settings.json", ["demo", "--view", "settings", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "plan.json", ["demo", "--view", "plan", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "reserves.json", ["demo", "--view", "reserves", "--now", NOW]),
 ]
 
 

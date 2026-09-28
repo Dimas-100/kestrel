@@ -86,7 +86,21 @@ def test_attention_is_ordered_serious_warning_note(demo_home):
     titles = [a.title for a in demo_home.attention]
     assert "MSFT has no resting stop" in titles
     assert any("Savings" in t for t in titles)
-    assert demo_home.summary.needs_you == 2
+    # an off-plan target and an alert thesis are warnings; a watch thesis is a note (Plan owns their arithmetic)
+    assert "XLV is over plan in Roth IRA" in titles and "XLP is under plan in Roth IRA" in titles
+    assert "HD: thesis needs a look" in titles and "XLE: thesis needs a look" in titles
+    by_title = {a.title: a.level for a in demo_home.attention}
+    assert (by_title["HD: thesis needs a look"], by_title["XLE: thesis needs a look"]) == ("warning", "note")
+    link = next(a.link for a in demo_home.attention if a.title == "XLV is over plan in Roth IRA")
+    assert link == "/plan"
+    assert demo_home.summary.needs_you == 5
+
+
+def test_stale_source_warning_stays_in_the_top_three(demo_home):
+    # source and book items are worked out before the plan's target/thesis items are appended, so a widening set
+    # of off-plan targets or theses can never bump a stale-source warning further down the list than it already was
+    top3 = demo_home.attention[:3]
+    assert any("Savings" in a.title and a.level == "warning" for a in top3)
 
 
 def test_book_verdicts(demo_home):

@@ -44,7 +44,18 @@ describe('Home', () => {
     const where = await screen.findByRole('region', { name: 'Where it sits' })
     const roth = within(where).getByRole('link', { name: /^Roth IRA/ })
     expect(roth.getAttribute('href')).toBe('/accounts/roth')
-    expect(within(where).getAllByRole('link')).toHaveLength(homeFixture.accounts.length + 1) // and "4 accounts"
+    // "N accounts", one link per account row, and the "Owed" line (the demo's card is 640, so it shows)
+    expect(within(where).getAllByRole('link')).toHaveLength(homeFixture.accounts.length + 2)
+    const owed = within(where).getByRole('link', { name: /^Owed/ })
+    expect(owed.getAttribute('href')).toBe('/reserves')
+    expect(owed.textContent).toBe('Owed: $640.00 across 1 account')
+  })
+
+  it('says nothing is owed when nothing is', async () => {
+    const none = { ...homeFixture, net_worth: { ...homeFixture.net_worth, owed: 0, debt_accounts: 0 } }
+    renderApp('/', { home: none })
+    const where = await screen.findByRole('region', { name: 'Where it sits' })
+    expect(within(where).queryByText(/^Owed/)).toBeNull()
   })
 
   it('switches a chart to its table', async () => {
@@ -144,7 +155,7 @@ describe('Home', () => {
 describe('words from the data', () => {
   it('writes the summary sentence', async () => {
     const base = homeFixture
-    expect(summaryParts(base).needs).toBe('2 items need you.')
+    expect(summaryParts(base).needs).toBe('5 items need you.')
     expect(summaryParts(base).trading).toBe('Trading is ahead of your index money by 2.9 pts this year.')
     const behind = { ...base, summary: { ...base.summary, gap_pts: -1.26, needs_you: 1 } }
     expect(summaryParts(behind)).toEqual({

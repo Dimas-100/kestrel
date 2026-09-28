@@ -13,7 +13,14 @@ interface NavItem { to: string; label: string; icon: IconName; count?: CountKey 
 
 export const NAV: { group: string; items: NavItem[] }[] = [
   { group: 'Overview', items: [{ to: '/', label: 'Home', icon: 'home' }] },
-  { group: 'Money', items: [{ to: '/accounts', label: 'Accounts', icon: 'accounts', count: 'accounts' }] },
+  {
+    group: 'Money',
+    items: [
+      { to: '/accounts', label: 'Accounts', icon: 'accounts', count: 'accounts' },
+      { to: '/plan', label: 'Plan', icon: 'target' },
+      { to: '/reserves', label: 'Reserves', icon: 'scale' },
+    ],
+  },
   {
     group: 'Trading',
     items: [

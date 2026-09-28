@@ -8,6 +8,8 @@ import { Book } from './pages/book/Book'
 import { Books } from './pages/books/Books'
 import { Calendar } from './pages/calendar/Calendar'
 import { Home } from './pages/home/Home'
+import { Plan } from './pages/plan/Plan'
+import { Reserves } from './pages/reserves/Reserves'
 import { Soon } from './pages/Soon'
 import { Settings } from './pages/settings/Settings'
 import { Strategies } from './pages/strategies/Strategies'
@@ -69,6 +71,8 @@ const routeTree = root.addChildren([
   accountRoute,
   createRoute({ getParentRoute: () => root, path: '/books', component: Books }),
   bookRoute,
+  createRoute({ getParentRoute: () => root, path: '/plan', component: Plan }),
+  createRoute({ getParentRoute: () => root, path: '/reserves', component: Reserves }),
   createRoute({ getParentRoute: () => root, path: '/strategies', component: Strategies }),
   strategyRoute,
   createRoute({ getParentRoute: () => root, path: '/backtests', component: Backtests }),

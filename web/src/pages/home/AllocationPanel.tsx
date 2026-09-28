@@ -18,7 +18,9 @@ export function Waffle({ slices }: { slices: Slice[] }) {
   )
 }
 
-export function AllocationPanel({ slices, accounts }: { slices: Slice[]; accounts: AccountRow[] }) {
+export function AllocationPanel({ slices, accounts, owed, debtAccounts }: {
+  slices: Slice[]; accounts: AccountRow[]; owed: number; debtAccounts: number
+}) {
   return (
     <Panel id="allocation" title="Where it sits" span={4} height={372}
       actions={<Link to="/accounts" className="text-xs inline-flex items-center gap-1">
@@ -50,6 +52,11 @@ export function AllocationPanel({ slices, accounts }: { slices: Slice[]; account
           </Link>
         ))}
       </div>
+      {owed > 0 && (
+        <Link to="/reserves" className="mt-auto pt-2.5 text-xs" style={{ color: 'var(--acc-ink)' }}>
+          Owed: <span className="num">{money(owed)}</span> across {debtAccounts} account{debtAccounts === 1 ? '' : 's'}
+        </Link>
+      )}
     </Panel>
   )
 }

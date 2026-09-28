@@ -117,11 +117,11 @@ def test_the_demo_left_in_next_to_a_feed_of_the_same_data_counts_once(tmp_path, 
     assert len(snap.runs) == len(demo.runs) + 2  # the two runs that belong to no book
     # an id is named once: seven symbols are both a thesis and an exposure
     assert snap.sources[-1].detail == ("6 accounts · 5 books · 4 strategies · 136 trades · ignored duplicate ids: "
-                                       "roth, brokerage, trading, savings, checking, and 156 more")
+                                       "roth, brokerage, trading, savings, checking, and 158 more")
     reversed_order = collect(Profile(sources=[feed, *DEMO_PROFILE.sources]), NOW)
     assert [(s.id, s.detail) for s in reversed_order.sources][:2] == [
         ("copy", "6 accounts · 5 books · 4 strategies · 136 trades"),
-        ("demo-portfolio", "ignored duplicate ids: roth, brokerage, trading, savings, checking, and 156 more"),
+        ("demo-portfolio", "ignored duplicate ids: roth, brokerage, trading, savings, checking, and 158 more"),
     ]  # the note goes on the later source's first row
 
 

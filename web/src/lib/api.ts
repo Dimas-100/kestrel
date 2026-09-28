@@ -51,6 +51,7 @@ export interface ValuePoint {
 export interface NetWorth {
   total: number // everything owned less everything owed
   owed: number // what the debt accounts owe, already taken off total; 0 with none
+  debt_accounts: number // how many accounts that owed comes from
   today: Delta
   month: Delta
   year: Delta
@@ -775,5 +776,121 @@ export interface SettingsView {
 export function useSettings() {
   return useQuery({
     queryKey: ['settings'], queryFn: () => getJson<SettingsView>('/api/settings'), refetchInterval: MINUTE,
+  })
+}
+
+// --- the Plan page (src/kestrel/views/plan.py) -------------------------------------------------------------------
+
+export type TargetStatus = 'on' | 'over' | 'under' | 'unknown'
+export type Health = 'ok' | 'watch' | 'alert' | 'none'
+export type GapUnit = 'money' | 'pts' | 'x'
+
+export interface TargetRow {
+  id: string
+  label: string
+  symbols: string[]
+  unit: '%' | 'x'
+  target: number | null
+  low: number | null
+  high: number | null
+  actual: number | null
+  status: TargetStatus
+  gap: number | null // in gap_unit's unit; null when unknown or gap_unit is null
+  gap_unit: GapUnit | null // what `gap` is measured in — never infer money from where the row is grouped
+  gap_text: string // "under the low end" / "over the high end" / "on plan" / "" when unknown
+  note: string
+}
+
+export interface AccountTargets {
+  account_id: string
+  name: string // the account's name, or its bare id when no source ever sent it (see `known`)
+  known: boolean // false: this account_id names no account any source sent — never link to it
+  rows: TargetRow[]
+}
+
+export interface ThesisRow {
+  symbol: string
+  name: string
+  health: Health
+  reasons: string[]
+  conviction: string
+  status: string
+  opened: string | null
+  last_reviewed: string | null
+  days_since_review: number | null
+  held: boolean
+  held_value: number
+  account_names: string[]
+  wrong_if: string[]
+}
+
+export interface GoalRow {
+  id: string
+  label: string
+  scope_text: string
+  current: number | null // null when a scoped account isn't in any source (see missing_accounts)
+  target: number
+  progress_pct: number | null // null when current is unknown
+  by: string | null
+  months_left: number | null
+  monthly_needed: number | null
+  reached: boolean
+  missing_accounts: string[] // account id(s) this goal names that no source sent
+}
+
+export interface PlanView {
+  as_of: string
+  accounts: AccountTargets[]
+  unscoped: TargetRow[]
+  theses: ThesisRow[]
+  goals: GoalRow[]
+  counts: { off_plan: number; theses_alert: number; theses_watch: number }
+}
+
+export function usePlan() {
+  return useQuery({ queryKey: ['plan'], queryFn: () => getJson<PlanView>('/api/plan'), refetchInterval: MINUTE })
+}
+
+// --- the Reserves page (src/kestrel/views/reserves.py) -------------------------------------------------------------
+
+export interface CashLine {
+  id: string
+  name: string
+  institution: string
+  value: number
+  rate_pct: number | null
+  as_of: string
+}
+
+export interface DebtLine {
+  id: string
+  name: string
+  institution: string
+  owed: number // a credit balance (paid past zero) is below zero
+  limit: number | null
+  utilization_pct: number | null
+  rate_pct: number | null
+  as_of: string
+}
+
+export interface Spread {
+  owed_rate_pct: number
+  earned_rate_pct: number
+  yearly_cost: number
+  yearly_earned: number
+  gap: number // yearly_earned minus yearly_cost
+}
+
+export interface ReservesView {
+  as_of: string
+  cash: CashLine[]
+  debts: DebtLine[]
+  totals: { cash: number; owed: number; net: number; utilization_pct: number | null }
+  spread: Spread | null
+}
+
+export function useReserves() {
+  return useQuery({
+    queryKey: ['reserves'], queryFn: () => getJson<ReservesView>('/api/reserves'), refetchInterval: MINUTE,
   })
 }
