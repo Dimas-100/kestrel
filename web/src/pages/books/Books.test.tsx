@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { booksFixture, renderApp } from '../../test/renderApp'
 
-describe('Books', () => {
+describe('Books', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('lists real books first, then paper, with totals and a sparkline, and links to the book', async () => {

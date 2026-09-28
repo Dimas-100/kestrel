@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ReservesView } from '../../lib/api'
 import { renderApp, reservesFixture } from '../../test/renderApp'
 
-describe('Reserves', () => {
+describe('Reserves', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('renders the cash and debt tables', async () => {

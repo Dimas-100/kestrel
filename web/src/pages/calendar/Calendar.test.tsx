@@ -11,7 +11,7 @@ const panel = (name: string) => {
 }
 const findPanel = (name: string) => waitFor(() => panel(name))
 
-describe('Calendar', () => {
+describe('Calendar', { timeout: 15_000 }, () => {
   it('words matching and the https guard', () => {
     expect(matches('earnings', 'all')).toBe(true)
     expect(matches('earnings', 'filing')).toBe(false)

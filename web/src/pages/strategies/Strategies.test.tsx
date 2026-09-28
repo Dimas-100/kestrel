@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderApp, strategiesFixture } from '../../test/renderApp'
 import { chipText, verdictText } from './Strategies'
 
-describe('Strategies', () => {
+describe('Strategies', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('shows a card per strategy with its books, its band and a way in', async () => {

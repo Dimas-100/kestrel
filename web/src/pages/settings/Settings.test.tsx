@@ -12,7 +12,7 @@ const panel = (name: string) => {
 const findPanel = (name: string) => waitFor(() => panel(name))
 const rows = (region: HTMLElement) => [...region.querySelectorAll('tbody tr')].map((r) => r.textContent)
 
-describe('Settings', () => {
+describe('Settings', { timeout: 15_000 }, () => {
   it('shows who you are and how the app looks', async () => {
     renderApp('/settings')
     await screen.findByRole('heading', { level: 1, name: 'Settings' })

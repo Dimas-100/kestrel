@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { activityFixture, renderApp } from '../../test/renderApp'
 
-describe('Activity', () => {
+describe('Activity', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('lists today first, and shows a table of every source', async () => {

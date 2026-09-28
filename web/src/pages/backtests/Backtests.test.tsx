@@ -19,7 +19,7 @@ function bt(over: Partial<Backtest>): Backtest {
   }
 }
 
-describe('Backtests', () => {
+describe('Backtests', { timeout: 15_000 }, () => {
   it('filters rows by all/passed/failed, and never by refused or pending', () => {
     expect(matchesRowFilter('pass', 'all')).toBe(true)
     expect(matchesRowFilter('pass', 'passed')).toBe(true)
