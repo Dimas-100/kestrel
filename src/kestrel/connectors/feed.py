@@ -360,17 +360,32 @@ def parse(body: bytes) -> Snapshot:
     return snapshot
 
 
+# what a source's detail names, in this order (the four original kinds, then the newer blocks in the order
+# _LONE_BLOCKS lists them): at most the first six of these that are non-zero, so a big feed's row still fits
+_COUNT_KINDS: tuple[tuple[str, str, str], ...] = (
+    ("accounts", "account", "accounts"), ("books", "book", "books"), ("strategies", "strategy", "strategies"),
+    ("trades", "trade", "trades"), ("targets", "target", "targets"), ("theses", "thesis", "theses"),
+    ("events", "event", "events"), ("goals", "goal", "goals"), ("exposures", "exposure", "exposures"),
+    ("backtests", "backtest", "backtests"),
+)
+MAX_COUNT_KINDS = 6
+
+
 def keep(snapshot: Snapshot, source_id: str, label: str, now: datetime) -> Snapshot:
     """What kestrel keeps of a payload: every list and the benchmark, with the payload's own sources replaced by one
-    row for this feed, whose last success is when the payload was made."""
+    row for this feed, whose last success is when the payload was made. That row's detail names what the payload
+    carries — the first six non-zero kinds, in `_COUNT_KINDS` order, a zero count dropped rather than shown."""
     made = snapshot.generated_at
     if made - now > CLOCK_DRIFT:
         raise ConnectorError(f"the feed's generated_at is {_span(made - now)} ahead of this computer's clock: "
                              "check the clock and time zone where the feed is made")
-    counts = [_count(len(snapshot.books), "book", "books"), _count(len(snapshot.strategies), "strategy", "strategies"),
-              _count(len(snapshot.trades), "trade", "trades")]
-    if snapshot.accounts:
-        counts.insert(0, _count(len(snapshot.accounts), "account", "accounts"))
+    counts: list[str] = []
+    for field, one, many in _COUNT_KINDS:
+        if len(counts) == MAX_COUNT_KINDS:
+            break
+        n = len(getattr(snapshot, field))
+        if n:
+            counts.append(_count(n, one, many))
     source = Source(id=source_id, label=label, kind="feed", last_success=min(made, now), status="ok",
                     detail=" · ".join(counts))
     return snapshot.model_copy(update={"sources": [source]})

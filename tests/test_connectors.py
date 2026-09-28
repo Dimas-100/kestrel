@@ -115,12 +115,15 @@ def test_the_demo_left_in_next_to_a_feed_of_the_same_data_counts_once(tmp_path, 
                   "trade_charts", "strategies", "targets", "theses", "events", "goals", "exposures", "backtests"):
         assert getattr(snap, field) == getattr(demo, field), field
     assert len(snap.runs) == len(demo.runs) + 2  # the two runs that belong to no book
-    # an id is named once: seven symbols are both a thesis and an exposure
-    assert snap.sources[-1].detail == ("6 accounts · 5 books · 4 strategies · 136 trades · ignored duplicate ids: "
-                                       "roth, brokerage, trading, savings, checking, and 158 more")
+    # an id is named once: seven symbols are both a thesis and an exposure. The detail names the first six non-zero
+    # kinds (accounts, books, strategies, trades, targets, theses): events, goals, exposures and backtests are all
+    # non-zero too, but the row stops at six.
+    assert snap.sources[-1].detail == (
+        "6 accounts · 5 books · 4 strategies · 136 trades · 8 targets · 13 theses · ignored duplicate ids: "
+        "roth, brokerage, trading, savings, checking, and 158 more")
     reversed_order = collect(Profile(sources=[feed, *DEMO_PROFILE.sources]), NOW)
     assert [(s.id, s.detail) for s in reversed_order.sources][:2] == [
-        ("copy", "6 accounts · 5 books · 4 strategies · 136 trades"),
+        ("copy", "6 accounts · 5 books · 4 strategies · 136 trades · 8 targets · 13 theses"),
         ("demo-portfolio", "ignored duplicate ids: roth, brokerage, trading, savings, checking, and 158 more"),
     ]  # the note goes on the later source's first row
 
@@ -208,10 +211,13 @@ def test_duplicate_new_block_ids_first_source_wins(tmp_path):
         "events": [("earnings", ""), ("dividend", "")], "goals": [("house", 60000.0)],
         "exposures": [("MSFT", 900.0)], "backtests": [("dip-a1", "pass")],
     }
-    # the target id and the thesis symbol are named, and the goal, exposure and backtest too; an event has no id
+    # the target id and the thesis symbol are named, and the goal, exposure and backtest too; an event has no id.
+    # Each source's detail reflects its own raw payload (no books/strategies/trades here, so those kinds are
+    # dropped): the row stops at the first six non-zero kinds, so "desk"'s single backtest is the sixth and last.
     assert {s.id: s.detail for s in snap.sources} == {
-        "desk": "0 books · 0 strategies · 0 trades",
-        "notebook": "0 books · 0 strategies · 0 trades · ignored duplicate ids: roth-vti, KO, house, MSFT, dip-a1",
+        "desk": "1 target · 1 thesis · 1 event · 1 goal · 1 exposure · 1 backtest",
+        "notebook": "2 targets · 2 theses · 2 events · 1 goal · 1 exposure · 1 backtest · ignored duplicate ids: "
+                    "roth-vti, KO, house, MSFT, dip-a1",
     }
 
 
@@ -222,5 +228,7 @@ def test_duplicate_new_block_items_within_one_source_keep_the_first(tmp_path):
                         backtests=[BACKTEST, {**BACKTEST, "verdict": "fail"}])
     snap = collect(profile_of(feed_file(tmp_path, payload)), NOW)
     assert seen(snap) == seen(collect(profile_of(feed_file(tmp_path, FIRST, "first.json")), NOW))
-    assert snap.sources[0].detail == ("0 books · 0 strategies · 0 trades · ignored duplicate ids: roth-vti, KO, house, "
-                                      "MSFT, dip-a1")
+    # the detail counts the payload's own two of each (before this source's own within-source dedupe drops one)
+    assert snap.sources[0].detail == (
+        "2 targets · 2 theses · 2 events · 2 goals · 2 exposures · 2 backtests · ignored duplicate ids: roth-vti, "
+        "KO, house, MSFT, dip-a1")

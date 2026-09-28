@@ -98,6 +98,27 @@ def test_the_payloads_sources_are_replaced_by_one_row_for_the_feed(tmp_path):
     }]
 
 
+def test_the_detail_drops_a_zero_count_and_includes_the_newer_blocks(tmp_path):
+    payload = desk(books=[], book_history=[], positions=[], trades=[], strategies=[], runs=[], alerts=[],
+                   targets=[{"id": "t", "label": "VTI", "symbols": ["VTI"], "target": 60.0}],
+                   theses=[{"symbol": "KO", "health": "ok"}])
+    snap = from_file(feed_file(tmp_path, payload))
+    assert snap.sources[0].detail == "1 target · 1 thesis"
+
+
+def test_the_detail_caps_at_the_first_six_non_zero_kinds_in_order(tmp_path):
+    # accounts (0, dropped), 2 books, 1 strategy, 2 trades, 3 targets, 1 thesis, 1 event: already six kinds, in
+    # _COUNT_KINDS order, so the goal that follows (also non-zero) is left off the row
+    payload = desk(
+        targets=[{"id": f"t{i}", "label": "VTI", "symbols": ["VTI"], "target": 60.0} for i in range(3)],
+        theses=[{"symbol": "KO", "health": "ok"}],
+        events=[{"date": "2026-10-21", "symbol": "KO", "kind": "earnings", "title": "Third-quarter results"}],
+        goals=[{"id": "g", "label": "House deposit", "target": 60000.0}],
+    )
+    snap = from_file(feed_file(tmp_path, payload))
+    assert snap.sources[0].detail == "2 books · 1 strategy · 2 trades · 3 targets · 1 thesis · 1 event"
+
+
 def test_alerts_pass_through_and_can_only_link_inside_kestrel(tmp_path):
     snap = from_file(feed_file(tmp_path))
     assert [(a.level, a.title, a.link) for a in snap.alerts] == [
@@ -111,7 +132,8 @@ def test_kestrel_demo_prints_a_payload_a_feed_can_read(tmp_path, capsysbinary):
     path = tmp_path / "demo.json"
     path.write_bytes(capsysbinary.readouterr().out)
     snap = from_file(path)
-    assert snap.sources[0].detail == "6 accounts · 5 books · 4 strategies · 136 trades"
+    # the row stops at the first six non-zero kinds: events, goals, exposures and backtests are all non-zero too
+    assert snap.sources[0].detail == "6 accounts · 5 books · 4 strategies · 136 trades · 8 targets · 13 theses"
     assert [a.id for a in snap.accounts] == ["roth", "brokerage", "trading", "savings", "checking", "card"]
 
 
