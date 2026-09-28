@@ -71,6 +71,7 @@ describe('Home', { timeout: 15_000 }, () => {
     const card = within(where).getByRole('link', { name: /^Credit card/ })
     const owed = within(card).getByText('$640.00 owed')
     expect(owed.className).not.toMatch(/hidden/) // not the category word, which a phone hides
+    expect(owed.className).toMatch(/whitespace-nowrap/) // one line: the name truncates first, never the figure
     expect(card.textContent).not.toMatch(/\$640\.00(?! owed)/)
   })
 

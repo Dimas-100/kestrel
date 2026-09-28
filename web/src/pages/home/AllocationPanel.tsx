@@ -54,7 +54,7 @@ export function AllocationPanel({ slices, accounts, owed, debtAccounts }: {
             <span className="text-[13px] font-medium truncate text-ink1 flex-1 min-w-0">{a.name}</span>
             <span className="text-[11px] text-ink3 hidden sm:inline flex-none">{CATEGORY_WORD[a.category]}</span>
             <div className="ml-auto text-right">
-              <div className="num text-[13px] text-ink1">{rowValue(a)}</div>
+              <div className="num text-[13px] text-ink1 whitespace-nowrap">{rowValue(a)}</div>
               <div className="text-[11px]">
                 {a.day_pct == null ? <span className="text-ink3">—</span> : <Delta value={a.day_pct}>{pct(a.day_pct, 2)}</Delta>}
               </div>
