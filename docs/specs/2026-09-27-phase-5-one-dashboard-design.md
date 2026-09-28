@@ -1,8 +1,8 @@
 # Phase 5 — one dashboard — design
 
 - **Date:** 2026-09-27
-- **Status:** approved for build (the owner asked for the finished product without approval rounds; the decisions below
-  are recorded with their reasons so they can be reviewed afterwards).
+- **Status:** built (2026-09-27). It was approved for build without approval rounds, at the owner's request; the
+  decisions below are recorded with their reasons so they can be reviewed afterwards.
 - **Parent spec:** [`2026-09-25-kestrel-design.md`](2026-09-25-kestrel-design.md) (§4 information architecture, §7
   contract, §8 connectors, §10 safety, §11 phases). This phase finishes §11: Phase 3b (Books), Phase 4's `rails`
   connector and Phase 5 (Backtests, Activity, Settings). It adds what it takes for kestrel to replace the other

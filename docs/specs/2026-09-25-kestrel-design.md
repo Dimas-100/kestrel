@@ -252,6 +252,10 @@ stale_after = "15m"
   - The server exposes GET routes only; a test walks the app's routes and fails on any other method.
   - An import guard (AST walk of `src/`) fails if any module imports or calls an order-placing API.
   - SQLite is opened with `mode=ro`.
+  - **The one thing kestrel runs:** a `feed` source may name a `command` (Phase 5). kestrel runs only the program the
+    profile names, directly and never through a shell, and reads its standard output; it never places, changes or
+    cancels an order. The import guard allows `subprocess` only in the command runner, and never with
+    `shell=True`.
 - **Local-only.** The server binds `127.0.0.1` and allows no CORS origins. There is no auth because nothing leaves the machine.
   - A request whose `Host` is anything but `127.0.0.1` or `localhost` is refused with 400 (a DNS-rebinding guard).
 - **Untrusted input.** Feed text is rendered as text only (never `dangerouslySetInnerHTML`). A payload that fails schema validation is dropped and the source is shown as `error`.
