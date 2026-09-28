@@ -151,7 +151,7 @@ Dedupe (`connectors/__init__.py`, both within one source and across sources, fir
 note like today): targets, goals and backtests by `id`; theses and exposures by `symbol`; events by
 `(date, kind, symbol, title)` (not named in the note — they have no id).
 
-- [ ] **Step 1: failing tests** in `tests/test_contract.py`:
+- [x] **Step 1: failing tests** in `tests/test_contract.py`:
   `test_new_blocks_default_empty` (a v1 document without them loads, all six lists empty);
   `test_debt_category_and_rates_round_trip`;
   `test_target_needs_an_aim` (no target/low/high → ValidationError);
@@ -163,10 +163,10 @@ note like today): targets, goals and backtests by `id`; theses and exposures by 
   `test_merge_keeps_every_new_block`.
   In `tests/test_connectors.py`: `test_duplicate_new_block_ids_first_source_wins` (two demo-like parts with the same
   target id / thesis symbol / event tuple; the second source's detail names the target id and thesis symbol).
-- [ ] **Step 2:** run them, see them fail for the missing names.
-- [ ] **Step 3:** implement; regenerate the schema (`kestrel schema > docs/contract/snapshot.schema.json`).
-- [ ] **Step 4:** full checks; `docs/data-contract.md` gets a short section per block (the tables of spec §3).
-- [ ] **Step 5:** commit `feat(contract): targets, theses, events, goals, exposures, backtests and debt`.
+- [x] **Step 2:** run them, see them fail for the missing names.
+- [x] **Step 3:** implement; regenerate the schema (`kestrel schema > docs/contract/snapshot.schema.json`).
+- [x] **Step 4:** full checks; `docs/data-contract.md` gets a short section per block (the tables of spec §3).
+- [x] **Step 5:** commit `feat(contract): targets, theses, events, goals, exposures, backtests and debt`.
 
 ### Task 2: Demo data for every new block, and debt in Home
 
@@ -189,12 +189,12 @@ allocation's slices exclude debt. (The Needs-you items for targets and theses be
 arithmetic.) Accounts view: a debt account's growth is not shown as market growth (its row shows the amount owed;
 `growth` None).
 
-- [ ] **Step 1: failing tests:** `test_demo_has_every_new_block` (counts and the over/under targets exist);
+- [x] **Step 1: failing tests:** `test_demo_has_every_new_block` (counts and the over/under targets exist);
   `test_net_worth_subtracts_debt` (a snapshot with 1000 owned, 200 debt → 800; allocation shares sum to 100 over the
   owned categories only); `test_debt_account_has_no_market_growth`.
-- [ ] **Step 2–4:** fail, implement, regenerate fixtures, full checks (vitest: update the Home test only where the
+- [x] **Step 2–4:** fail, implement, regenerate fixtures, full checks (vitest: update the Home test only where the
   net-worth figure changed; add a line "owed" rendering test in `NetWorthPanel` when `owed > 0`).
-- [ ] **Step 5:** commit `feat(demo): every new block in the demo; net worth net of debt`.
+- [x] **Step 5:** commit `feat(demo): every new block in the demo; net worth net of debt`.
 
 ### Task 3: Command feeds
 
@@ -235,7 +235,7 @@ Guard rule (`tests/test_read_only_guard.py`): `test_only_the_command_runner_star
 `os.system`, `os.popen`, `os.spawn*`, `os.exec*`) appear only in `connectors/command.py`; no call anywhere passes
 `shell=True`.
 
-- [ ] **Step 1: failing tests** (`tests/test_command_feed.py`; the fixture program is a tiny Python script run with
+- [x] **Step 1: failing tests** (`tests/test_command_feed.py`; the fixture program is a tiny Python script run with
   `sys.executable`, modes chosen by argv: `ok` prints the demo snapshot JSON, `fail` writes "boom\nlast line" to
   stderr and exits 2, `sleep` sleeps 10 s, `flood` prints 21 MB, `count` appends a line to a temp file then prints
   JSON): success returns a Snapshot with one source row of kind `feed`; exit 2 → "the command failed (exit 2): last
@@ -245,8 +245,8 @@ Guard rule (`tests/test_read_only_guard.py`): `test_only_the_command_runner_star
   Profile tests: both `url` and `command` refused; `command = "python x"` (a string) refused with the list message;
   `token_env` with a command refused; `refresh = "1s"` refused; relative `cwd` and `./tools/x.py` resolved against
   the profile folder, `python` left alone. Guard test as above.
-- [ ] **Step 2–4:** fail, implement, full checks.
-- [ ] **Step 5:** docs: `docs/connectors.md` feed section gains the command form, its errors and the safety note
+- [x] **Step 2–4:** fail, implement, full checks.
+- [x] **Step 5:** docs: `docs/connectors.md` feed section gains the command form, its errors and the safety note
   (spec §2); `profile.example.toml` gains a commented command example. Commit
   `feat(feed): a feed can be a command kestrel runs itself`.
 
@@ -269,15 +269,15 @@ entry_price, last_price, stop_price, room_pct (to stop, None without stop), pnl,
 404 for an unknown id. Hooks `useBooks()`, `useBook(id)`. Routes `/books`, `/books/$bookId`; Home's books table rows
 link to `/books/<id>`.
 
-- [ ] **Step 1: failing tests:** `test_books_view_real_first_then_paper_with_totals`; `test_spark_is_last_60_values`;
+- [x] **Step 1: failing tests:** `test_books_view_real_first_then_paper_with_totals`; `test_spark_is_last_60_values`;
   `test_book_view_equity_and_drawdown_share_dates` (drawdown ≤ 0, 0 at each new peak);
   `test_book_scorecard_matches_home_verdict`; `test_position_without_stop_is_flagged`; `test_unknown_book_404`;
   `test_home_unchanged_after_the_move` (Home fixture identical). Vitest: Books renders real and paper sections from
   the fixture, sparkline present, a row links to its book; Book renders header, equity, drawdown, scorecard, positions
   (a no-stop flag shows text, not colour only), trades; unknown id shows "Not found".
-- [ ] **Step 2–4:** fail, implement (reuse `LineChart` for equity and drawdown on one time axis — small multiples),
+- [x] **Step 2–4:** fail, implement (reuse `LineChart` for equity and drawdown on one time axis — small multiples),
   regenerate fixtures (`books.json`, `book-<demo id>.json`), full checks.
-- [ ] **Step 5:** commit `feat(books): the Books list and a page per book`.
+- [x] **Step 5:** commit `feat(books): the Books list and a page per book`.
 
 ### Task 5: Plan
 
@@ -299,7 +299,7 @@ Home's Needs-you (`views/home.py` attention) gains, using this task's target eva
 `warning` "<label> is over/under plan in <account name>" linking `/plan`; each thesis with health `alert` →
 `warning`, `watch` → `note`, "<symbol>: thesis needs a look" with the first reason as detail, linking `/plan`.
 
-- [ ] **Step 1: failing tests:** `test_attention_lists_off_plan_targets_and_alert_theses` (levels, links, wording);
+- [x] **Step 1: failing tests:** `test_attention_lists_off_plan_targets_and_alert_theses` (levels, links, wording);
   `test_percent_actual_from_holdings`; `test_zero_value_account_is_unknown`;
   `test_ratio_target_uses_feed_actual`; `test_sleeve_sums_its_symbols`; `test_status_and_gap_money`;
   `test_off_plan_first`; `test_theses_sorted_by_health_and_held_flag`; `test_goal_progress_and_monthly_needed`
@@ -307,7 +307,7 @@ Home's Needs-you (`views/home.py` attention) gains, using this task's target eva
   Vitest: the plan bar (pure geometry function `bandGeometry(low, high, target, actual, domain)` with its own tests:
   open ends, actual outside the domain clamps with an arrow marker) and the page (off-plan row first; health shows its
   word; wrong_if behind a disclosure; goals with progress text; empty state names "an investing feed").
-- [ ] **Step 2–4:** fail, implement, fixtures, checks. **Step 5:** commit `feat(plan): targets, theses and goals`.
+- [x] **Step 2–4:** fail, implement, fixtures, checks. **Step 5:** commit `feat(plan): targets, theses and goals`.
 
 ### Task 6: Reserves
 
@@ -320,11 +320,11 @@ net (cash − owed), utilization_pct (Σ owed / Σ limit over lines with a limit
 (highest APR among debts with a balance), earned_rate_pct (best cash rate), yearly_cost (Σ owed × its rate),
 yearly_earned (Σ cash × its rate), gap (earned − cost)} | None}`. Cash = accounts of category `cash`.
 
-- [ ] **Step 1: failing tests:** totals and utilization; a debt with no limit is left out of utilization; a zero
+- [x] **Step 1: failing tests:** totals and utilization; a debt with no limit is left out of utilization; a zero
   balance debt doesn't set the owed rate; spread None with no debt; no cash/debt → empty view. Vitest: page renders
   both tables, the spread sentence ("Your card costs 24.9 %, your savings earn 4.1 %: about $X a year"), the empty
   state names "a feed with cash or debt accounts".
-- [ ] **Step 2–4, Step 5:** commit `feat(reserves): cash, debt and the spread`.
+- [x] **Step 2–4, Step 5:** commit `feat(reserves): cash, debt and the spread`.
 
 ### Task 7: Calendar
 
@@ -336,10 +336,10 @@ recent: list[EventRow] (last 90 days, newest first), counts: dict[kind, int]}`; 
 (symbol in any holding or open position). Page: kind filter chips (all · earnings · filing · insider · dividend ·
 other), links open in a new tab with `rel="noopener noreferrer"`, text only.
 
-- [ ] **Step 1: failing tests:** grouping by ISO week (Monday start) in the profile's time zone; recent excludes >90
+- [x] **Step 1: failing tests:** grouping by ISO week (Monday start) in the profile's time zone; recent excludes >90
   days and future; held flag; counts. Vitest: filter narrows the list; a link has target `_blank` and the rel; an
   event title with `<b>` renders literally.
-- [ ] **Step 2–4, Step 5:** commit `feat(calendar): company events ahead and behind`.
+- [x] **Step 2–4, Step 5:** commit `feat(calendar): company events ahead and behind`.
 
 ### Task 8: Backtests
 
@@ -353,10 +353,10 @@ verdict] (the best verdict per window: pass > pending > fail > refused), last_at
 last_at desc), rows: list[Backtest] (newest 200)}`. "Best": the furthest window (by `windows` order) with a pass,
 ties by higher `t_stat`; none passed → the newest result.
 
-- [ ] **Step 1: failing tests:** totals; best per family; verdict per window precedence; rows capped at 200 with 5 000
+- [x] **Step 1: failing tests:** totals; best per family; verdict per window precedence; rows capped at 200 with 5 000
   inputs, in under 1 s; empty. Vitest: filter all/passed/failed; search by family or name; a verdict chip carries its
   word.
-- [ ] **Step 2–4, Step 5:** commit `feat(backtests): the research record`.
+- [x] **Step 2–4, Step 5:** commit `feat(backtests): the research record`.
 
 ### Task 9: Activity
 
@@ -369,10 +369,10 @@ alerts: list[Alert] (serious, warning, note), sources: list[{id, label, kind, st
 stale_after, detail}]}`. Days: today first, then future days ascending, then the past 7 days descending; within a day
 failed and late first, then by time.
 
-- [ ] **Step 1: failing tests:** ordering of days and within a day; runs older than 7 days dropped; counts; sources
+- [x] **Step 1: failing tests:** ordering of days and within a day; runs older than 7 days dropped; counts; sources
   carry stale_after from the profile. Vitest: the page lists today first, a failed run shows its word and icon, the
   sources table.
-- [ ] **Step 2–4, Step 5:** commit `feat(activity): what ran, what is due, what failed`.
+- [x] **Step 2–4, Step 5:** commit `feat(activity): what ran, what is due, what failed`.
 
 ### Task 10: Settings
 
@@ -385,9 +385,9 @@ data"), contract_version, version, sources: list[{id, label, kind, reads (url, o
 <args…>"), stale_after, refresh, timeout, token_env, status, last_success, detail}]}`. Never a token value, never the
 environment.
 
-- [ ] **Step 1: failing tests:** a command source shows its program's file name and args (not the full path); a
+- [x] **Step 1: failing tests:** a command source shows its program's file name and args (not the full path); a
   url with a token shows `token_env` name only; demo profile says "demo data". Vitest: renders every section.
-- [ ] **Step 2–4, Step 5:** commit `feat(settings): the profile and every source, read-only`.
+- [x] **Step 2–4, Step 5:** commit `feat(settings): the profile and every source, read-only`.
 
 ### Task 11: The `rails` connector
 
@@ -403,7 +403,7 @@ from the run log, summary "From trading-rails"), runs from the run log (one per 
 step failed), book history from the run log's equity points when present, and a Source row (`last_success` = the
 newest run's time). Errors: missing folder, missing `paper.json`, torn JSON — each a readable ConnectorError.
 
-- [ ] **Step 1: failing tests** for each of the above against fixtures. **Steps 2–4**, **Step 5:** commit
+- [x] **Step 1: failing tests** for each of the above against fixtures. **Steps 2–4**, **Step 5:** commit
   `feat(rails): read trading-rails' paper state and run log`.
 
 ### Task 12: Navigation, docs and the finish
@@ -412,7 +412,7 @@ newest run's time). Errors: missing folder, missing `paper.json`, torn JSON — 
 Calendar, Activity, Settings), `README.md` (pages, command feeds, rails), `docs/specs/2026-09-25-kestrel-design.md`
 (§11 all phases done; §4 groups), this plan's checkboxes, `AGENTS.md` if a rule changed.
 
-- [ ] **Step 1:** the Shell test asserts every NAV entry has a route that renders (no `Soon` left).
+- [x] **Step 1:** the Shell test asserts every NAV entry has a route that renders (no `Soon` left).
 - [ ] **Step 2:** screenshot pass: every page at 390, 1200, 1280, 1440 px, dark and light, demo data; no overflow,
   no clipped labels. Fix what it finds.
 - [ ] **Step 3:** commit `docs: phase 5 finished`.

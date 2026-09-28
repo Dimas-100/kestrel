@@ -12,9 +12,9 @@ specific to one assistant.
 with pages that explain each strategy and whether it is behaving as expected. The design is in
 `docs/specs/2026-09-25-kestrel-design.md`, and the look is in `docs/design-system.md`.
 
-**Status:** Phase 4b of 5 — the skeleton, the Strategies pages and the Accounts pages, with the `fdc` connector reading
-financial-data-collector's warehouse and the `feed` connector reading any system that serves the contract (a trading
-desk). Books is Phase 3b; `rails` comes later.
+**Status:** all five phases are built. Every page in §4 of the design spec runs, reading `fdc`
+(financial-data-collector's warehouse), `feed` (any system that serves the contract, over a URL, a file, or a
+command kestrel runs itself) and `rails` (a trading-rails install's own paper state), or the demo.
 
 ## Hard invariants
 
@@ -39,7 +39,7 @@ desk). Books is Phase 3b; `rails` comes later.
    - Never encode meaning by colour alone.
    - Re-run the palette validator before changing any colour, and record the result in the design-system doc.
 4. **Every chart has a table view, every page works by keyboard, and no panel overflows.** Check this with a
-   screenshot pass at 1440, 1280 and 390 px in both themes.
+   screenshot pass at 390, 1200, 1280 and 1440 px in both themes.
 
 ## Run and test
 

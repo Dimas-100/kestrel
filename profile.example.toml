@@ -32,8 +32,9 @@ label = "Demo data"
 # path = "../financial-data-collector/data/warehouse.db"   # relative to this file's folder
 # stale_after = "36h"
 #
-# [sources.categories]               # optional: account id or exact label = long_term | trading | cash | other
+# [sources.categories]         # optional: account id or exact label = long_term | trading | cash | debt | other
 # "brokerage-2" = "trading"
+# "visa" = "debt"
 #
 # A system of your own (a trading desk) that serves the kestrel contract as JSON: its books, strategies, trades and
 # runs. Add it next to your other sources; `kestrel demo` prints an example payload:

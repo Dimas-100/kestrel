@@ -69,11 +69,17 @@ A private trading system plugs in through the generic **feed** connector (§8). 
 |---|---|---|
 | Overview | **Home** | How is all my money doing, and does anything need me? |
 | Money | **Accounts** | What does each account hold, and how much of the growth is my deposits vs the market? |
+| Money | **Plan** | Is each account on target, and are my theses and goals still on track? |
+| Money | **Reserves** | What cash and debt do I have, and what's the spread between them? |
 | Trading | **Books** | How is each book doing (real or paper)? |
 | Trading | **Strategies** | How does this system trade, and is it behaving as its backtest said? |
 | Research | **Backtests** | What has been tested, and what passed? |
+| Research | **Calendar** | What's coming up, or just happened, for what I hold? |
 | System | **Activity** | What ran, what is due, what failed? |
 | System | **Settings** | Your profile, and the status of each connector. |
+
+Phase 5 ([its own spec](2026-09-27-phase-5-one-dashboard-design.md) §4) added Plan, Reserves and Calendar, plus a
+`command` form of `feed` (no server needed) and the `rails` connector.
 
 **Home** (`design/mockups/home.html`, top to bottom):
 1. A one-sentence summary written from the data ("All your money is ▲ +$412.30 today. Trading is ahead of your index money by 2.4 pts this year. One item needs you.").
@@ -111,7 +117,10 @@ A private trading system plugs in through the generic **feed** connector (§8). 
    with a return = worst-drop guide line.
 8. **Month by month.** The real book and the long-term accounts as a diverging grid with an "ahead?" row.
 
-**Accounts, Books, Backtests, Activity, Settings** reuse the same components. Their layouts are specified in the phase that builds them.
+**Accounts, Account, Books, Book, Backtests, Plan, Reserves, Calendar, Activity, Settings** reuse the same
+components. Their layouts are specified in the phase that builds them: Books/Book, Backtests, Activity and Settings
+each got their own build phase (§11); Plan, Reserves, Calendar and the `Book` page's own contents are specified in
+[the Phase 5 spec](2026-09-27-phase-5-one-dashboard-design.md) §4.
 
 ## 5. Visual system (summary)
 
@@ -257,9 +266,9 @@ Each phase gets its own spec, plan and build.
 | 0 | Graphite mockups; variant A chosen | done |
 | 1 | This repo: spec, design system, mockups, hygiene test | done |
 | 2 | Skeleton: contract, profile, `demo` connector, server, shell (sidebar, greeting, routing, theming), Home | done |
-| 3 | Books + Strategies pages; the chart kit | 3a done (Strategies, the chart kit); 3b (Books) next |
-| 4 | Accounts; `fdc`, `rails`, `feed` connectors | 4a done (Accounts, `fdc`); 4b done (`feed`); `rails` later |
-| 5 | Backtests, Activity, Settings | |
+| 3 | Books + Strategies pages; the chart kit | done (3a Strategies + the chart kit; 3b Books, in Phase 5) |
+| 4 | Accounts; `fdc`, `rails`, `feed` connectors | done (4a Accounts, `fdc`; 4b `feed`; `rails`, in Phase 5) |
+| 5 | Books (3b), `rails`, a `command` form of `feed`, Plan, Reserves, Calendar, Backtests, Activity, Settings — the one-dashboard finish; [its own spec](2026-09-27-phase-5-one-dashboard-design.md) | done |
 
 ## 12. Testing
 
@@ -271,11 +280,9 @@ Each phase gets its own spec, plan and build.
   - the hygiene test.
 - **Front end:**
   - Vitest + Testing Library: a render test per page against demo data, and pure-function tests for chart geometry and number formatting.
-  - A screenshot pass per page in the running app at 1440 px and 390 px, in both themes, checking that no panel overflows.
+  - A screenshot pass per page in the running app at 390, 1200, 1280 and 1440 px, in both themes, checking that no panel overflows.
 - **CI:** GitHub Actions on Python 3.11 / 3.12 and Node LTS: ruff, pytest, lint, vitest, build.
 
 ## 13. Open items
 
-- A source for bank or savings balances: a collector feed, or a `file` source in the contract format.
 - Prebuilt web assets in releases, so Node isn't required to run it.
-- Exact layouts for Accounts, Books, Backtests, Activity and Settings (Phases 3–5).

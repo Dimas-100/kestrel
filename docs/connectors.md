@@ -117,7 +117,9 @@ Run `kestrel check`. Under the source's line it lists each account as `id  categ
 
 An unknown category is a profile error, not a line under the source: `kestrel check` stops before reading any source
 with `profile problem: <path>: sources.0: Value error, unknown category 'trade' for 'Brokerage' (use long_term,
-trading, cash or other)` and exits with status 2. Use one of those four in `[sources.categories]`.
+trading, cash, debt or other)` and exits with status 2. Use one of those five in `[sources.categories]` — `debt`
+files an account as money owed (its `value` is what's owed, not what it holds); it never falls out of the type-based
+default above on its own, so a card or a loan needs an explicit line here.
 
 ## `feed`: any system that serves the contract
 
