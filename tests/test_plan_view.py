@@ -323,6 +323,19 @@ def test_months_between_still_counts_a_full_calendar_year_as_twelve():
     assert _months_between(d(2027, 1, 1), d(2027, 12, 31)) == 12
 
 
+def test_months_between_is_none_when_by_is_the_last_representable_date():
+    # date.max (9999-12-31), a common "no real deadline" placeholder: `by + 1 day` would overflow
+    assert _months_between(TODAY, d(9999, 12, 31)) is None
+
+
+def test_a_goal_with_by_at_the_date_ceiling_keeps_progress_but_has_no_monthly_pace():
+    # the bug this guards: /api/plan crashed (OverflowError) on a goal whose `by` is 9999-12-31
+    g = Goal(id="g5", label="Someday", target=2000, account_id="a", by=d(9999, 12, 31))
+    row = plan_view(snap(accounts=[account("a", 1000)], goals=[g]), Profile(), NOW).goals[0]
+    assert row.current == 1000.0 and row.progress_pct == 50.0 and row.reached is False
+    assert row.months_left is None and row.monthly_needed is None
+
+
 def test_theses_sorted_by_health_and_held_flag():
     theses = [
         Thesis(symbol="A", health="ok"),

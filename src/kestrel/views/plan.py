@@ -8,7 +8,8 @@ from typing import Literal
 
 from ..contract import Account, Goal, Snapshot, Target, Thesis, ValuePoint
 from ..profile import Profile
-from .home import CATEGORY_LABELS, Attention, View
+from ._base import View
+from .home import CATEGORY_LABELS, Attention
 
 Status = Literal["on", "over", "under", "unknown"]
 HEALTH_RANK = {"alert": 0, "watch": 1, "ok": 2, "none": 3}
@@ -245,12 +246,19 @@ def _goal_deposits(scope_ids: list[str], history: dict[str, list[ValuePoint]], s
     return round(sum(p.net_flow for aid in scope_ids for p in history.get(aid, []) if start <= p.date <= today), 2)
 
 
-def _months_between(start: dt.date, by: dt.date) -> int:
+def _months_between(start: dt.date, by: dt.date) -> int | None:
     """Whole months from `start` up to and including `by` (0 or more), decided by the day-of-month rule applied to
     the day AFTER `by` — so a fixed `by` counts down by exactly one each time `start` crosses a monthly boundary,
     never up then back down around the 1st (an earlier version special-cased `start` landing on the 1st, which
-    made a fixed `by` look one month further away on the 1st than on the 2nd — not monotonic as time passes)."""
-    end = by + dt.timedelta(days=1)
+    made a fixed `by` look one month further away on the 1st than on the 2nd — not monotonic as time passes).
+
+    None when `by` is `date.max` (9999-12-31, a common "no real deadline" placeholder): the day-after trick above
+    would overflow past the last date Python can represent. A goal with such a `by` still shows its progress; it
+    just has no monthly pace to reach it by."""
+    try:
+        end = by + dt.timedelta(days=1)
+    except OverflowError:
+        return None
     months = (end.year - start.year) * 12 + (end.month - start.month)
     if end.day < start.day:
         months -= 1
