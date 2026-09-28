@@ -8,7 +8,11 @@ export function SpreadPanel({ totals, spread }: { totals: ReservesView['totals']
     <Panel id="reserves-summary" title="Cash and debt" span={12}>
       <div className="flex flex-wrap gap-x-9 gap-y-3 mt-3">
         <Stat label="Cash"><span className="num">{money(totals.cash)}</span></Stat>
-        <Stat label="Owed"><span className="num">{money(totals.owed)}</span></Stat>
+        <Stat label="Owed">
+          {totals.owed < 0
+            ? <span className="text-ink2">{money(Math.abs(totals.owed))} credit balance</span>
+            : <span className="num">{money(totals.owed)}</span>}
+        </Stat>
         <Stat label="Net"><span className="num">{money(totals.net)}</span></Stat>
         <Stat label="Utilization">
           <span className="num">{totals.utilization_pct == null ? '—' : `${num(totals.utilization_pct, 1)}%`}</span>

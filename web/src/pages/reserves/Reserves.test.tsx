@@ -33,6 +33,18 @@ describe('Reserves', () => {
     expect(within(debt).queryByText('-$50.00')).toBeNull()
   })
 
+  it('words a negative totals.owed the same way DebtPanel words a credit balance', async () => {
+    // a lone credit-balance card: the signed total is negative too, and must read the same way as the per-line
+    // wording ("$50.00 credit balance"), never a bare negative dollar figure
+    const v: ReservesView = { ...reservesFixture,
+      debts: [{ ...reservesFixture.debts[0], owed: -50, utilization_pct: 0 }],
+      totals: { ...reservesFixture.totals, owed: -50, net: reservesFixture.totals.cash + 50 } }
+    renderApp('/reserves', { reserves: v })
+    const summary = await screen.findByRole('region', { name: 'Cash and debt' })
+    expect(within(summary).getByText('$50.00 credit balance')).toBeTruthy()
+    expect(within(summary).queryByText('−$50.00')).toBeNull()
+  })
+
   it('leaves no spread sentence without a rated debt balance', async () => {
     const v: ReservesView = { ...reservesFixture, debts: [], spread: null }
     renderApp('/reserves', { reserves: v })
