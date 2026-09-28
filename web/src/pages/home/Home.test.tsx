@@ -84,6 +84,28 @@ describe('Home', { timeout: 15_000 }, () => {
     expect(needsYou.some((li) => li.textContent?.includes('MSFT'))).toBe(false)
   })
 
+  it('flags a real position with a genuinely missing stop: the shield icon and "No stop"', async () => {
+    // stop_resting=true (MSFT in the fixture) must not be the only shape this page ever sees a real position in:
+    // both "not reported at all" (null) and an explicit "false" are a real missing stop and must still alarm
+    const base = homeFixture.positions.find((p) => p.money === 'real')!
+    const noStopUnreported = { ...base, symbol: 'XOM', stop_price: null, stop_resting: null, room_pct: null }
+    const noStopFalse = { ...base, symbol: 'CVX', stop_price: null, stop_resting: false, room_pct: null }
+    const resting = { ...base, symbol: 'MSFT', stop_price: null, stop_resting: true, room_pct: null }
+    renderApp('/', { home: { ...homeFixture, positions: [noStopUnreported, noStopFalse, resting] } })
+    const positions = await screen.findByRole('region', { name: 'Open positions' })
+    const rowFor = (symbol: string) =>
+      within(positions).getAllByRole('row').find((r) => r.textContent?.includes(symbol)) as HTMLElement
+    for (const symbol of ['XOM', 'CVX']) {
+      const row = rowFor(symbol)
+      expect(within(row).getByText('No stop')).toBeTruthy()
+      expect(row.querySelector('svg')).toBeTruthy() // the shield icon: never colour alone
+      expect(within(row).queryByText('resting (level not reported)')).toBeNull()
+    }
+    const restingRow = rowFor('MSFT')
+    expect(within(restingRow).getByText('resting (level not reported)')).toBeTruthy()
+    expect(within(restingRow).queryByText('No stop')).toBeNull()
+  })
+
   it('reveals every needs-you item in place, then collapses back, never linking out to Activity', async () => {
     renderApp('/')
     const panel = await screen.findByRole('region', { name: 'Needs you' })
