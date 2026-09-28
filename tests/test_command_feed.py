@@ -149,6 +149,19 @@ def test_a_bare_program_name_is_looked_up_on_path(tmp_path, monkeypatch, started
     assert os.path.normcase(process.args[0]) == os.path.normcase(sys.executable)  # the file PATH led to, in full
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="PATHEXT lookup only applies on Windows")
+def test_an_empty_pathext_still_finds_a_program_by_the_default_extensions(monkeypatch, started, tmp_path):
+    # PATHEXT="" is a set-but-empty value (some stripped-down shells and CI images): .get("PATHEXT", default) would
+    # return "" as-is, leaving no extension to try and so no bare name ever found — a regression this guards
+    monkeypatch.setenv("PATH", str(Path(sys.executable).parent))
+    monkeypatch.setenv("PATHEXT", "")
+    bare = Path(sys.executable).stem  # "python", with no .exe of its own
+    assert command_module._on_path(bare) is not None
+    assert run([bare, PROGRAM, "ok"], cwd=tmp_path, timeout=20).startswith(b"{")
+    (process, _), = started
+    assert os.path.normcase(process.args[0]) == os.path.normcase(sys.executable)
+
+
 def test_a_bare_name_is_never_taken_from_the_folder_kestrel_started_in(tmp_path, monkeypatch, started):
     # Windows' own lookup (and Python's shutil.which there) tries the current folder before PATH, and an empty or
     # relative PATH entry means the current folder anywhere: a program planted where kestrel was started would run

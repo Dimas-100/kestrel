@@ -57,7 +57,11 @@ def _on_path(name: str) -> str | None:
     windows = sys.platform == "win32"
     names = [name]
     if windows:
-        extensions = [ext for ext in os.environ.get("PATHEXT", _PATHEXT).split(os.pathsep) if ext]
+        # .get(..., _PATHEXT) only supplies the default when PATHEXT is unset; PATHEXT="" (a stripped-down shell,
+        # some CI images) is a set-but-empty value that .get() returns as-is, which would leave `extensions` empty
+        # and `names` empty right after — so no candidate is ever tried and every bare name looks like "no such
+        # program". `or` falls back to the default on either an unset OR an empty PATHEXT.
+        extensions = [ext for ext in (os.environ.get("PATHEXT") or _PATHEXT).split(os.pathsep) if ext]
         if not name.lower().endswith(tuple(ext.lower() for ext in extensions)):
             names = [name + ext for ext in extensions]
     for folder in os.environ.get("PATH", os.defpath).split(os.pathsep):

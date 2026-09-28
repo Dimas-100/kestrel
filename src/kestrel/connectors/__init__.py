@@ -114,7 +114,7 @@ def _dedupe_within(part: Snapshot) -> tuple[Snapshot, list[str]]:
     (`_LONE_BLOCKS`; nothing hangs off them)."""
 
     def first_only(items: list, key: Callable[[Any], Hashable] = lambda item: item.id) -> tuple[list, list]:
-        seen: set = set()
+        seen: set[Hashable] = set()
         kept: list = []
         dupes: list = []
         for item in items:
