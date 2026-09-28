@@ -413,6 +413,6 @@ Calendar, Activity, Settings), `README.md` (pages, command feeds, rails), `docs/
 (§11 all phases done; §4 groups), this plan's checkboxes, `AGENTS.md` if a rule changed.
 
 - [x] **Step 1:** the Shell test asserts every NAV entry has a route that renders (no `Soon` left).
-- [ ] **Step 2:** screenshot pass: every page at 390, 1200, 1280, 1440 px, dark and light, demo data; no overflow,
+- [x] **Step 2:** screenshot pass: every page at 390, 1200, 1280, 1440 px, dark and light, demo data; no overflow,
   no clipped labels. Fix what it finds.
-- [ ] **Step 3:** commit `docs: phase 5 finished`.
+- [x] **Step 3:** commit `docs: phase 5 finished`.
