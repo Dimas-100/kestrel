@@ -22,8 +22,10 @@ function shape(value: number, unit: TargetRow['unit']): string {
 function gapLine(row: TargetRow): string | null {
   if (row.gap == null || row.gap_unit == null) return null
   if (row.status === 'on') return 'On plan'
-  const amount = row.gap_unit === 'money' ? money(Math.abs(row.gap)) : `${num(Math.abs(row.gap), 1)}${
-    row.gap_unit === 'x' ? 'x' : ' pts'}`
+  if (row.gap_unit === 'money') return `${money(Math.abs(row.gap))} ${row.gap_text}`
+  // a points/ratio gap under 0.1 would round to "0.0" at one decimal and read as no gap at all: show two then
+  const digits = Math.abs(row.gap) < 0.1 ? 2 : 1
+  const amount = `${num(Math.abs(row.gap), digits)}${row.gap_unit === 'x' ? 'x' : ' pts'}`
   return `${amount} ${row.gap_text}`
 }
 

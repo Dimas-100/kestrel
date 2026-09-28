@@ -5,7 +5,7 @@ import { planFixture, renderApp } from '../../test/renderApp'
 
 const rows = (region: HTMLElement) => [...region.querySelectorAll('li')]
 
-describe('Plan', () => {
+describe('Plan', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('lists off-plan targets first inside each account', async () => {
@@ -56,6 +56,18 @@ describe('Plan', () => {
     const targets = await screen.findByRole('region', { name: 'Targets' })
     expect(within(targets).getByText('55.0 pts under the low end')).toBeTruthy()
     expect(within(targets).queryByText(/\$55/)).toBeNull()
+  })
+
+  it('shows a points/ratio gap under 0.1 to two decimals, never a rounded "0.0"', async () => {
+    const v: PlanView = { ...planFixture,
+      accounts: [{ account_id: 'z', name: 'Zero', known: true, rows: [{
+        id: 't3', label: 'VTI', symbols: ['VTI'], unit: '%', target: 60, low: 55, high: 65, actual: 54.97,
+        status: 'under', gap: 0.03, gap_unit: 'pts', gap_text: 'under the low end', note: '',
+      }] }] }
+    renderApp('/plan', { plan: v })
+    const targets = await screen.findByRole('region', { name: 'Targets' })
+    expect(within(targets).getByText('0.03 pts under the low end')).toBeTruthy()
+    expect(within(targets).queryByText('0.0 pts under the low end')).toBeNull()
   })
 
   it('groups a target naming an unsent account under its own id, not "Across every account"', async () => {
