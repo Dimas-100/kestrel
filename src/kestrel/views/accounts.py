@@ -8,7 +8,8 @@ from typing import Literal
 
 from ..contract import Category, Holding, Snapshot, ValuePoint
 from ..profile import Profile
-from .home import View, _day_pct, net_points
+from ._base import View
+from .home import _day_pct, net_points
 
 Window = Literal["ytd", "1y", "all"]
 WINDOWS: tuple[Window, ...] = ("ytd", "1y", "all")

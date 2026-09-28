@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from kestrel.profile import DEMO_PROFILE, ProfileError, load_profile, parse_duration
+from kestrel.profile import DEMO_PROFILE, Profile, ProfileError, SourceCfg, load_profile, parse_duration, source_config
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -362,3 +362,16 @@ def test_refresh_and_cwd_go_only_with_a_command(tmp_path, line, message):
     for where in ('url = "http://127.0.0.1:8000/api/feed"\n', 'path = "feed.json"\n'):
         with pytest.raises(ProfileError, match=message):
             load_profile(write(tmp_path, FEED + where + line))
+
+
+def test_source_config_matches_exact_id_first_then_the_longest_prefix():
+    desk = SourceCfg(id="desk", kind="feed", url="http://127.0.0.1:9000/feed")
+    desk2 = SourceCfg(id="desk-2", kind="feed", url="http://127.0.0.1:9001/feed")
+    for sources in ([desk, desk2], [desk2, desk]):
+        profile = Profile(sources=sources)
+        assert source_config(profile, "desk").id == "desk"
+        assert source_config(profile, "desk-2").id == "desk-2"
+        # "desk-extra" has no exact entry: it falls back to the one cfg it's a sub-source of ("desk-2-" isn't a
+        # prefix of it), whichever order the profile lists the sources in
+        assert source_config(profile, "desk-extra").id == "desk"
+    assert source_config(Profile(sources=[desk]), "nope") is None

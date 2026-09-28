@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 
 from ..contract import Backtest, Snapshot, Verdict
 from ..profile import Profile
-from .home import View
+from ._base import View
 
 ROWS_LIMIT = 200  # the page lists only the newest results; a real feed can carry thousands
 # the best verdict for a window, lowest wins: a single pass outshines a pile of fails

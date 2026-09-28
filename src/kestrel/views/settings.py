@@ -11,8 +11,8 @@ from typing import Literal
 
 from .. import __version__
 from ..contract import CONTRACT_VERSION, Snapshot, Source
-from ..profile import App, BenchmarkCfg, Profile, SourceCfg, You
-from .home import View
+from ..profile import App, BenchmarkCfg, Profile, SourceCfg, You, source_config
+from ._base import View
 
 # SourceCfg's own defaults, repeated here for a source row this profile no longer configures (a connector's own
 # fabricated sub-source, such as the demo's fictional examples) and for a command or feed that leaves one out.
@@ -55,14 +55,6 @@ def _program_display(command: list[str]) -> str:
     return " ".join([name, *command[1:]])
 
 
-def _matching_cfg(source_id: str, sources: list[SourceCfg]) -> SourceCfg | None:
-    """The profile source this row came from: the same id, or, for a connector's own fabricated sub-source (the
-    demo's fictional "Trading desk", "Paper broker" and the rest all sit under its one "demo" source), an id it
-    prefixes with its own and a dash."""
-    return (next((c for c in sources if c.id == source_id), None)
-            or next((c for c in sources if source_id.startswith(f"{c.id}-")), None))
-
-
 def _source_row(source: Source, cfg: SourceCfg | None) -> SourceRow:
     reads, refresh, timeout, token_env = "", None, None, None
     stale_after = cfg.stale_after if cfg is not None else DEFAULT_STALE_AFTER
@@ -91,5 +83,5 @@ def settings_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, profil
     return SettingsView(
         as_of=now, you=profile.you, app=profile.app, benchmark=profile.benchmark, profile=profile_origin,
         contract_version=CONTRACT_VERSION, version=__version__,
-        sources=[_source_row(s, _matching_cfg(s.id, profile.sources)) for s in snapshot.sources],
+        sources=[_source_row(s, source_config(profile, s.id)) for s in snapshot.sources],
     )

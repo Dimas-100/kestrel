@@ -7,7 +7,7 @@ import datetime as dt
 
 from ..contract import Snapshot
 from ..profile import Profile
-from .home import View
+from ._base import View
 
 
 class CashLine(View):

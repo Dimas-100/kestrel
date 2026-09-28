@@ -5,19 +5,14 @@ from __future__ import annotations
 import datetime as dt
 from typing import Literal
 
-from pydantic import BaseModel
-
 from ..contract import Alert, Run, Snapshot
-from ..profile import Profile
+from ..profile import Profile, source_config
+from ._base import View
 from .home import age_text
 
 PAST_DAYS = 7  # how far back "the past 7 days" reaches
 LATE_FIRST = ("failed", "late")  # within a day, these statuses sort ahead of the rest
 ALERT_ORDER = {"serious": 0, "warning": 1, "note": 2}
-
-
-class View(BaseModel):
-    pass
 
 
 class RunRow(View):
@@ -75,19 +70,10 @@ def _sorted_runs(runs: list[Run]) -> list[Run]:
 
 
 def _stale_after(source_id: str, profile: Profile) -> str | None:
-    """The `stale_after` of the profile source that produced this row. A connector may report several source rows
-    from one profile entry (the demo does, to look like a real multi-source picture): those carry the ids
-    `f"{cfg.id}-..."`, so a row matches its cfg by exact id or by that prefix.
-
-    Exact matches are checked over the whole list before any prefix match, whatever order the profile lists its
-    sources in — otherwise a real, separately-configured source id (say "desk-2") could be shadowed by a shorter
-    cfg's prefix ("desk-") if that cfg happens to come first. Among prefix matches (no exact match found), the
-    longest cfg id wins, as the most specific owner of that sub-source."""
-    for cfg in profile.sources:
-        if source_id == cfg.id:
-            return cfg.stale_after
-    prefixed = [cfg for cfg in profile.sources if source_id.startswith(f"{cfg.id}-")]
-    return max(prefixed, key=lambda cfg: len(cfg.id)).stale_after if prefixed else None
+    """The `stale_after` of the profile source that produced this row (`profile.source_config`), or None when no
+    entry matches at all (can't happen for a real profile: every source traces back to one)."""
+    cfg = source_config(profile, source_id)
+    return cfg.stale_after if cfg is not None else None
 
 
 def _sources(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> list[ActivitySource]:

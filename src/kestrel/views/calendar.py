@@ -7,7 +7,7 @@ from collections import Counter
 
 from ..contract import Event, Snapshot
 from ..profile import Profile
-from .home import View
+from ._base import View
 
 RECENT_DAYS = 90  # how far back "recent" looks
 KINDS = ("earnings", "filing", "insider", "dividend", "other")

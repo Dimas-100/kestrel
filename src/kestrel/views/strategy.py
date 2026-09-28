@@ -11,7 +11,8 @@ from typing import Literal
 from ..contract import Bar, Book, Expected, Indicator, Money, Snapshot, Step, Trade, TradeChart, ValuePoint, WatchItem
 from ..metrics import expected_band, growth_index, max_drawdown_pct, sum_series
 from ..profile import Profile
-from .home import MIN_TRADES_FOR_VERDICT, View, _book_rows
+from ._base import View
+from .home import MIN_TRADES_FOR_VERDICT, _book_rows
 
 BUCKET_LOW, BUCKETS = -10, 20  # 1-point buckets from -10% to +10%; returns beyond fold into the end buckets
 FUNNEL_FROM = 3  # the expected band starts at the third trade

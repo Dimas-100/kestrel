@@ -209,6 +209,21 @@ class Profile(_Strict):
 DEMO_PROFILE = Profile(you=You(name="Alex"))
 
 
+def source_config(profile: Profile, source_id: str) -> SourceCfg | None:
+    """The profile source `source_id` came from: the same id, or, for a connector's own fabricated sub-source (the
+    demo's fictional "Trading desk", "Paper broker" and the rest all sit under its one "demo" source), the profile
+    entry whose id it prefixes with a dash — the longest one, as the most specific owner of that sub-source.
+
+    Exact matches are checked over the whole list before any prefix match, whatever order the profile lists its
+    sources in — otherwise a real, separately-configured source id (say "desk-2") could be shadowed by a shorter
+    cfg's prefix ("desk-") if that cfg happens to come first."""
+    for cfg in profile.sources:
+        if source_id == cfg.id:
+            return cfg
+    prefixed = [cfg for cfg in profile.sources if source_id.startswith(f"{cfg.id}-")]
+    return max(prefixed, key=lambda cfg: len(cfg.id)) if prefixed else None
+
+
 def _expanded(text: str, where: str) -> Path:
     try:
         return Path(text).expanduser()
