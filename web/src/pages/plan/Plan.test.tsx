@@ -137,6 +137,26 @@ describe('Plan', { timeout: 15_000 }, () => {
     expect(within(goals).queryByText(/a month/)).toBeNull()
   })
 
+  it('counts theses in the header as "thesis" and "theses"', async () => {
+    const { unmount } = renderApp('/plan', { plan: { ...planFixture,
+      counts: { ...planFixture.counts, theses_alert: 1, theses_watch: 1 } } })
+    expect((await screen.findByRole('heading', { level: 1, name: 'Plan' })).closest('header')?.textContent)
+      .toContain('2 theses need a look.')
+    unmount()
+    renderApp('/plan', { plan: { ...planFixture, counts: { ...planFixture.counts, theses_alert: 0, theses_watch: 1 } } })
+    expect((await screen.findByRole('heading', { level: 1, name: 'Plan' })).closest('header')?.textContent)
+      .toContain('1 thesis needs a look.')
+  })
+
+  it('reads the plan bar actual with the decimals the row shows', async () => {
+    const account = planFixture.accounts[0]
+    const row = { ...account.rows[0], label: 'VTI', unit: '%' as const, actual: 44.62 }
+    renderApp('/plan', { plan: { ...planFixture, accounts: [{ ...account, rows: [row] }], unscoped: [] } })
+    const targets = await screen.findByRole('region', { name: 'Targets' })
+    expect(targets.textContent).toContain('44.6% actual')
+    expect(within(targets).getByRole('img', { name: 'VTI: actual 44.6%' })).toBeTruthy()
+  })
+
   it('names an investing feed in the empty state', async () => {
     const empty: PlanView = { accounts: [], unscoped: [], theses: [], goals: [],
       counts: { off_plan: 0, theses_alert: 0, theses_watch: 0 }, as_of: planFixture.as_of }

@@ -16,25 +16,31 @@ export function pointsIn(points: ValuePoint[], growth: Growth | null): ValuePoin
 }
 
 /** The account's value over the window, with the dotted "start + deposits" line: the gap between them is what the
- *  market added. */
+ *  market added. A debt account has no market: it shows what it owes over its whole history, with neither the
+ *  dotted line nor the window (charges and payments move it, and a gap between two lines would mean nothing). */
 export function ValuePanel({ v, period, onPeriod }: { v: AccountView; period: Window; onPeriod: (w: Window) => void }) {
   const [view, setView] = useState<(typeof VIEWS)[number]>('Chart')
-  const points = pointsIn(v.points, v.growth[period])
+  const debt = v.category === 'debt'
+  const points = debt ? v.points : pointsIn(v.points, v.growth[period])
   const base = baseline(points)
+  const word = debt ? 'Owed' : 'Value'
   const [whole, cents] = splitCents(v.value)
   const color = CATEGORY_COLOR[v.category] ?? 'var(--ink1)'
   // a window under about three months labels its days, not just its months
   const short = points.length > 1 && Date.parse(points[points.length - 1].date) - Date.parse(points[0].date) < 100 * DAY_MS
   return (
-    <Panel id="value" title="Value" subtitle={`${WINDOW_WORD[period]} · the gap between the lines is the market`}
+    <Panel id="value" title="Value"
+      subtitle={debt ? 'What it owes, over all its history' : `${WINDOW_WORD[period]} · the gap between the lines is the market`}
       span={8} height={372} actions={<>
         <span className="hidden xl:inline-flex items-center gap-1.5 text-xs text-ink2">
-          <LineKey color={color} style="solid" />Value
+          <LineKey color={color} style="solid" />{word}
         </span>
-        <span className="hidden xl:inline-flex items-center gap-1.5 text-xs text-ink2">
-          <LineKey color="var(--ref)" style="dotted" />Start + deposits
-        </span>
-        <WindowSeg value={period} onChange={onPeriod} />
+        {!debt && (
+          <span className="hidden xl:inline-flex items-center gap-1.5 text-xs text-ink2">
+            <LineKey color="var(--ref)" style="dotted" />Start + deposits
+          </span>
+        )}
+        {!debt && <WindowSeg value={period} onChange={onPeriod} />}
         <Seg label="View" options={VIEWS} value={view} onChange={setView} />
       </>}>
       <div className="text-[38px] sm:text-5xl font-semibold tracking-[-0.035em] leading-none mt-3.5">
@@ -45,10 +51,12 @@ export function ValuePanel({ v, period, onPeriod }: { v: AccountView; period: Wi
           <Empty>No history yet. The chart appears once this account has a few days of data.</Empty>
         ) : view === 'Chart' ? (
           <LineChart dates={points.map((p) => p.date)} height={196}
-            ariaLabel="The account’s value against its starting value plus deposits"
+            ariaLabel={debt ? 'What the account owes over time'
+              : 'The account’s value against its starting value plus deposits'}
             series={[
-              { key: 'value', label: 'Value', values: points.map((p) => p.value), color, style: 'solid', area: true },
-              { key: 'base', label: 'Start + deposits', values: base, color: 'var(--ref)', style: 'dotted', step: true },
+              { key: 'value', label: word, values: points.map((p) => p.value), color, style: 'solid', area: true },
+              ...(debt ? [] : [{ key: 'base', label: 'Start + deposits', values: base, color: 'var(--ref)',
+                style: 'dotted' as const, step: true }]),
             ]}
             yFormat={compactMoney} valueFormat={(n) => money(n, false)} xLabel={(d) => monthLabel(d, short)}
             tipTitle={(d) => shortDate(d)} />
@@ -57,7 +65,8 @@ export function ValuePanel({ v, period, onPeriod }: { v: AccountView; period: Wi
             <table className="tbl" style={{ minWidth: 480, '--row': '36px' } as CSSProperties}>
               <thead>
                 <tr>
-                  <th>Date</th><th className="r">Value</th><th className="r">Start + deposits</th>
+                  <th>Date</th><th className="r">{word}</th>
+                  {!debt && <th className="r">Start + deposits</th>}
                   <th className="r">In or out</th>
                 </tr>
               </thead>
@@ -66,7 +75,7 @@ export function ValuePanel({ v, period, onPeriod }: { v: AccountView; period: Wi
                   <tr key={p.date}>
                     <td>{shortDate(p.date)}</td>
                     <td className="r num">{money(p.value)}</td>
-                    <td className="r num">{money(base[i])}</td>
+                    {!debt && <td className="r num">{money(base[i])}</td>}
                     <td className="r num">{i > 0 && p.net_flow !== 0 ? signedMoney(p.net_flow) : <Missing />}</td>
                   </tr>
                 )).reverse()}

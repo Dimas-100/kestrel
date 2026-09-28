@@ -121,6 +121,20 @@ describe('Account page', { timeout: 15_000 }, () => {
     expect(within(panel('Growth')).getByText('No money has moved in or out yet.')).toBeTruthy()
   })
 
+  it('draws a debt account as what it owes, with no start-plus-deposits line and no market gap', async () => {
+    const card: AccountView = { ...accountFixture, id: 'card', name: 'Credit card', category: 'debt', value: 640,
+      holdings: [], cash: 0, cash_weight: null, growth: { ytd: null, '1y': null, all: null },
+      points: [{ date: '2026-09-23', value: 587.12, net_flow: 0 }, { date: '2026-09-24', value: 702.4, net_flow: -115.28 },
+        { date: '2026-09-25', value: 640, net_flow: 62.4 }] }
+    renderApp('/accounts/card', { account: [{ id: 'card', view: card }] })
+    const value = await findPanel('Value')
+    expect(value.textContent).not.toMatch(/Start \+ deposits|the gap between the lines is the market/)
+    expect(value.textContent).toContain('What it owes')
+    expect(within(value).getByRole('img', { name: 'What the account owes over time' })).toBeTruthy()
+    fireEvent.click(within(value).getByRole('button', { name: 'Table' }))
+    expect([...value.querySelectorAll('thead th')].map((th) => th.textContent)).toEqual(['Date', 'Owed', 'In or out'])
+  })
+
   it('shows an unknown account as not found, inside the shell', async () => {
     const answer = () => Promise.resolve(new Response('{"detail":"no such account: nope"}', { status: 404 }))
     renderApp('/accounts/nope', {}, answer)

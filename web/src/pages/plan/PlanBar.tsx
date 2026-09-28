@@ -16,6 +16,11 @@ function domainFor(row: TargetRow): [number, number] {
   return [lo - pad, hi + pad]
 }
 
+/** A target's figure (its actual or its aim) as the row shows it: "44.6%", "1.3x" — the bar's label says the same. */
+export function unitText(value: number, unit: TargetRow['unit']): string {
+  return unit === '%' ? `${num(value, 1)}%` : `${num(value, 1)}x`
+}
+
 const DOT_COLOR: Record<TargetRow['status'], string> = {
   on: 'var(--ink1)', over: 'var(--warn)', under: 'var(--warn)', unknown: 'var(--ink3)',
 }
@@ -23,8 +28,7 @@ const DOT_COLOR: Record<TargetRow['status'], string> = {
 export function PlanBar({ row }: { row: TargetRow }) {
   const g = bandGeometry(row.low, row.high, row.target, row.actual, domainFor(row))
   const pct = (f: number) => `${(f * 100).toFixed(2)}%`
-  const shape = row.unit === '%' ? `${num(row.actual ?? 0, 0)}%` : `${num(row.actual ?? 0, 1)}x`
-  const label = row.actual == null ? `${row.label}: actual unknown` : `${row.label}: actual ${shape}`
+  const label = row.actual == null ? `${row.label}: actual unknown` : `${row.label}: actual ${unitText(row.actual, row.unit)}`
   return (
     <div className="relative h-2 rounded-full bg-panel2 my-1" role="img" aria-label={label}
       style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>

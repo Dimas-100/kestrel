@@ -65,6 +65,22 @@ describe('Home', { timeout: 15_000 }, () => {
     expect(owed.textContent).toBe('Owed: $640.00 across 1 account')
   })
 
+  it('shows a debt row in Where it sits as owed, in words that stay on a phone', async () => {
+    renderApp('/')
+    const where = await screen.findByRole('region', { name: 'Where it sits' })
+    const card = within(where).getByRole('link', { name: /^Credit card/ })
+    const owed = within(card).getByText('$640.00 owed')
+    expect(owed.className).not.toMatch(/hidden/) // not the category word, which a phone hides
+    expect(card.textContent).not.toMatch(/\$640\.00(?! owed)/)
+  })
+
+  it('opens each book from the books table', async () => {
+    renderApp('/')
+    await screen.findByRole('region', { name: 'Books' })
+    const hrefs = within(panel('Books')).getAllByRole('link').map((a) => a.getAttribute('href') ?? '')
+    expect(hrefs.filter((h) => h.startsWith('/books/'))).toEqual(homeFixture.books.map((b) => `/books/${b.id}`))
+  })
+
   it('gives the account name priority over its category word when the row is tight', async () => {
     // screenshot pass, 2026-09-28: at 1200px this span-4 panel has room for barely more than the name, so the
     // name (flex-1, min-w-0) must claim space before the fixed category word does, or it truncates far worse

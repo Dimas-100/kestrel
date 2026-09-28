@@ -4,6 +4,13 @@ import { Icon } from '../../components/Icon'
 import type { AccountRow, Slice } from '../../lib/api'
 import { money, pct } from '../../lib/format'
 
+/** An account's figure for the list: what a debt account owes says so in words (the category word beside it is
+ *  hidden on a phone), and a card paid past zero is a credit balance, never a bare figure that reads as held. */
+export function rowValue(a: Pick<AccountRow, 'category' | 'value'>): string {
+  if (a.category !== 'debt') return money(a.value)
+  return a.value < 0 ? `${money(-a.value)} credit balance` : `${money(a.value)} owed`
+}
+
 /** 100 cells, filled column by column, so the waffle reads like one proportional bar. */
 export function Waffle({ slices }: { slices: Slice[] }) {
   const cells = slices.flatMap((s) => Array.from({ length: s.cells }, () => s.category))
@@ -47,7 +54,7 @@ export function AllocationPanel({ slices, accounts, owed, debtAccounts }: {
             <span className="text-[13px] font-medium truncate text-ink1 flex-1 min-w-0">{a.name}</span>
             <span className="text-[11px] text-ink3 hidden sm:inline flex-none">{CATEGORY_WORD[a.category]}</span>
             <div className="ml-auto text-right">
-              <div className="num text-[13px] text-ink1">{money(a.value)}</div>
+              <div className="num text-[13px] text-ink1">{rowValue(a)}</div>
               <div className="text-[11px]">
                 {a.day_pct == null ? <span className="text-ink3">—</span> : <Delta value={a.day_pct}>{pct(a.day_pct, 2)}</Delta>}
               </div>

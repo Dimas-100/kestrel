@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { BookMark, Delta, Missing, MoneyBadge, Panel } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import type { BookRow } from '../../lib/api'
@@ -59,7 +60,10 @@ export function BooksPanel({ books, tz, now }: { books: BookRow[]; tz: string; n
                   <div className="flex items-center gap-3">
                     <BookMark kind={b.money} size={14} />
                     <div>
-                      <div className="font-medium">{b.name}</div>
+                      <Link to="/books/$bookId" params={{ bookId: b.id }} className="font-medium"
+                        style={{ color: 'inherit' }}>
+                        {b.name}
+                      </Link>
                       <div className="text-xs text-ink3 mt-0.5">{b.trades} trades · since {sinceLabel(b.started, now)}</div>
                     </div>
                   </div>

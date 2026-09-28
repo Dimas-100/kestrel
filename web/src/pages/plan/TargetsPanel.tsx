@@ -4,17 +4,13 @@ import { Empty } from '../../charts/marks'
 import { Missing, Panel } from '../../components/bits'
 import type { AccountTargets, TargetRow } from '../../lib/api'
 import { money, num } from '../../lib/format'
-import { PlanBar } from './PlanBar'
+import { unitText, PlanBar } from './PlanBar'
 
 const STATUS_WORD: Record<TargetRow['status'], string> = {
   on: 'On plan', over: 'Over', under: 'Under', unknown: 'Unknown',
 }
 const STATUS_COLOR: Record<TargetRow['status'], string> = {
   on: 'var(--ink3)', over: 'var(--warn)', under: 'var(--warn)', unknown: 'var(--ink3)',
-}
-
-function shape(value: number, unit: TargetRow['unit']): string {
-  return unit === '%' ? `${num(value, 1)}%` : `${num(value, 1)}x`
 }
 
 /** The gap, worded for a person, formatted strictly by `gap_unit` — never inferred from which list the row came
@@ -46,8 +42,8 @@ function TargetRows({ rows }: { rows: TargetRow[] }) {
           <PlanBar row={row} />
           <div className="flex items-center justify-between text-xs text-ink3 mt-1 gap-3">
             <span>
-              {row.actual == null ? <Missing /> : shape(row.actual, row.unit)} actual
-              {row.target != null && <> · {shape(row.target, row.unit)} aim</>}
+              {row.actual == null ? <Missing /> : unitText(row.actual, row.unit)} actual
+              {row.target != null && <> · {unitText(row.target, row.unit)} aim</>}
             </span>
             <span className="text-right">{gapLine(row) ?? <Missing />}</span>
           </div>

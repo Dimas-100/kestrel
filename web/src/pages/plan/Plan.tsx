@@ -22,7 +22,7 @@ export function Plan() {
           <p className="text-ink2 mt-1.5">
             {v.counts.off_plan === 0 ? 'Every target sits on plan.'
               : `${v.counts.off_plan} target${v.counts.off_plan === 1 ? ' is' : 's are'} off plan.`}{' '}
-            {needing > 0 && `${needing} thesis${needing === 1 ? '' : 'es'} need${needing === 1 ? 's' : ''} a look.`}
+            {needing > 0 && `${needing} ${needing === 1 ? 'thesis needs' : 'theses need'} a look.`}
           </p>
         )}
       </header>

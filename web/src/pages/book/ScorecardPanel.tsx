@@ -2,7 +2,7 @@ import { Empty } from '../../charts/marks'
 import { Missing, Panel, Stat } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import type { BookView } from '../../lib/api'
-import { money, pct } from '../../lib/format'
+import { money, num, pct } from '../../lib/format'
 import { BandBar, VERDICT } from '../home/BooksPanel'
 
 /** Trades, win rate, average trade/win/loss, total P/L, best and worst, and the expected band when the strategy
@@ -18,7 +18,8 @@ export function ScorecardPanel({ v }: { v: BookView }) {
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-4 mt-3.5">
-            <Stat label="Win rate">{s.win_rate == null ? <Missing /> : pct(s.win_rate, 1)}</Stat>
+            {/* a share of trades, not a change: no sign */}
+            <Stat label="Win rate">{s.win_rate == null ? <Missing /> : `${num(s.win_rate, 1)}%`}</Stat>
             <Stat label="Avg trade">{s.avg_trade_pct == null ? <Missing /> : pct(s.avg_trade_pct, 2)}</Stat>
             <Stat label="Avg win">{s.avg_win_pct == null ? <Missing /> : pct(s.avg_win_pct, 2)}</Stat>
             <Stat label="Avg loss">{s.avg_loss_pct == null ? <Missing /> : pct(s.avg_loss_pct, 2)}</Stat>

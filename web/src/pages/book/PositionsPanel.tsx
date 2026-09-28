@@ -25,8 +25,9 @@ export function PositionsPanel({ v }: { v: BookView }) {
               </tr>
             </thead>
             <tbody>
-              {positions.map((p) => (
-                <tr key={p.symbol}>
+              {positions.map((p, i) => (
+                // book, symbol and opened day: two lots of one symbol are two rows (the index settles a same-day pair)
+                <tr key={`${v.book.id}-${p.symbol}-${p.opened}-${i}`}>
                   <td className="num font-semibold">{p.symbol}</td>
                   <td className="r num">{num(p.quantity, 0)}</td>
                   <td className="r num">{num(p.entry_price)}</td>

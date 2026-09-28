@@ -57,6 +57,26 @@ describe('Book', { timeout: 15_000 }, () => {
     expect(within(restingRow).queryByText('No stop')).toBeNull()
   })
 
+  it('shows the win rate as a rate, never with a sign', async () => {
+    renderApp('/books/rsi2-real', { book: [{ id: 'rsi2-real', view: { ...bookFixture,
+      scorecard: { ...bookFixture.scorecard, win_rate: 62.5 } } }] })
+    const scorecard = (await screen.findByRole('heading', { name: 'Scorecard' })).closest('section') as HTMLElement
+    expect(within(scorecard).getByText('Win rate').parentElement?.textContent).toBe('Win rate62.5%')
+  })
+
+  it('keeps two lots of one symbol apart', async () => {
+    // two AAPL lots in one book: rows keyed by book, symbol and opened day, so React never folds them together
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const lot = { ...bookFixture.positions[1], symbol: 'AAPL' }
+    const view = { ...bookFixture, positions: [{ ...lot, opened: '2026-09-21', quantity: 3 },
+      { ...lot, opened: '2026-09-24', quantity: 5 }] }
+    renderApp('/books/rsi2-real', { book: [{ id: 'rsi2-real', view }] })
+    const panel = (await screen.findByRole('heading', { name: 'Open positions' })).closest('section') as HTMLElement
+    expect(within(panel).getAllByText('AAPL')).toHaveLength(2)
+    expect(errors.mock.calls.flat().join(' ')).not.toMatch(/same key/)
+    errors.mockRestore()
+  })
+
   it('says it is loading while the book is on its way', async () => {
     renderApp('/books/rsi2-real', { book: [] }, () => new Promise<Response>(() => {}))
     expect(await screen.findByText('Loading the book…')).toBeTruthy()
