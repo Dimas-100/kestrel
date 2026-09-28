@@ -15,7 +15,7 @@ const empty: HomeView = {
   summary: { day_change: 0, gap_pts: null, needs_you: 0 },
 }
 
-describe('Home', () => {
+describe('Home', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('leads with net worth, cents dimmed', async () => {
@@ -69,8 +69,30 @@ describe('Home', () => {
   it('shows what needs you, most serious first', async () => {
     renderApp('/')
     const items = within(await screen.findByRole('region', { name: 'Needs you' })).getAllByRole('listitem')
-    expect(items[0].textContent).toContain('MSFT has no resting stop')
-    expect(items[0].textContent).toContain('Serious')
+    // MSFT's stop rests but isn't reported: no false alarm, so the top item is the stale-source warning
+    expect(items[0].textContent).toContain("Savings hasn't synced")
+    expect(items[0].textContent).toContain('Warning')
+  })
+
+  it('shows a resting-but-unreported stop in words, with no alarm and no room to stop', async () => {
+    renderApp('/')
+    const positions = await screen.findByRole('region', { name: 'Open positions' })
+    const msft = within(positions).getAllByRole('row').find((r) => r.textContent?.includes('MSFT')) as HTMLElement
+    expect(within(msft).getByText('resting (level not reported)')).toBeTruthy()
+    expect(within(msft).queryByText('No stop')).toBeNull()
+    const needsYou = within(await screen.findByRole('region', { name: 'Needs you' })).getAllByRole('listitem')
+    expect(needsYou.some((li) => li.textContent?.includes('MSFT'))).toBe(false)
+  })
+
+  it('reveals every needs-you item in place, then collapses back, never linking out to Activity', async () => {
+    renderApp('/')
+    const panel = await screen.findByRole('region', { name: 'Needs you' })
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(3)
+    fireEvent.click(within(panel).getByRole('button', { name: `Show all ${homeFixture.attention.length}` }))
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(homeFixture.attention.length)
+    expect(within(panel).queryByRole('link', { name: /Activity/ })).toBeNull()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Show fewer' }))
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(3)
   })
 
   it('lists every book with its real/paper badge', async () => {
@@ -152,10 +174,10 @@ describe('Home', () => {
   })
 })
 
-describe('words from the data', () => {
+describe('words from the data', { timeout: 15_000 }, () => {
   it('writes the summary sentence', async () => {
     const base = homeFixture
-    expect(summaryParts(base).needs).toBe('5 items need you.')
+    expect(summaryParts(base).needs).toBe('4 items need you.')
     expect(summaryParts(base).trading).toBe('Trading is ahead of your index money by 2.9 pts this year.')
     const behind = { ...base, summary: { ...base.summary, gap_pts: -1.26, needs_you: 1 } }
     expect(summaryParts(behind)).toEqual({

@@ -84,7 +84,11 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                   <td className="r num">{num(p.quantity, 0)}</td>
                   <td className="r num">{num(p.entry_price)}</td>
                   <td className="r num">{num(p.last_price)}</td>
-                  <td className="r num">{p.stop_price == null ? <span className="text-ink3">—</span> : num(p.stop_price)}</td>
+                  <td className="r num">
+                    {p.stop_price != null ? num(p.stop_price)
+                      : p.stop_resting ? <span className="text-ink3 text-xs whitespace-nowrap">resting (level not reported)</span>
+                      : <span className="text-ink3">—</span>}
+                  </td>
                   <td style={{ paddingLeft: 16 }}>
                     {p.room_pct != null ? (
                       <div className="flex items-center gap-2">
@@ -97,6 +101,8 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                         </span>
                         <span className="num text-xs">{num(p.room_pct, 1)}%</span>
                       </div>
+                    ) : p.stop_resting ? (
+                      <span className="text-xs text-ink3">—</span>
                     ) : p.money === 'real' ? (
                       <span className="flex items-center gap-1.5 text-xs">
                         <Icon name="shield" size={14} style={{ color: 'var(--serious)' }} />No stop

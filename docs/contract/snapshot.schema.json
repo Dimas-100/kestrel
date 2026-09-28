@@ -790,6 +790,18 @@
           "default": null,
           "title": "Stop Price"
         },
+        "stop_resting": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stop Resting"
+        },
         "opened": {
           "format": "date",
           "title": "Opened",

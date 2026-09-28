@@ -27,7 +27,7 @@ def test_demo_prints_a_valid_snapshot(capsysbinary):
 def test_demo_home_is_reproducible(capsysbinary):
     first = run(capsysbinary, "demo", "--view", "home", "--now", NOW)[1]
     second = run(capsysbinary, "demo", "--view", "home", "--now", NOW)[1]
-    assert first == second and json.loads(first)["summary"]["needs_you"] == 5
+    assert first == second and json.loads(first)["summary"]["needs_you"] == 4
 
 
 def test_schema_describes_the_snapshot(capsysbinary):

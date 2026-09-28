@@ -76,6 +76,16 @@ def test_position_without_stop_is_flagged():
     assert flags == {"XLF": "no_stop", "AAPL": None}
 
 
+def test_a_stop_that_rests_but_isnt_reported_is_not_flagged():
+    book = Book(id="b", name="B", money="real", strategy_id="s", status="running", started=dt.date(2026, 9, 1),
+                value=1000)
+    resting = Position(book_id="b", symbol="MSFT", quantity=1, entry_price=50, last_price=51, stop_resting=True,
+                       opened=dt.date(2026, 9, 20))
+    snap = Snapshot(generated_at=NOW, books=[book], positions=[resting])
+    row = book_view(snap, Profile(), NOW, "b").positions[0]
+    assert (row.flag, row.stop_price, row.stop_resting, row.room_pct) == (None, None, True, None)
+
+
 def test_unknown_book_404(demo_snapshot):
     assert book_view(demo_snapshot, DEMO_PROFILE, NOW, "nope") is None
 

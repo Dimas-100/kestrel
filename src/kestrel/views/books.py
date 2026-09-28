@@ -12,18 +12,13 @@ import math
 from statistics import fmean
 from typing import Literal
 
-from pydantic import BaseModel
-
 from ..contract import Benchmark, Run, Snapshot, Trade, ValuePoint
 from ..metrics import expected_band, growth_index, max_drawdown_pct
 from ..profile import Profile
+from ._base import View
 
 MIN_TRADES_FOR_VERDICT = 10  # fewer closed trades than this is "too early" to judge a book
 SPARK_POINTS = 60  # the Books list' sparkline
-
-
-class View(BaseModel):
-    pass
 
 
 class BookRow(View):
@@ -124,6 +119,7 @@ class BookPosition(View):
     entry_price: float
     last_price: float
     stop_price: float | None
+    stop_resting: bool | None  # True: a stop rests but its level isn't reported (see contract.Position)
     room_pct: float | None  # distance from the last price down to the stop
     pnl: float
     pnl_pct: float | None
@@ -228,9 +224,11 @@ def _positions(snapshot: Snapshot, book_id: str, today: dt.date) -> list[BookPos
             if p.stop_price is not None and p.last_price > 0 else None
         out.append(BookPosition(
             symbol=p.symbol, quantity=p.quantity, entry_price=p.entry_price, last_price=p.last_price,
-            stop_price=p.stop_price, room_pct=room, pnl=round((p.last_price - p.entry_price) * p.quantity, 2),
+            stop_price=p.stop_price, stop_resting=p.stop_resting, room_pct=room,
+            pnl=round((p.last_price - p.entry_price) * p.quantity, 2),
             pnl_pct=round((p.last_price - p.entry_price) / p.entry_price * 100, 2) if p.entry_price else None,
-            opened=p.opened, days=(today - p.opened).days, flag="no_stop" if p.stop_price is None else None,
+            opened=p.opened, days=(today - p.opened).days,
+            flag="no_stop" if p.stop_price is None and p.stop_resting is not True else None,
         ))
     return out
 

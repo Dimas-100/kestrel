@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { useState } from 'react'
 import { Panel } from '../../components/bits'
 import { Icon, type IconName } from '../../components/Icon'
 import type { Attention, Level } from '../../lib/api'
@@ -11,10 +12,12 @@ export const LOOK: Record<Level, { icon: IconName; color: string; word: string }
 const SHOWN = 3
 
 export function AttentionPanel({ items }: { items: Attention[] }) {
+  const [all, setAll] = useState(false)
   const counts = (['serious', 'warning', 'note'] as const)
     .map((level) => [level, items.filter((i) => i.level === level).length] as const)
     .filter(([, n]) => n > 0)
     .map(([level, n]) => `${n} ${level}`)
+  const shown = all ? items : items.slice(0, SHOWN)
   return (
     <Panel id="attention" title="Needs you" span={5} height={372}
       actions={counts.length > 0 && <span className="chip">{counts.join(' · ')}</span>}>
@@ -24,7 +27,7 @@ export function AttentionPanel({ items }: { items: Attention[] }) {
         </div>
       ) : (
         <ul className="mt-3">
-          {items.slice(0, SHOWN).map((item, i) => {
+          {shown.map((item, i) => {
             const look = LOOK[item.level]
             return (
               <li key={i} className="flex gap-3 py-3.5 border-t border-line">
@@ -49,9 +52,10 @@ export function AttentionPanel({ items }: { items: Attention[] }) {
         </ul>
       )}
       {items.length > SHOWN && (
-        <Link to="/activity" className="mt-auto text-xs" style={{ color: 'var(--acc-ink)' }}>
-          {items.length - SHOWN} more
-        </Link>
+        <button type="button" onClick={() => setAll(!all)} className="mt-auto text-xs"
+          style={{ color: 'var(--acc-ink)', background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>
+          {all ? 'Show fewer' : `Show all ${items.length}`}
+        </button>
       )}
     </Panel>
   )

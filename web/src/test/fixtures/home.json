@@ -3,7 +3,7 @@
   "summary": {
     "day_change": -81.32,
     "gap_pts": 2.94,
-    "needs_you": 5
+    "needs_you": 4
   },
   "net_worth": {
     "total": 168278.24,
@@ -2208,12 +2208,6 @@
   },
   "attention": [
     {
-      "level": "serious",
-      "title": "MSFT has no resting stop",
-      "detail": "Mean reversion · real — no protective stop on record",
-      "link": "/books"
-    },
-    {
       "level": "warning",
       "title": "Savings hasn't synced in 26 hours",
       "detail": "bank link · last success Thu 15:08",
@@ -2395,6 +2389,7 @@
       "entry_price": 508.2,
       "last_price": 512.4,
       "stop_price": null,
+      "stop_resting": true,
       "room_pct": null,
       "pnl": 25.2,
       "note": ""
@@ -2408,6 +2403,7 @@
       "entry_price": 468.3,
       "last_price": 474.95,
       "stop_price": 430.84,
+      "stop_resting": null,
       "room_pct": 9.29,
       "pnl": 39.9,
       "note": ""
@@ -2421,6 +2417,7 @@
       "entry_price": 301.1,
       "last_price": 297.85,
       "stop_price": 277.01,
+      "stop_resting": null,
       "room_pct": 7.0,
       "pnl": -32.5,
       "note": ""
@@ -2434,6 +2431,7 @@
       "entry_price": 152.4,
       "last_price": 155.08,
       "stop_price": 140.21,
+      "stop_resting": null,
       "room_pct": 9.59,
       "pnl": 53.6,
       "note": ""
@@ -2447,6 +2445,7 @@
       "entry_price": 51.2,
       "last_price": 51.62,
       "stop_price": null,
+      "stop_resting": null,
       "room_pct": null,
       "pnl": 7.14,
       "note": "Exits on strength"
@@ -2460,6 +2459,7 @@
       "entry_price": 128.4,
       "last_price": 130.02,
       "stop_price": 118.13,
+      "stop_resting": null,
       "room_pct": 9.14,
       "pnl": 226.8,
       "note": ""
@@ -2473,6 +2473,7 @@
       "entry_price": 398.1,
       "last_price": 404.66,
       "stop_price": 366.25,
+      "stop_resting": null,
       "room_pct": 9.49,
       "pnl": 295.2,
       "note": ""
@@ -2486,6 +2487,7 @@
       "entry_price": 69.05,
       "last_price": 69.9,
       "stop_price": 63.53,
+      "stop_resting": null,
       "room_pct": 9.11,
       "pnl": 221.0,
       "note": ""
@@ -2499,6 +2501,7 @@
       "entry_price": 190.2,
       "last_price": 188.7,
       "stop_price": 174.98,
+      "stop_resting": null,
       "room_pct": 7.27,
       "pnl": -142.5,
       "note": ""
@@ -2512,6 +2515,7 @@
       "entry_price": 238.55,
       "last_price": 241.1,
       "stop_price": 219.47,
+      "stop_resting": null,
       "room_pct": 8.97,
       "pnl": 191.25,
       "note": ""

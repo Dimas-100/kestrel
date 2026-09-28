@@ -137,6 +137,7 @@ export interface PositionRow {
   entry_price: number
   last_price: number
   stop_price: number | null
+  stop_resting: boolean | null // true: a stop rests but its level isn't reported
   room_pct: number | null
   pnl: number
   note: string
@@ -414,6 +415,7 @@ export interface BookPosition {
   entry_price: number
   last_price: number
   stop_price: number | null
+  stop_resting: boolean | null // true: a stop rests but its level isn't reported
   room_pct: number | null
   pnl: number
   pnl_pct: number | null

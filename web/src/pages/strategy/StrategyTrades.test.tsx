@@ -1,7 +1,7 @@
 // The Strategy page's trade-level sections: anatomy, recent trades, is it worth it, month by month, all trades.
 import { fireEvent, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { StrategyView } from '../../lib/api'
+import type { Attention, StrategyView } from '../../lib/api'
 import { homeFixture, renderApp, strategyFixture } from '../../test/renderApp'
 import { reasonWord, selectedChartKey, sessionsText } from './Anatomy'
 
@@ -128,9 +128,9 @@ describe('Strategy page, trade by trade', { timeout: 15_000 }, () => {
   })
 
   it('links a book below its band on Home to its strategy', async () => {
-    // a realistic mix (a serious item ahead of it, as Home always shows one), not isolated to a single item: the
-    // panel only renders its first few, so the item under test must sit inside that visible window
-    const serious = homeFixture.attention.find((a) => a.level === 'serious')!
+    // a realistic mix (a serious item ahead of it), not isolated to a single item: the panel only renders its
+    // first few, so the item under test must sit inside that visible window
+    const serious: Attention = { level: 'serious', title: 'XLF has no resting stop', detail: '', link: '/books' }
     const below = homeFixture.attention.find((a) => a.title.includes('below its expected band'))!
     renderApp('/', { home: { ...homeFixture, attention: [serious, below] } })
     const needs = await findPanel('Needs you')

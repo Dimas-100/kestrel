@@ -6,11 +6,10 @@ import datetime as dt
 from typing import Literal
 from urllib.parse import quote
 
-from pydantic import BaseModel
-
 from ..contract import Book, Snapshot, Source, ValuePoint
 from ..metrics import growth_index, largest_remainder, max_drawdown_pct, sum_series
 from ..profile import Profile
+from ._base import View as View  # noqa: F401 - re-exported: other view modules import View from here
 from .books import MIN_TRADES_FOR_VERDICT as MIN_TRADES_FOR_VERDICT  # noqa: F401 - re-exported for strategy.py
 from .books import BookRow
 from .books import book_rows as _book_rows
@@ -18,10 +17,6 @@ from .books import book_rows as _book_rows
 CATEGORY_LABELS = {"long_term": "Long-term", "trading": "Trading", "cash": "Cash", "debt": "Debt", "other": "Other"}
 OWNED = ("long_term", "trading", "cash", "other")  # money held; "debt" is money owed
 MIN_YTD_POINTS = 5  # early January falls back to the past twelve months
-
-
-class View(BaseModel):
-    pass
 
 
 class Delta(View):
@@ -98,6 +93,7 @@ class PositionRow(View):
     entry_price: float
     last_price: float
     stop_price: float | None
+    stop_resting: bool | None  # True: a stop rests but its level isn't reported (see contract.Position)
     room_pct: float | None  # distance from the last price down to the stop
     pnl: float
     note: str
@@ -250,7 +246,7 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
     items: list[Attention] = []
     for p in snapshot.positions:
         book = books.get(p.book_id)
-        if book is not None and book.money == "real" and p.stop_price is None:
+        if book is not None and book.money == "real" and p.stop_price is None and p.stop_resting is not True:
             items.append(Attention(level="serious", title=f"{p.symbol} has no resting stop",
                                    detail=f"{book.name} · real — no protective stop on record", link="/books"))
     for source in snapshot.sources:
@@ -313,6 +309,7 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
             book_id=p.book_id, book=books[p.book_id].name if p.book_id in books else p.book_id, symbol=p.symbol,
             money=books[p.book_id].money if p.book_id in books else "paper", quantity=p.quantity,
             entry_price=p.entry_price, last_price=p.last_price, stop_price=p.stop_price,
+            stop_resting=p.stop_resting,
             room_pct=round((p.last_price - p.stop_price) / p.last_price * 100, 2)
             if p.stop_price is not None and p.last_price > 0 else None,
             pnl=round((p.last_price - p.entry_price) * p.quantity, 2), note=p.note,

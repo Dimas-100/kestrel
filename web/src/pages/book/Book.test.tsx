@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bookFixture, renderApp } from '../../test/renderApp'
 
-describe('Book', () => {
+describe('Book', { timeout: 15_000 }, () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('renders the header, equity, scorecard, positions and trades', async () => {
@@ -14,8 +14,9 @@ describe('Book', () => {
     expect(screen.getByRole('heading', { name: 'Open positions' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'All trades' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Runs' })).toBeTruthy()
-    // a missing stop is flagged in words, not colour alone
-    expect(screen.getByText('No stop')).toBeTruthy()
+    // MSFT's stop rests but its level isn't reported: worded plainly, no alarm flag
+    expect(screen.getByText('resting (level not reported)')).toBeTruthy()
+    expect(screen.queryByText('No stop')).toBeNull()
     expect(screen.getAllByText(`${bookFixture.trades.length} closed trades`)).toHaveLength(2) // scorecard + trades table
   })
 

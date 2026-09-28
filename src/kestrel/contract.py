@@ -127,6 +127,9 @@ class Position(Model):
     entry_price: float
     last_price: float
     stop_price: float | None = None
+    # True: a protective stop rests at the broker but its level isn't reported (a desk that tracks stops itself,
+    # say); None: not reported at all. Never inferred — only a source that actually knows says True.
+    stop_resting: bool | None = None
     opened: dt.date
     note: str = ""
 

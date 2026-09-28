@@ -45,7 +45,7 @@ def test_health_shell_and_home(client):
     assert shell["name"] == "Alex" and shell["app"]["accent"] == "rufous"
     assert shell["counts"] == {"accounts": 6, "books": 5, "strategies": 4}
     home = client.get("/api/home").json()
-    assert home["summary"]["needs_you"] == 5
+    assert home["summary"]["needs_you"] == 4
     assert home["net_worth"]["total"] > 0
 
 

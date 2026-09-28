@@ -48,6 +48,10 @@ plain "not reported" state for that part and everything else still works.
   percent), plotted on "Is it worth it?".
 - `Strategy.watch`: names close to a signal (`symbol`, `label`, `value`, `note`), listed under "Where the money
   works".
+- `Position.stop_resting`: `true` when a protective stop rests at the broker but its level isn't reported (a desk
+  that manages its own stops and doesn't send their price, say); left out or `null` when a missing `stop_price`
+  really does mean no stop. With `stop_price` empty and `stop_resting` true, kestrel shows "resting (level not
+  reported)" instead of flagging the position — never inferred, only set when a source actually knows.
 
 ## Cash, debt, plan and research
 

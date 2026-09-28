@@ -34,8 +34,10 @@ export function PositionsPanel({ v }: { v: BookView }) {
                         style={{ color: 'var(--serious)' }}>
                         <Icon name="shield" size={13} />No stop
                       </span>
+                    ) : p.stop_price == null ? (
+                      <span className="text-xs text-ink3 whitespace-nowrap">resting (level not reported)</span>
                     ) : (
-                      <span className="num">{num(p.stop_price as number)}</span>
+                      <span className="num">{num(p.stop_price)}</span>
                     )}
                   </td>
                   <td className="r num">{p.room_pct == null ? <Missing /> : `${num(p.room_pct, 1)}%`}</td>

@@ -544,8 +544,10 @@ class DemoConnector:
         leader = _walk(rng, 25000.0, market[-10:], 0.2, -0.0015, 0.003, zero[:10])
 
         positions = [
+            # a protective stop rests at the broker, but the desk feed that reports this book doesn't carry its
+            # level: stop_resting says so, so kestrel doesn't raise a false "no resting stop" alarm on it
             Position(book_id="rsi2-real", symbol="MSFT", quantity=6, entry_price=508.20, last_price=512.40,
-                     opened=days[-1]),
+                     stop_resting=True, opened=days[-1]),
             Position(book_id="rsi2-real", symbol="CAT", quantity=6, entry_price=468.30, last_price=474.95,
                      stop_price=430.84, opened=days[-3]),
             Position(book_id="rsi2-real", symbol="PG", quantity=20, entry_price=152.40, last_price=155.08,

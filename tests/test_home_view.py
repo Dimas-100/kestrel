@@ -84,7 +84,8 @@ def test_attention_is_ordered_serious_warning_note(demo_home):
     levels = [a.level for a in demo_home.attention]
     assert levels == sorted(levels, key=["serious", "warning", "note"].index)
     titles = [a.title for a in demo_home.attention]
-    assert "MSFT has no resting stop" in titles
+    # MSFT's stop rests but isn't reported (stop_resting=True): no false "no resting stop" alarm
+    assert "MSFT has no resting stop" not in titles
     assert any("Savings" in t for t in titles)
     # an off-plan target and an alert thesis are warnings; a watch thesis is a note (Plan owns their arithmetic)
     assert "XLV is over plan in Roth IRA" in titles and "XLP is under plan in Roth IRA" in titles
@@ -93,7 +94,7 @@ def test_attention_is_ordered_serious_warning_note(demo_home):
     assert (by_title["HD: thesis needs a look"], by_title["XLE: thesis needs a look"]) == ("warning", "note")
     link = next(a.link for a in demo_home.attention if a.title == "XLV is over plan in Roth IRA")
     assert link == "/plan"
-    assert demo_home.summary.needs_you == 5
+    assert demo_home.summary.needs_you == 4
 
 
 def test_stale_source_warning_stays_in_the_top_three(demo_home):
@@ -177,6 +178,19 @@ def test_a_paper_position_without_a_stop_is_not_an_alarm():
     pos = Position(book_id="p", symbol="XLF", quantity=1, entry_price=50, last_price=51, opened=dt.date(2026, 9, 25))
     home = home_view(_tiny([], [], books=[book], positions=[pos]), Profile(), NOW)
     assert home.attention == []
+
+
+def test_a_real_position_whose_stop_rests_but_isnt_reported_is_not_an_alarm():
+    # a trading desk that manages its own stops but doesn't report their level: stop_resting=True says a stop is
+    # there, so kestrel must not shout "no resting stop" on a lot that is in fact protected
+    book = Book(id="b", name="Real", money="real", strategy_id="s", status="running", started=dt.date(2026, 1, 1),
+                value=1000)
+    pos = Position(book_id="b", symbol="MSFT", quantity=1, entry_price=50, last_price=51, stop_resting=True,
+                   opened=dt.date(2026, 9, 25))
+    home = home_view(_tiny([], [], books=[book], positions=[pos]), Profile(), NOW)
+    assert home.attention == []
+    row = home.positions[0]
+    assert (row.stop_price, row.stop_resting, row.room_pct) == (None, True, None)
 
 
 def test_an_error_source_becomes_a_warning():

@@ -1430,12 +1430,13 @@
       "entry_price": 508.2,
       "last_price": 512.4,
       "stop_price": null,
+      "stop_resting": true,
       "room_pct": null,
       "pnl": 25.2,
       "pnl_pct": 0.83,
       "opened": "2026-09-25",
       "days": 0,
-      "flag": "no_stop"
+      "flag": null
     },
     {
       "symbol": "CAT",
@@ -1443,6 +1444,7 @@
       "entry_price": 468.3,
       "last_price": 474.95,
       "stop_price": 430.84,
+      "stop_resting": null,
       "room_pct": 9.29,
       "pnl": 39.9,
       "pnl_pct": 1.42,
@@ -1456,6 +1458,7 @@
       "entry_price": 152.4,
       "last_price": 155.08,
       "stop_price": 140.21,
+      "stop_resting": null,
       "room_pct": 9.59,
       "pnl": 53.6,
       "pnl_pct": 1.76,
@@ -1469,6 +1472,7 @@
       "entry_price": 301.1,
       "last_price": 297.85,
       "stop_price": 277.01,
+      "stop_resting": null,
       "room_pct": 7.0,
       "pnl": -32.5,
       "pnl_pct": -1.08,
