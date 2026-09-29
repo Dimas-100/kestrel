@@ -111,6 +111,7 @@ plus the word (REAL / PAPER), so it reads in greyscale and print too.
 
 - **UI:** Geist, weights 400, 500 and 600.
 - **Numbers:** Geist Mono, weights 400, 500 and 600, with `font-variant-numeric: tabular-nums` in tables and axes.
+- **Numbers inside a sentence** (page summaries, panel subtitles, notes, a stat block's second line) stay in Geist with tabular figures: mono mid-sentence reads as a glitch. `p .num`, `.prose .num` and `.panel-sub .num` do this.
 - The hero figure uses the sans with proportional figures, and its cents are dimmed.
 - Both faces are self-hosted in the app. The static mockups load them from Google Fonts.
 - Fallbacks: `ui-sans-serif, system-ui` / `ui-monospace`.

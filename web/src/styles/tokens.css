@@ -85,6 +85,8 @@
 .panel-sub { font-size: 12px; color: var(--ink3); margin-top: 2px; }
 .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink3); font-weight: 500; }
 .num { font-family: var(--k-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* a figure inside a sentence keeps the sentence's face: mono mid-line reads as a glitch, not as data */
+p .num, .prose .num, .panel-sub .num { font-family: var(--k-sans); letter-spacing: 0; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; padding: 2px; gap: 2px;
   background: var(--panel); }
 .seg button { font: 500 12px/1 var(--k-sans); padding: 6px 10px; border-radius: 5px; color: var(--ink3);

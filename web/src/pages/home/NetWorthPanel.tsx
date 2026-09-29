@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { baseline, RANGES, type Range, windowPoints } from '../../charts/geometry'
+import { useHeight } from '../../charts/hooks'
 import { LineChart, LineKey } from '../../charts/LineChart'
 import { Delta, NoHistoryNote, Panel, Seg, Stat } from '../../components/bits'
 import type { NetWorth } from '../../lib/api'
@@ -12,6 +13,8 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
   const base = baseline(points)
   const growth = points.length ? points[points.length - 1].value - base[base.length - 1] : 0
   const [whole, cents] = splitCents(nw.total)
+  // the chart fills whatever height the row gives the panel (a long account list beside it stretches the row)
+  const [fillRef, fillH] = useHeight<HTMLDivElement>(196)
   return (
     <Panel id="net-worth" title="Net worth" span={8} height={372}
       actions={<>
@@ -31,7 +34,7 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
           </div>
           {/* what is owed is already taken off the figure above: say so, so it isn't read as all held */}
           {nw.owed > 0 && (
-            <div className="text-xs text-ink3 mt-1.5">net of <span className="num">{money(nw.owed)}</span> owed</div>
+            <div className="prose text-xs text-ink3 mt-1.5">net of <span className="num">{money(nw.owed)}</span> owed</div>
           )}
         </div>
         <div className="flex flex-wrap gap-x-7 gap-y-3 pb-1">
@@ -49,11 +52,14 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
           </Stat>
         </div>
       </div>
-      <div className="mt-auto pt-3">
+      <div className="flex-1 flex flex-col pt-3 min-h-0">
         {points.length === 0 ? (
           <p className="text-ink3">No history yet. The chart appears once your accounts have a few days of data.</p>
         ) : view === 'Chart' ? (
-          <LineChart dates={points.map((p) => p.date)} height={196}
+          <div ref={fillRef} className="relative flex-1 min-h-[196px]">
+          {/* absolute: the measured box sizes the chart, never the other way round */}
+          <div className="absolute inset-0">
+          <LineChart dates={points.map((p) => p.date)} height={fillH}
             ariaLabel="Net worth against your starting value plus deposits"
             series={[
               { key: 'nw', label: 'Net worth', values: points.map((p) => p.value), color: 'var(--ink1)', style: 'solid',
@@ -62,8 +68,10 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
             ]}
             yFormat={compactMoney} valueFormat={(v) => money(v, false)}
             xLabel={(d) => monthLabel(d, range === '1M' || range === '3M')} tipTitle={(d) => shortDate(d)} />
+          </div>
+          </div>
         ) : (
-          <div className="overflow-y-auto" style={{ maxHeight: 196 }}>
+          <div className="overflow-y-auto flex-1" style={{ maxHeight: Math.max(196, fillH) }}>
             <table className="tbl">
               <thead><tr><th>Date</th><th className="r">Net worth</th><th className="r">Start + deposits</th></tr></thead>
               <tbody>

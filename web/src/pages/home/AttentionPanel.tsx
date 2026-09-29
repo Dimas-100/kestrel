@@ -37,8 +37,8 @@ export function AttentionPanel({ items }: { items: Attention[] }) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="label" style={{ color: look.color }}>{look.word}</div>
-                  <div className="text-sm font-medium mt-0.5">{item.title}</div>
-                  {item.detail && <div className="text-xs text-ink3 mt-0.5">{item.detail}</div>}
+                  <div className="text-sm font-medium mt-0.5 [overflow-wrap:anywhere]">{item.title}</div>
+                  {item.detail && <div className="text-xs text-ink3 mt-0.5 [overflow-wrap:anywhere]">{item.detail}</div>}
                 </div>
                 {item.link && (
                   <Link to={item.link} className="self-center inline-flex items-center gap-1 text-xs whitespace-nowrap"

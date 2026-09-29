@@ -1,9 +1,9 @@
 // The strategy list: one card per strategy with its books and how its primary book is doing against the backtest.
 import { Link } from '@tanstack/react-router'
-import { BookMark, Delta } from '../../components/bits'
+import { BookMark, Delta, Stat } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import { type BookChip, type StrategyCard, useStrategies } from '../../lib/api'
-import { pct } from '../../lib/format'
+import { pct, shortDate, signedMoney } from '../../lib/format'
 import { BandBar, VERDICT } from '../home/BooksPanel'
 
 export const MONEY_WORD = { real: 'Real', paper: 'Paper' } as const
@@ -54,6 +54,17 @@ function Card({ s }: { s: StrategyCard }) {
           </span>
         </div>
       </div>
+      {s.trades > 0 && (
+        <div className="flex flex-wrap gap-x-8 gap-y-3">
+          <Stat label="Win rate"><span className="num">{s.win_rate == null ? '—' : `${s.win_rate.toFixed(0)}%`}</span></Stat>
+          <Stat label="Avg trade">
+            {s.avg_return_pct == null ? <span className="num">—</span>
+              : <Delta value={s.avg_return_pct}>{pct(s.avg_return_pct, 2)}</Delta>}
+          </Stat>
+          <Stat label="P&L"><Delta value={s.pnl}>{signedMoney(s.pnl)}</Delta></Stat>
+          {s.last_closed && <Stat label="Last closed"><span className="num">{shortDate(s.last_closed)}</span></Stat>}
+        </div>
+      )}
       <div className="mt-auto flex items-center justify-between border-t border-line pt-3 text-xs">
         <span className="text-ink3">{s.trades} closed trades</span>
         <Link to="/strategies/$strategyId" params={{ strategyId: s.id }} aria-label={`Open ${s.name}`}

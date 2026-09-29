@@ -37,3 +37,20 @@ export function useIndex(count: number) {
   }
   return { index, set: setHovered, onKey }
 }
+
+/** A ref for a box that flexes to fill its panel, and its current height (`fallback` until measured, never below
+ *  `floor`): lets a chart grow to the panel a taller neighbour stretched, instead of leaving a gap above it. */
+export function useHeight<T extends HTMLElement>(fallback: number, floor = fallback) {
+  const ref = useRef<T>(null)
+  const [height, setHeight] = useState(fallback)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setHeight(Math.max(floor, el.clientHeight || fallback))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [fallback, floor])
+  return [ref, height] as const
+}

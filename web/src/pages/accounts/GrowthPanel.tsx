@@ -66,7 +66,7 @@ export function GrowthPanel({ growth, asOf, noHistory = 0 }: {
           <GrowthBar growth={g} ariaLabel={`${WINDOW_WORD[period]}: started at, you put in, the market added`} />
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs text-ink2">
             <span className="inline-flex items-center gap-1.5"><BookMark kind="real" color="var(--s3)" />{PART_LABEL.start}</span>
-            <span className="inline-flex items-center gap-1.5"><BookMark kind="expected" />{PART_LABEL.deposits}</span>
+            <span className="inline-flex items-center gap-1.5"><span className="mark expected" style={{ width: 10, height: 10, background: 'color-mix(in srgb, var(--ref) 32%, transparent)' }} />{PART_LABEL.deposits}</span>
             <span className="inline-flex items-center gap-1.5">
               <BookMark kind="real" color={g.market >= 0 ? 'var(--up)' : 'var(--down)'} />{PART_LABEL.market}
             </span>

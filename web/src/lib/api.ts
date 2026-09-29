@@ -181,6 +181,10 @@ export interface StrategyCard {
   band_lo: number | null
   band_hi: number | null
   verdict: Verdict
+  win_rate: number | null
+  avg_return_pct: number | null
+  pnl: number
+  last_closed: string | null
 }
 
 export interface StrategiesView {

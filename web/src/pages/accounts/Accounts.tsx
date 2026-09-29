@@ -40,7 +40,8 @@ function AccountsPanel({ accounts }: { accounts: AccountLine[] }) {
           </thead>
           <tbody>
             {accounts.map((a) => (
-              <tr key={a.id}>
+              // an empty account stays listed (it is still open) but steps back so the ones holding money lead
+              <tr key={a.id} style={a.value === 0 ? { opacity: 0.7 } : undefined}>
                 <td>
                   <Link to="/accounts/$accountId" params={{ accountId: a.id }}
                     className="inline-flex items-center gap-1 font-medium">

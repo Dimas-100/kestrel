@@ -43,19 +43,22 @@ export function AllocationPanel({ slices, accounts, owed, debtAccounts }: {
         ))}
       </div>
       <div className="mt-3.5 overflow-y-auto">
-        {accounts.map((a) => (
+        {/* empty accounts last and dimmed: still open, but nothing in them to look at */}
+        {[...accounts.filter((a) => a.value !== 0), ...accounts.filter((a) => a.value === 0)].map((a) => (
           // each row opens the account; the text keeps its own ink, not the link colour
           <Link key={a.id} to="/accounts/$accountId" params={{ accountId: a.id }}
-            className="flex items-center gap-2.5 h-[42px] border-t border-line">
+            className="flex items-center gap-2.5 h-[46px] border-t border-line"
+            style={a.value === 0 ? { opacity: 0.7 } : undefined}>
             <span className="w-2 h-2 rounded-full flex-none" style={{ background: CATEGORY_COLOR[a.category] }} />
-            {/* flex-1 min-w-0: the name is what identifies the row, so it claims space first and truncates last
-                (screenshot pass, 2026-09-28) -- at 1200px, without this, the fixed-width category word and value
-                left it almost no room at all */}
-            <span className="text-[13px] font-medium truncate text-ink1 flex-1 min-w-0">{a.name}</span>
-            <span className="text-[11px] text-ink3 hidden sm:inline flex-none">{CATEGORY_WORD[a.category]}</span>
-            <div className="ml-auto text-right">
-              <div className="num text-[13px] text-ink1 whitespace-nowrap">{rowValue(a)}</div>
-              <div className="text-[11px]">
+            {/* two lines on each side -- name over category, figure over day change -- so both columns share a
+                baseline, and the name claims the full row width before it truncates */}
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-medium truncate text-ink1 leading-tight">{a.name}</div>
+              <div className="text-[11px] text-ink3 leading-tight mt-0.5">{CATEGORY_WORD[a.category]}</div>
+            </div>
+            <div className="text-right flex-none">
+              <div className="num text-[13px] text-ink1 whitespace-nowrap leading-tight">{rowValue(a)}</div>
+              <div className="text-[11px] leading-tight mt-0.5">
                 {a.day_pct == null ? <span className="text-ink3">—</span> : <Delta value={a.day_pct}>{pct(a.day_pct, 2)}</Delta>}
               </div>
             </div>
@@ -63,7 +66,7 @@ export function AllocationPanel({ slices, accounts, owed, debtAccounts }: {
         ))}
       </div>
       {owed > 0 && (
-        <Link to="/reserves" className="mt-auto pt-2.5 text-xs" style={{ color: 'var(--acc-ink)' }}>
+        <Link to="/reserves" className="prose mt-auto pt-2.5 text-xs" style={{ color: 'var(--acc-ink)' }}>
           Owed: <span className="num">{money(owed)}</span> across {debtAccounts} account{debtAccounts === 1 ? '' : 's'}
         </Link>
       )}

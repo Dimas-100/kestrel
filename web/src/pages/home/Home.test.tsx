@@ -88,7 +88,7 @@ describe('Home', { timeout: 15_000 }, () => {
     renderApp('/')
     const where = await screen.findByRole('region', { name: 'Where it sits' })
     const roth = within(where).getByRole('link', { name: /^Roth IRA/ })
-    const nameSpan = within(roth).getByText('Roth IRA')
+    const nameSpan = within(roth).getByText('Roth IRA').parentElement as HTMLElement
     expect(nameSpan.className).toMatch(/\bflex-1\b/)
     expect(nameSpan.className).toMatch(/\bmin-w-0\b/)
   })

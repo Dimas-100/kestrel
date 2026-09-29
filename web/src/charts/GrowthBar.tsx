@@ -68,9 +68,10 @@ export function GrowthBar({ growth, height = 40, ariaLabel }: { growth: GrowthSt
         style={{ display: 'block', overflow: 'visible', touchAction: 'pan-y' }}
         onPointerMove={onPointer} onPointerLeave={() => setHover(null)} onKeyDown={onKey} onBlur={() => setHover(null)}>
         <rect data-mark="start" {...box(start)} y={top} height={barH} rx={3} fill="var(--s3)" />
-        {/* what you put in is the reference money, drawn like the "Start + deposits" line: dotted, with a wash */}
-        <rect data-mark="deposits" {...box(deposits)} y={top + 0.75} height={barH - 1.5} rx={3} fill="var(--ink1)"
-          fillOpacity={0.05} stroke="var(--ref)" strokeWidth={1.5} strokeDasharray="1.5 2.5" />
+        {/* what you put in is the reference money, drawn like the "Start + deposits" line: dotted, over a fill strong
+            enough that the widest part of the bar never reads as empty track */}
+        <rect data-mark="deposits" {...box(deposits)} y={top + 0.75} height={barH - 1.5} rx={3} fill="var(--ref)"
+          fillOpacity={0.32} stroke="var(--ref)" strokeWidth={1.5} strokeDasharray="1.5 2.5" />
         <rect data-mark={growth.market >= 0 ? 'gain' : 'loss'} {...box(market)} y={top} height={barH} rx={3}
           fill={growth.market >= 0 ? 'var(--up)' : 'var(--down)'} />
         <line x1={x(growth.end)} x2={x(growth.end)} y1={1} y2={height - 1} stroke="var(--ink1)" strokeWidth={2} />

@@ -46,6 +46,11 @@ class StrategyCard(View):
     band_lo: float | None
     band_hi: float | None
     verdict: Verdict
+    # the primary book's closed trades at a glance, so a card that is too early to judge still says something
+    win_rate: float | None  # percent of closed trades with a positive P&L
+    avg_return_pct: float | None
+    pnl: float
+    last_closed: dt.date | None
 
 
 class StrategiesView(View):
@@ -477,11 +482,15 @@ def strategies_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> S
         books = [b for b in snapshot.books if b.strategy_id == s.id]
         primary, _ = _primary(books, "real", counts)
         row = rows[primary.id] if primary else None
+        mine = closed_trades(snapshot, primary.id) if primary else []
         cards.append(StrategyCard(
             id=s.id, name=s.name, summary=s.summary, books=_chips(snapshot, books, counts),
             book=primary.money if primary else None, trades=row.trades if row else 0,
             per_trade_pct=row.per_trade_pct if row else None, band_lo=row.band_lo if row else None,
             band_hi=row.band_hi if row else None, verdict=row.verdict if row else "none",
+            win_rate=100 * sum(t.pnl > 0 for t in mine) / len(mine) if mine else None,
+            avg_return_pct=sum(t.return_pct for t in mine) / len(mine) if mine else None,
+            pnl=round(sum(t.pnl for t in mine), 2), last_closed=mine[-1].closed if mine else None,
         ))
     return StrategiesView(strategies=cards)
 
