@@ -35,6 +35,7 @@ export interface ShellView {
   now: string
   sources: Source[]
   counts: { accounts: number; books: number; strategies: number }
+  logos: string[]
 }
 
 export interface Delta {

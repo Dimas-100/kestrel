@@ -17,6 +17,13 @@ timezone = "America/New_York"
 symbol = "SPY"
 label = "S&P 500"
 
+# Optional: your own logos, one image per institution or symbol, named in lower case with only letters and digits
+# ("Capital One" -> capitalone.svg, AAPL -> aapl.png; .svg .png .webp .jpg). kestrel never fetches a logo: keep this
+# folder outside git (logos/ is gitignored), and a row without a logo keeps its initials.
+#
+# [logos]
+# folder = "logos"          # relative to this file's folder
+
 # Where your data comes from. The demo source works out of the box; see docs/connectors.md for every kind.
 [[sources]]
 id = "demo"

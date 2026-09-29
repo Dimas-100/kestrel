@@ -30,6 +30,7 @@ system setting unless the profile or the toggle picks one.
 | `--ink1` | `#ECEEF1` | `#0F1114` | primary text and the net-worth line |
 | `--ink2` | `#A7ADB6` | `#4A5059` | secondary text |
 | `--ink3` | `#7D848E` | `#666D77` | muted text, axis labels |
+| `--logo-plate` | `#EEF0F3` | `#FFFFFF` | the light backing behind an owner-supplied logo (brand marks are drawn for white); never text or data |
 
 Text contrast measured on `--panel` (WCAG):
 - **Dark:** ink1 15.9, ink2 8.2, ink3 4.9.
@@ -152,6 +153,7 @@ plus the word (REAL / PAPER), so it reads in greyscale and print too.
 | **Stat block** | Caps label, then the value (mono), then a muted second line (percent or context) |
 | **Book mark / money badge** | See *Money state* above |
 | **Chip** | Pill with an optional mark or icon, 12 px text |
+| **Institution tile** | 28–32 px rounded square leading an account row: the owner's own logo on `--logo-plate` with a `--line` hairline when their logo folder has one, else the institution's initials on a wash of the category colour. Decorative (`aria-hidden`): the row names the institution in words. A holding row puts a 20 px logo beside its symbol only when one exists. Logos are never fetched or committed. |
 | **Attention item** | 32 px icon tile in the status colour, caps level label, title, one line of detail, and a link to the page that resolves it |
 | **Timeline row** | Time (mono), done/due icon, title and detail. The *now* line is a 1 px accent rule with a "NOW" label. |
 | **Progress bar** | 8 px track (`--panel2` + inset hairline) with an accent fill, and a label with "n / target" |

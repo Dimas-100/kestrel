@@ -14,6 +14,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from . import __version__
 from .connectors import collect
 from .contract import Money
+from .logos import logo_files
 from .profile import Profile
 from .views.accounts import AccountsView, AccountView, account_view, accounts_view
 from .views.activity import ActivityView, activity_view
@@ -137,6 +138,14 @@ def create_app(profile: Profile, *, profile_origin: str = "demo data", clock: Ca
     def settings() -> SettingsView:
         now = clock()
         return settings_view(collect(profile, now), profile, now, profile_origin)
+
+    @app.get("/api/logos/{key}", include_in_schema=False)
+    def logo(key: str) -> FileResponse:
+        # only a key listed from the folder is served, so no path the request names ever reaches the filesystem
+        path = logo_files(profile).get(key)
+        if path is None:
+            raise HTTPException(status_code=404, detail=f"no logo: {key}")
+        return FileResponse(path, headers={"Cache-Control": "max-age=3600"})
 
     @app.get("/api/{rest:path}", include_in_schema=False)
     def unknown_api(rest: str) -> None:

@@ -7,6 +7,7 @@ import datetime as dt
 from pydantic import BaseModel
 
 from ..contract import Snapshot, Source
+from ..logos import logo_files
 from ..profile import App, Profile
 
 
@@ -23,6 +24,7 @@ class ShellView(BaseModel):
     now: dt.datetime
     sources: list[Source]
     counts: NavCounts
+    logos: list[str]  # the keys the logo route can serve; the app shows initials for the rest
 
 
 def shell_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> ShellView:
@@ -34,4 +36,5 @@ def shell_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> ShellV
         sources=list(snapshot.sources),
         counts=NavCounts(accounts=len(snapshot.accounts), books=len(snapshot.books),
                          strategies=len(snapshot.strategies)),
+        logos=sorted(logo_files(profile)),
     )

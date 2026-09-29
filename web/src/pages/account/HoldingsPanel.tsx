@@ -1,6 +1,6 @@
 import { type CSSProperties, useState } from 'react'
 import { Empty } from '../../charts/marks'
-import { CATEGORY_COLOR, Delta, Missing, Panel, type Sort, SortHeader, toggleSort } from '../../components/bits'
+import { CATEGORY_COLOR, Delta, Missing, Panel, type Sort, SortHeader, SymbolLogo, toggleSort } from '../../components/bits'
 import type { AccountView, HoldingRow } from '../../lib/api'
 import { MINUS, money, num, pct, signedMoney } from '../../lib/format'
 import { flowDay } from './AccountGrowth'
@@ -75,7 +75,11 @@ export function HoldingsPanel({ v, year }: { v: AccountView; year: string }) {
               <tbody>
                 {sortHoldings(v.holdings, sort).map((h, i) => (
                   <tr key={`${h.symbol}-${i}`}>
-                    <td><span className="num font-semibold">{h.symbol}</span></td>
+                    <td>
+                      <span className="inline-flex items-center gap-2">
+                        <SymbolLogo symbol={h.symbol} /><span className="num font-semibold">{h.symbol}</span>
+                      </span>
+                    </td>
                     <td className="text-ink2">{h.name || <Missing />}</td>
                     <td className="r num">{quantityText(h.quantity)}</td>
                     <td className="r num">{num(h.price, Math.abs(h.price) < 1 ? 4 : 2)}</td>

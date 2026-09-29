@@ -157,3 +157,25 @@ def test_writes_to_the_account_routes_are_refused(client):
     for path in ("/api/accounts", "/api/accounts/roth"):
         for method in ("post", "put", "patch", "delete"):
             assert getattr(client, method)(path).status_code == 405, (method, path)
+
+
+def test_logos_are_served_only_from_the_profiles_folder(tmp_path, dist):
+    from kestrel.profile import LogosCfg
+
+    folder = tmp_path / "logos"
+    folder.mkdir()
+    (folder / "Chase.svg").write_text("<svg></svg>", encoding="utf-8")
+    (folder / "notes.txt").write_text("not a logo", encoding="utf-8")
+    (tmp_path / "secret.svg").write_text("<svg></svg>", encoding="utf-8")
+    profile = DEMO_PROFILE.model_copy(update={"logos": LogosCfg(folder=str(folder))})
+    client = TestClient(create_app(profile, clock=lambda: NOW, web_dist=dist), base_url=BASE_URL)
+
+    assert client.get("/api/shell").json()["logos"] == ["chase"]
+    assert client.get("/api/logos/chase").text == "<svg></svg>"
+    for key in ("notes", "secret", "..%2Fsecret", "missing"):
+        assert client.get(f"/api/logos/{key}").status_code == 404
+
+
+def test_no_logo_folder_means_no_logos(client):
+    assert client.get("/api/shell").json()["logos"] == []
+    assert client.get("/api/logos/chase").status_code == 404

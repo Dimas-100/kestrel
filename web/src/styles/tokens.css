@@ -38,6 +38,7 @@
 
 .k {
   --bg: #0b0c0e; --side: #0e0f12; --panel: #121418; --panel2: #181b20; --line: #22262c; --line2: #2e333a;
+  --logo-plate: #eef0f3; /* a logo's light backing: brand marks are drawn for white */
   --ink1: #eceef1; --ink2: #a7adb6; --ink3: #7d848e;
   --s1: #5b93db; --s2: #d46c38; --s3: #8a9099; --ref: #7d848e;
   --warn: #e8b84b; --serious: #ec835a; --good: #4cc38f; --up: #4cc38f; --down: #ea5b60;
@@ -56,6 +57,7 @@
 }
 .k[data-theme="light"] {
   --bg: #f2f3f5; --side: #f8f9fa; --panel: #ffffff; --panel2: #f5f6f8; --line: #e3e5e9; --line2: #d3d7dd;
+  --logo-plate: #ffffff;
   --ink1: #0f1114; --ink2: #4a5059; --ink3: #666d77;
   --s1: #2f6db5; --s2: #c45a24; --s3: #9aa0a8; --ref: #666d77;
   --warn: #9a6700; --serious: #c2562a; --good: #11845a; --up: #11845a; --down: #d1363b;

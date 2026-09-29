@@ -183,6 +183,12 @@ def _check_timeout(timeout: object, most: int) -> None:
         raise ValueError(f"timeout is in seconds, from 1 to {most}")
 
 
+class LogosCfg(_Strict):
+    """A folder of your own logo files (gitignored, never fetched): chase.svg, capitalone.png, aapl.svg. A file's name
+    is the institution or symbol in lower case with only its letters and digits ("Capital One" -> capitalone)."""
+    folder: str | None = None
+
+
 def _demo_sources() -> list[SourceCfg]:
     return [SourceCfg(id="demo", kind="demo", label="Demo data")]
 
@@ -191,6 +197,7 @@ class Profile(_Strict):
     you: You = You()
     app: App = App()
     benchmark: BenchmarkCfg = BenchmarkCfg()
+    logos: LogosCfg = LogosCfg()
     sources: list[SourceCfg] = Field(default_factory=_demo_sources)
 
     @model_validator(mode="after")
@@ -232,10 +239,14 @@ def _expanded(text: str, where: str) -> Path:
 
 
 def _resolve_paths(raw: dict, folder: Path) -> None:
-    """A `path` or `cwd` in a source, or a feed command's program when it is a path (it has a slash in it), may start
-    with ~ (your home folder); a relative one is relative to the profile's own folder, not to wherever kestrel was
-    started. A command runs in the profile's folder unless its source names a `cwd`. A program named without a slash
-    (python) is left as it is, to be looked up on PATH."""
+    """The logos folder, a `path` or `cwd` in a source, or a feed command's program when it is a path (it has a slash in
+    it), may start with ~ (your home folder); a relative one is relative to the profile's own folder, not to wherever
+    kestrel was started. A command runs in the profile's folder unless its source names a `cwd`. A program named
+    without a slash (python) is left as it is, to be looked up on PATH."""
+    logos = raw.get("logos")
+    if isinstance(logos, dict) and isinstance(logos.get("folder"), str) and logos["folder"]:
+        path = _expanded(logos["folder"], "logos")
+        logos["folder"] = str(path if path.is_absolute() else (folder / path).resolve())
     sources = raw.get("sources")
     for i, source in enumerate(sources if isinstance(sources, list) else []):
         if not isinstance(source, dict):

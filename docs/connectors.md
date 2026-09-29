@@ -366,3 +366,19 @@ stale_after = "36h"
   (`no paper.json in … : run trading-rails' paper broker first`), torn JSON in it (`… isn't valid JSON …`), and an
   unreadable or non-UTF-8 `runs.jsonl` (`… couldn't be read (…)` / `… isn't UTF-8 text`) each show as the source's
   error; a missing `runs.jsonl` is not an error (there simply are no runs yet).
+
+## Logos
+
+Not a source: an optional folder of your own logo files, so account rows show your bank's mark instead of initials
+and holdings show each company's. Name each file after the institution or symbol in lower case with only letters and
+digits (`Capital One` → `capitalone.svg`, `BRK.B` → `brkb.png`; `.svg`, `.png`, `.webp`, `.jpg`) and point the
+profile at the folder:
+
+```toml
+[logos]
+folder = "logos"   # relative to profile.toml's folder; logos/ is gitignored
+```
+
+kestrel never fetches a logo, so no logo service learns what you hold. It serves only files listed from that folder,
+at `GET /api/logos/{name}`, and a row without a logo keeps its initials. Logos are other companies' trademarks: keep
+them out of git.

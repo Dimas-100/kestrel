@@ -375,3 +375,12 @@ def test_source_config_matches_exact_id_first_then_the_longest_prefix():
         # prefix of it), whichever order the profile lists the sources in
         assert source_config(profile, "desk-extra").id == "desk"
     assert source_config(Profile(sources=[desk]), "nope") is None
+
+
+def test_a_relative_logos_folder_is_relative_to_the_profile(tmp_path):
+    from kestrel.profile import load_profile
+
+    path = tmp_path / "profile.toml"
+    path.write_text('[logos]\nfolder = "logos"\n', encoding="utf-8")
+    profile, _ = load_profile(path)
+    assert profile.logos.folder == str((tmp_path / "logos").resolve())

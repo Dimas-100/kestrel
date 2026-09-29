@@ -1,7 +1,7 @@
 // Small shared pieces: the money-state mark and badge, deltas, panels, segmented controls, stat blocks, sortable
 // column headings and the category chip.
 import type { CSSProperties, ReactNode } from 'react'
-import type { Money } from '../lib/api'
+import { type Money, useShell } from '../lib/api'
 
 /** Real = solid, paper = hatched, expected = dotted. The one convention every page shares. */
 export function BookMark({ kind, color, size = 12 }: { kind: Money | 'expected'; color?: string; size?: number }) {
@@ -143,11 +143,37 @@ export function initials(institution: string): string {
   return words.slice(0, 2).map((w) => w[0].toUpperCase()).join('')
 }
 
-/** A row's leading tile: the institution's initials on a wash of the account's category colour, so rows scan by
- *  institution without a logo fetched from anywhere. The text beside it names the institution in words. */
+/** The key a logo file is named by: "Capital One" -> "capitalone", "BRK.B" -> "brkb". */
+export function logoKey(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+/** The logo for `text` when the profile's logo folder has one, else null. Logos are the owner's own files served
+ *  from this computer; nothing is fetched from anywhere else. */
+export function useLogo(text: string): string | null {
+  const shell = useShell()
+  const key = logoKey(text)
+  return key && shell.data?.logos?.includes(key) ? `/api/logos/${key}` : null
+}
+
+/** A logo on a light plate, so dark and light marks both read in either theme. */
+function LogoPlate({ src, size }: { src: string; size: number }) {
+  return (
+    <span aria-hidden="true" className="flex-none inline-flex items-center justify-center overflow-hidden"
+      style={{ width: size, height: size, borderRadius: 7, background: 'var(--logo-plate)',
+        boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+      <img src={src} alt="" width={size} height={size} style={{ width: '78%', height: '78%', objectFit: 'contain' }} />
+    </span>
+  )
+}
+
+/** A row's leading tile: the institution's logo when the owner supplied one, else its initials on a wash of the
+ *  account's category colour. The text beside it names the institution in words. */
 export function InstitutionTile({ institution, category, size = 28 }: {
   institution: string; category: string; size?: number
 }) {
+  const logo = useLogo(institution)
+  if (logo) return <LogoPlate src={logo} size={size} />
   const color = CATEGORY_COLOR[category] ?? 'var(--s3)'
   return (
     <span aria-hidden="true" className="flex-none inline-flex items-center justify-center font-semibold"
@@ -157,4 +183,10 @@ export function InstitutionTile({ institution, category, size = 28 }: {
       {initials(institution)}
     </span>
   )
+}
+
+/** A holding's logo beside its symbol, only when the owner supplied one; otherwise nothing, and the symbol leads. */
+export function SymbolLogo({ symbol, size = 20 }: { symbol: string; size?: number }) {
+  const logo = useLogo(symbol)
+  return logo ? <LogoPlate src={logo} size={size} /> : null
 }

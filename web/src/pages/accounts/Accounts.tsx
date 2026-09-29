@@ -2,7 +2,7 @@
 import { Link } from '@tanstack/react-router'
 import { type CSSProperties, useState } from 'react'
 import { Empty } from '../../charts/marks'
-import { CategoryChip, Delta, InstitutionTile, Missing, Panel } from '../../components/bits'
+import { CategoryChip, Delta, InstitutionTile, Missing, Panel, SymbolLogo } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import { type AccountLine, type AccountsView, type CombinedHolding, useAccounts } from '../../lib/api'
 import { money, num, pct, signedMoney } from '../../lib/format'
@@ -95,7 +95,11 @@ function EverythingPanel({ rows }: { rows: CombinedHolding[] }) {
                 {shown.map((r, i) => (
                   <tr key={`${r.symbol}-${i}`}>
                     <td>
-                      {r.cash ? <span className="font-medium">Cash</span> : <span className="num font-semibold">{r.symbol}</span>}
+                      {r.cash ? <span className="font-medium">Cash</span> : (
+                        <span className="inline-flex items-center gap-2">
+                          <SymbolLogo symbol={r.symbol} /><span className="num font-semibold">{r.symbol}</span>
+                        </span>
+                      )}
                     </td>
                     <td className="text-ink2">{r.cash || !r.name ? <Missing /> : r.name}</td>
                     <td className="r num">{money(r.value)}</td>
