@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { CATEGORY_COLOR, CATEGORY_WORD, Delta, Panel } from '../../components/bits'
+import { CATEGORY_COLOR, CATEGORY_WORD, Delta, InstitutionTile, Panel } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import type { AccountRow, Slice } from '../../lib/api'
 import { money, pct } from '../../lib/format'
@@ -47,14 +47,14 @@ export function AllocationPanel({ slices, accounts, owed, debtAccounts }: {
         {[...accounts.filter((a) => a.value !== 0), ...accounts.filter((a) => a.value === 0)].map((a) => (
           // each row opens the account; the text keeps its own ink, not the link colour
           <Link key={a.id} to="/accounts/$accountId" params={{ accountId: a.id }}
-            className="flex items-center gap-2.5 h-[46px] border-t border-line"
+            className="flex items-center gap-2.5 h-[50px] border-t border-line"
             style={a.value === 0 ? { opacity: 0.7 } : undefined}>
-            <span className="w-2 h-2 rounded-full flex-none" style={{ background: CATEGORY_COLOR[a.category] }} />
+            <InstitutionTile institution={a.institution} category={a.category} />
             {/* two lines on each side -- name over category, figure over day change -- so both columns share a
                 baseline, and the name claims the full row width before it truncates */}
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-medium truncate text-ink1 leading-tight">{a.name}</div>
-              <div className="text-[11px] text-ink3 leading-tight mt-0.5">{CATEGORY_WORD[a.category]}</div>
+              <div className="text-[11px] text-ink3 leading-tight mt-0.5">{[a.institution, CATEGORY_WORD[a.category]].filter(Boolean).join(' · ')}</div>
             </div>
             <div className="text-right flex-none">
               <div className="num text-[13px] text-ink1 whitespace-nowrap leading-tight">{rowValue(a)}</div>

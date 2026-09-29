@@ -1364,6 +1364,7 @@
       "id": "roth",
       "name": "Roth IRA",
       "category": "long_term",
+      "institution": "Brokerage A",
       "value": 67890.81,
       "day_pct": -0.07
     },
@@ -1371,6 +1372,7 @@
       "id": "brokerage",
       "name": "Brokerage",
       "category": "long_term",
+      "institution": "Brokerage A",
       "value": 51663.74,
       "day_pct": 0.29
     },
@@ -1378,6 +1380,7 @@
       "id": "trading",
       "name": "Trading account",
       "category": "trading",
+      "institution": "Brokerage B",
       "value": 18467.71,
       "day_pct": -0.51
     },
@@ -1385,6 +1388,7 @@
       "id": "savings",
       "name": "High-yield savings",
       "category": "cash",
+      "institution": "Bank C",
       "value": 24242.85,
       "day_pct": 0.02
     },
@@ -1392,6 +1396,7 @@
       "id": "checking",
       "name": "Checking",
       "category": "cash",
+      "institution": "Bank C",
       "value": 6653.13,
       "day_pct": 0.0
     },
@@ -1399,6 +1404,7 @@
       "id": "card",
       "name": "Credit card",
       "category": "debt",
+      "institution": "Bank D",
       "value": 640.0,
       "day_pct": null
     }

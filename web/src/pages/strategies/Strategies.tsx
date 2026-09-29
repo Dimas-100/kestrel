@@ -1,7 +1,7 @@
 // The strategy list: one card per strategy with its books and how its primary book is doing against the backtest.
 import { Link } from '@tanstack/react-router'
 import { BookMark, Delta, Stat } from '../../components/bits'
-import { Icon } from '../../components/Icon'
+import { Icon, type IconName } from '../../components/Icon'
 import { type BookChip, type StrategyCard, useStrategies } from '../../lib/api'
 import { pct, shortDate, signedMoney } from '../../lib/format'
 import { BandBar, VERDICT } from '../home/BooksPanel'
@@ -30,14 +30,31 @@ export function verdictText(s: StrategyCard): string {
   return VERDICT[s.verdict]
 }
 
+/** A glyph for the card, read from the strategy's name: a feed names its strategies in words, not icon ids. */
+export function strategyIcon(name: string): IconName {
+  const n = name.toLowerCase()
+  if (/revers|rsi|rebound/.test(n)) return 'rebound'
+  if (/pullback|dip/.test(n)) return 'pullback'
+  if (/day|orb|breakout|intraday/.test(n)) return 'bolt'
+  if (/grid|session/.test(n)) return 'grid'
+  if (/etf|ibs|close/.test(n)) return 'candles'
+  return 'strategy'
+}
+
 function Card({ s }: { s: StrategyCard }) {
   const title = `strategy-${s.id}`
   const band = s.band_lo != null && s.band_hi != null && s.per_trade_pct != null
   return (
     <article className="panel gap-4" aria-labelledby={title}>
-      <div>
-        <h2 id={title} className="text-lg font-semibold tracking-[-0.01em]">{s.name}</h2>
-        {s.summary && <p className="text-sm text-ink2 mt-1">{s.summary}</p>}
+      <div className="flex gap-3.5">
+        <span aria-hidden="true" className="w-9 h-9 flex-none rounded-lg bg-panel2 border border-line flex items-center justify-center"
+          style={{ color: 'var(--acc-ink)' }}>
+          <Icon name={strategyIcon(s.name)} size={18} />
+        </span>
+        <div className="min-w-0">
+          <h2 id={title} className="text-lg font-semibold tracking-[-0.01em]">{s.name}</h2>
+          {s.summary && <p className="text-sm text-ink2 mt-1">{s.summary}</p>}
+        </div>
       </div>
       {s.books.length > 0 && <div className="flex flex-wrap gap-2"><BookChips books={s.books} /></div>}
       <div>

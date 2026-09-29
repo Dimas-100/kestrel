@@ -72,6 +72,7 @@ export interface AccountRow {
   id: string
   name: string
   category: string
+  institution: string
   value: number
   day_pct: number | null
 }

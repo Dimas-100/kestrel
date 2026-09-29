@@ -2,7 +2,7 @@
 import { Link } from '@tanstack/react-router'
 import { type CSSProperties, useState } from 'react'
 import { Empty } from '../../charts/marks'
-import { CategoryChip, Delta, Missing, Panel } from '../../components/bits'
+import { CategoryChip, Delta, InstitutionTile, Missing, Panel } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import { type AccountLine, type AccountsView, type CombinedHolding, useAccounts } from '../../lib/api'
 import { money, num, pct, signedMoney } from '../../lib/format'
@@ -43,11 +43,16 @@ function AccountsPanel({ accounts }: { accounts: AccountLine[] }) {
               // an empty account stays listed (it is still open) but steps back so the ones holding money lead
               <tr key={a.id} style={a.value === 0 ? { opacity: 0.7 } : undefined}>
                 <td>
+                  <div className="flex items-center gap-3">
+                  <InstitutionTile institution={a.institution} category={a.category} size={32} />
+                  <div className="min-w-0">
                   <Link to="/accounts/$accountId" params={{ accountId: a.id }}
                     className="inline-flex items-center gap-1 font-medium">
                     <span className="text-ink1">{a.name}</span><Icon name="chevron" size={13} />
                   </Link>
                   {kindText(a) && <div className="text-xs text-ink3 mt-0.5">{kindText(a)}</div>}
+                  </div>
+                  </div>
                 </td>
                 <td><CategoryChip category={a.category} /></td>
                 <td className="r num">{money(a.value)}</td>

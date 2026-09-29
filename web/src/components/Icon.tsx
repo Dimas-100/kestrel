@@ -34,6 +34,13 @@ const PATHS: Record<string, ReactElement> = {
     <path d="M16 3v4" /></>),
   target: (<><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></>),
   close: (<><path d="M6 6l12 12" /><path d="M18 6 6 18" /></>),
+  rebound: (<><path d="M3 6l6 9 4-4 8 8" /><path d="M21 13v6h-6" /></>),
+  candles: (<><path d="M7 4v16" /><rect x="5" y="8" width="4" height="7" rx="1" /><path d="M17 4v16" />
+    <rect x="15" y="6" width="4" height="9" rx="1" /></>),
+  grid: (<><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" />
+    <rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></>),
+  pullback: (<><path d="M3 18 9 9l4 5 8-10" /><path d="M15 4h6v6" /></>),
+  bolt: <path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" />,
 }
 
 export type IconName = keyof typeof PATHS

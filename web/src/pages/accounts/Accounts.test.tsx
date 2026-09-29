@@ -74,13 +74,14 @@ describe('Accounts', { timeout: 15_000 }, () => {
     // "Last day": the change on the history's last day (Friday's all weekend), not the calendar day's
     expect([...accounts.querySelectorAll('thead th')].map((th) => th.textContent)).toEqual([
       'Account', 'Category', 'Value', 'Share', 'Last day', 'Market this year'])
+    // each row leads with its institution's initials tile (aria-hidden: the institution is named in words beside it)
     expect(rows(accounts)).toEqual([
-      'Roth IRABrokerage A · Roth IRALong-term$67,890.8140.2%▼ down −$49.79−0.07%▲ up +$5,603.44',
-      'BrokerageBrokerage A · BrokerageLong-term$51,663.7430.6%▲ up +$146.99+0.29%▲ up +$3,362.77',
-      'High-yield savingsBank C · SavingsCash$24,242.8514.4%▲ up +$3.82+0.02%▲ up +$701.08',
-      'Trading accountBrokerage B · IndividualTrading$18,467.7110.9%▼ down −$94.32−0.51%▲ up +$1,844.36',
-      'CheckingBank C · CheckingCash$6,653.133.9%$0.000.00%$0.00', // moves by what goes in and out alone
-      'Credit cardBank D · Credit cardDebt$640.00———', // what it owes: no share of what is held, no market growth
+      'BARoth IRABrokerage A · Roth IRALong-term$67,890.8140.2%▼ down −$49.79−0.07%▲ up +$5,603.44',
+      'BABrokerageBrokerage A · BrokerageLong-term$51,663.7430.6%▲ up +$146.99+0.29%▲ up +$3,362.77',
+      'BCHigh-yield savingsBank C · SavingsCash$24,242.8514.4%▲ up +$3.82+0.02%▲ up +$701.08',
+      'BBTrading accountBrokerage B · IndividualTrading$18,467.7110.9%▼ down −$94.32−0.51%▲ up +$1,844.36',
+      'BCCheckingBank C · CheckingCash$6,653.133.9%$0.000.00%$0.00', // moves by what goes in and out alone
+      'BDCredit cardBank D · Credit cardDebt$640.00———', // what it owes: no share of what is held, no market growth
     ])
     expect(within(accounts).getByRole('link', { name: 'Roth IRA' }).getAttribute('href')).toBe('/accounts/roth')
   })

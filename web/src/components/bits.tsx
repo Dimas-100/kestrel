@@ -135,3 +135,26 @@ export function CategoryChip({ category }: { category: string }) {
     </span>
   )
 }
+
+/** An institution's initials: "Capital One" -> "CO", "Fidelity" -> "F". */
+export function initials(institution: string): string {
+  const words = institution.replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w && !/^(of|the|and)$/i.test(w))
+  if (words.length === 0) return '?'
+  return words.slice(0, 2).map((w) => w[0].toUpperCase()).join('')
+}
+
+/** A row's leading tile: the institution's initials on a wash of the account's category colour, so rows scan by
+ *  institution without a logo fetched from anywhere. The text beside it names the institution in words. */
+export function InstitutionTile({ institution, category, size = 28 }: {
+  institution: string; category: string; size?: number
+}) {
+  const color = CATEGORY_COLOR[category] ?? 'var(--s3)'
+  return (
+    <span aria-hidden="true" className="flex-none inline-flex items-center justify-center font-semibold"
+      style={{ width: size, height: size, borderRadius: 7, fontSize: Math.round(size * 0.38), letterSpacing: '-0.02em',
+        color, background: `color-mix(in srgb, ${color} 16%, transparent)`,
+        boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 30%, transparent)` }}>
+      {initials(institution)}
+    </span>
+  )
+}

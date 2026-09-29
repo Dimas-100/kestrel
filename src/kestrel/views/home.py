@@ -48,6 +48,7 @@ class AccountRow(View):
     id: str
     name: str
     category: str
+    institution: str
     value: float
     day_pct: float | None
 
@@ -312,7 +313,7 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
         for c, n in zip(present, cells)
     ]
     # an owed balance has no day's return: it moves with charges and payments
-    accounts = [AccountRow(id=a.id, name=a.name, category=a.category, value=a.value,
+    accounts = [AccountRow(id=a.id, name=a.name, category=a.category, institution=a.institution, value=a.value,
                            day_pct=None if a.category == "debt" else _day_pct(list(history.get(a.id, []))))
                 for a in snapshot.accounts]
     real_books = [b for b in snapshot.books if b.money == "real"]
