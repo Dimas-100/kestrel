@@ -442,13 +442,13 @@ def test_a_card_paid_past_zero_is_a_debt_below_zero(tmp_path):
     assert (store.category, store.value) == ("debt", -25.0)
 
 
-def test_a_balance_accounts_changes_are_money_moved_in_its_own_sign(tmp_path):
+def test_a_balance_accounts_changes_are_money_moved_a_payment_in_a_charge_out(tmp_path):
     snap = connector(_bank(tmp_path)).snapshot(NOW)
     history = {s.id: s.points for s in snap.account_history}
     assert [(p.date.day, p.value, p.net_flow) for p in history["example-bank-checking"]] == [
         (23, 100.0, 0.0), (24, 250.0, 150.0), (25, 200.0, -50.0)]          # the 999 contribution is ignored
     assert [(p.date.day, p.value, p.net_flow) for p in history["example-bank-visa"]] == [
-        (23, 700.0, 0.0), (24, 640.0, -60.0)]                              # owed went down by 60
+        (23, 700.0, 0.0), (24, 640.0, 60.0)]                               # 60 was paid in: owed fell by 60
     assert [(p.date.day, p.value, p.net_flow) for p in history["example-bank-store-card"]] == [(24, -25.0, 0.0)]
     assert [(p.date.day, p.net_flow) for p in history["alex-roth-ira"]] == [(24, 0.0), (25, 100.0)]  # unchanged
     accounts = {a.id: a for a in snap.accounts}
@@ -466,3 +466,37 @@ def test_the_profile_can_file_a_collector_account_under_debt_and_the_sign_follow
     assert [p.value for p in {s.id: s.points for s in filed.account_history}["alex-roth-ira"]] == [-6150.0, -6250.0]
     again = {a.id: a for a in connector(path).snapshot(NOW).accounts}["alex-roth-ira"]
     assert (again.category, again.value) == ("long_term", 6250.0)
+
+
+def test_paying_and_charging_a_card_never_reads_as_market_growth(tmp_path):
+    from kestrel.views.accounts import accounts_view
+
+    w = Warehouse(tmp_path / "pay.db")
+    checking = w.account("Example Bank Checking", "example_bank", "checking", flows="balance", origin="simplefin")
+    card = w.account("Example Bank Visa", "example_bank", "credit_card", flows="balance", origin="simplefin")
+    loan = w.account("Example Loan", "example_bank", "loan")   # from a file: its flows come from transactions
+    # Thu 24: 60 paid from checking to the card. Fri 25: 100 charged to the card, and 100 paid into the loan.
+    for day, (bank, owed, lent) in {23: (1000.0, -700.0, -1000.0), 24: (940.0, -640.0, -1000.0),
+                                    25: (940.0, -740.0, -900.0)}.items():
+        w.day(checking, d(day), {}, cash=bank)
+        w.day(card, d(day), {}, cash=owed)
+        w.day(loan, d(day), {}, cash=lent)
+    w.flow(loan, d(25), "contribution", 100.0)
+    w.run("derive", "ok", "2026-09-25T20:05:00Z")
+    snap = connector(w.close()).snapshot(NOW)
+    history = {s.id: [(p.date.day, p.value, p.net_flow) for p in s.points] for s in snap.account_history}
+    # the contract: a debt's history is what it owes, and its flow is money in (a payment) less money out (a charge)
+    assert history["example-bank-visa"] == [(23, 700.0, 0.0), (24, 640.0, 60.0), (25, 740.0, -100.0)]
+    assert history["example-loan"] == [(23, 1000.0, 0.0), (24, 1000.0, 0.0), (25, 900.0, 100.0)]
+    whole = accounts_view(snap, Profile(), NOW).growth["all"]
+    assert (whole.start, whole.end, whole.deposits, whole.market) == (-700.0, -700.0, 0.0, 0.0)
+
+
+def test_a_limit_is_only_inferred_from_credit_that_is_above_zero(tmp_path):
+    w = Warehouse(tmp_path / "limits.db")
+    over = w.account("Over", "example_bank", "credit_card", flows="balance")
+    unknown = w.account("Unknown", "example_bank", "credit_card", flows="balance")
+    w.snapshot(over, d(24), [], cash=-10.0, available=-50.0)
+    w.snapshot(unknown, d(24), [], cash=-10.0)   # the bank reported no available credit at all
+    accounts = {a.id: a for a in connector(w.close()).snapshot(NOW).accounts}
+    assert accounts["over"].limit is None and accounts["unknown"].limit is None

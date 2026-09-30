@@ -37,7 +37,7 @@ label = "Portfolio"
 path = "../financial-data-collector/data/warehouse.db"   # relative to this profile's folder
 stale_after = "36h"
 
-[sources.categories]          # optional: account id or exact label = long_term | trading | cash | other
+[sources.categories]          # optional: account id or exact label = long_term | trading | cash | debt | other
 "brokerage-2" = "trading"
 ```
 
@@ -49,8 +49,10 @@ stale_after = "36h"
   they are missing; kestrel never changes the warehouse's data.
 - **Cached.** kestrel keeps what it read, keyed to the warehouse's and its `-wal` file's size and modification time,
   so a sync shows up at once (and within a minute at most, for a same-size write that leaves both looking unchanged).
-- **Needs** schema version 3 or later: the tables `accounts`, `transactions`, `prices`, `sync_runs`, `holdings_daily`
-  and `cash_daily`, and the views `positions_latest` and `account_values_daily`.
+- **Needs** schema version 6 or later (the collector's release with `fdc connect`): the tables `accounts`,
+  `transactions`, `prices`, `sync_runs`, `cash_balances`, `holdings_daily` and `cash_daily`, and the views
+  `positions_latest` and `account_values_daily`. An older warehouse reads `this warehouse is at schema version 5
+  and kestrel needs 6: update financial-data-collector and run fdc sync`.
 
 ### Accounts
 
@@ -76,10 +78,12 @@ A category that isn't one of the five (`long_term`, `trading`, `cash`, `debt`, `
 - **A debt is what it owes.** The collector stores a card's or a loan's balance below zero, as the bank reports it;
   kestrel shows it as the amount owed, positive when owed and below zero when the balance is in your favour, and
   its history the same way. Its `limit` is the one set with `fdc accounts set --limit`, else what it owes plus the
-  remaining credit the bank reported, when it reported one; its `rate_pct` is the one set the same way.
+  remaining credit the bank reported, when it reported one above zero.
+- **A rate** (`rate_pct`: what cash earns, what a debt costs) is the one set with `fdc accounts set --rate`.
 - **A bank account has no transactions in the warehouse** (`flows = 'balance'`), so every change in its balance
-  counts as money moved in or out, never as growth. A paycheck never shows as market growth; interest doesn't
-  show as growth either.
+  counts as money moved, never as growth: money in is positive and money out is negative, and for a card or a
+  loan a payment is money in and a charge is money out, as the contract says. Paying a card from checking nets to
+  nothing; a paycheck never shows as market growth; interest doesn't show as growth either.
 - **History:** each account's holdings plus its cash, per day, ending on the account's value: the snapshot's total
   replaces the replayed day it shares, a newer snapshot adds its day, and an account with only a snapshot has a
   one-day history. So the Accounts total, the growth's "Now" and each account's chart agree.

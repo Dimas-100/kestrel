@@ -356,13 +356,15 @@ class FdcConnector:
             if category == "debt":  # the collector stores what a debt owes below zero; the contract wants it owed
                 debt_ids.add(a.id)
                 value, cash = -value, -cash
-                if limit is None and a.available:  # a card's remaining credit tells what its line is
+                # a card's remaining credit tells what its line is; 0, none or below zero tells nothing
+                if limit is None and a.available is not None and a.available > 0:
                     limit = round(value + a.available, 2)
             accounts.append(Account(
                 id=a.id, name=a.label, institution=a.institution, account_type=a.type_display, category=category,
                 value=value, cash=cash, as_of=_close(a.day) if a.day else now, rate_pct=a.rate_pct, limit=limit))
-        # a debt's history and flows follow its value: what it owed each day, and how that moved
-        history = [Series(id=s.id, points=[ValuePoint(date=p.date, value=-p.value, net_flow=-p.net_flow)
+        # a debt's history is what it owed each day; its flow keeps its meaning (the contract's): money in, a
+        # payment, less money out, a charge. The stored balance's own change is already that, so only the value turns
+        history = [Series(id=s.id, points=[ValuePoint(date=p.date, value=-p.value, net_flow=p.net_flow)
                                             for p in s.points]) if s.id in debt_ids else s
                    for s in data.series]
         notes = [_plural(len(accounts), "account"), _plural(len(data.holdings), "holding"),

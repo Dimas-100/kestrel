@@ -15,8 +15,8 @@
 - Read-only: the warehouse is opened `mode=ro` with `query_only`; nothing writes to it. No new routes.
 - Nothing personal in git: the fixture's accounts, symbols and numbers are fictional.
 - `MIN_VERSION = 6`; a warehouse below it gets `this warehouse is at schema version N and kestrel needs 6: update financial-data-collector and run \`fdc sync\``.
-- A `debt` account's `value` is the amount owed: positive when owed, below zero when in the person's favour. Its history and flows follow the same sign.
-- A `flows = 'balance'` account's `net_flow` per point is its value less the previous point's; the first point's is 0. Its `transactions` are ignored.
+- A `debt` account's `value` is the amount owed: positive when owed, below zero when in the person's favour. Its history's values follow the same sign; its `net_flow` keeps the contract's meaning (money in, a payment, less money out, a charge) and is not negated. (Corrected after the final review: this plan first said the flows were negated too, which made paying a card read as market growth.)
+- A `flows = 'balance'` account's `net_flow` per point is its stored balance less the previous point's; the first point's is 0. Its `transactions` are ignored.
 - `limit` is `credit_limit`, else owed plus `available` when the account is a debt and the latest cash row's `available` is above zero, else none. `rate_pct` is the row's.
 - Tests run from the worktree root with `PYTHONPATH=src ../../.venv/Scripts/python.exe -m pytest -q -p no:cacheprovider`; `ruff check .` the same way.
 
@@ -333,7 +333,7 @@ def category_of(account_type: str) -> Category:
                 id=a.id, name=a.label, institution=a.institution, account_type=a.type_display, category=category,
                 value=value, cash=cash, as_of=_close(a.day) if a.day else now, rate_pct=a.rate_pct, limit=limit))
         # a debt's history and flows follow its value: what it owed each day, and how that moved
-        history = [Series(id=s.id, points=[ValuePoint(date=p.date, value=-p.value, net_flow=-p.net_flow)
+        history = [Series(id=s.id, points=[ValuePoint(date=p.date, value=-p.value, net_flow=p.net_flow)
                                             for p in s.points]) if s.id in debt_ids else s
                    for s in data.series]
 ```
@@ -394,10 +394,12 @@ def test_reserves_fills_from_the_collector_alone(tmp_path):
 - **A debt is what it owes.** The collector stores a card's or a loan's balance below zero, as the bank reports it;
   kestrel shows it as the amount owed, positive when owed and below zero when the balance is in your favour, and
   its history the same way. Its `limit` is the one set with `fdc accounts set --limit`, else what it owes plus the
-  remaining credit the bank reported, when it reported one; its `rate_pct` is the one set the same way.
+  remaining credit the bank reported, when it reported one above zero.
+- **A rate** (`rate_pct`: what cash earns, what a debt costs) is the one set with `fdc accounts set --rate`.
 - **A bank account has no transactions in the warehouse** (`flows = 'balance'`), so every change in its balance
-  counts as money moved in or out, never as growth. A paycheck never shows as market growth; interest doesn't
-  show as growth either.
+  counts as money moved, never as growth: money in is positive and money out is negative, and for a card or a
+  loan a payment is money in and a charge is money out, as the contract says. Paying a card from checking nets to
+  nothing; a paycheck never shows as market growth; interest doesn't show as growth either.
 ```
 
   3. Same file, replace the paragraph at lines 118–123 (from `An unknown category is a profile error` to `data-contract.md)).`) with:
