@@ -36,10 +36,13 @@ UPDATE = "update financial-data-collector and run `fdc sync`"
 INSTITUTIONS = {"fidelity": "Fidelity", "webull": "Webull", "unknown": ""}
 TYPES = {"roth_ira": "Roth IRA", "traditional_ira": "Traditional IRA", "brokerage": "Brokerage", "crypto": "Crypto",
          "401k": "401(k)", "403b": "403(b)", "457b": "457(b)", "ira": "IRA", "rollover_ira": "Rollover IRA",
-         "sep_ira": "SEP IRA", "simple_ira": "SIMPLE IRA", "hsa": "HSA"}
+         "sep_ira": "SEP IRA", "simple_ira": "SIMPLE IRA", "hsa": "HSA", "checking": "Checking", "savings": "Savings",
+         "money_market": "Money market", "credit_card": "Credit card", "loan": "Loan", "mortgage": "Mortgage",
+         "line_of_credit": "Line of credit"}
 LONG_TERM = {"roth_ira", "traditional_ira", "ira", "rollover_ira", "sep_ira", "simple_ira", "401k", "403b", "457b",
              "hsa", "pension", "brokerage"}
 CASH = {"checking", "savings", "cash", "money_market"}
+DEBT = {"credit_card", "loan", "mortgage", "line_of_credit"}  # the collector stores what these owe below zero
 
 # each account's value per day: its holdings plus its cash, the join portfolio_daily_full uses, kept per account
 HISTORY = """
@@ -92,7 +95,11 @@ def type_text(code: str) -> str:
 
 
 def category_of(account_type: str) -> Category:
-    return "long_term" if account_type in LONG_TERM else "cash" if account_type in CASH else "other"
+    if account_type in LONG_TERM:
+        return "long_term"
+    if account_type in CASH:
+        return "cash"
+    return "debt" if account_type in DEBT else "other"
 
 
 def _close(day: str) -> datetime:
@@ -216,6 +223,10 @@ class _LoadedAccount:
     value: float
     cash: float
     day: str | None  # the value's as-of day; None only for an account with neither a snapshot nor a history point
+    flows: str  # 'balance': no transactions explain its changes, so every change is money moved
+    credit_limit: float | None
+    rate_pct: float | None
+    available: float | None  # the latest cash row's remaining credit, when the bank reported one
 
 
 @dataclass(frozen=True)
@@ -286,23 +297,33 @@ class FdcConnector:
         return data
 
     def _read(self, conn: sqlite3.Connection) -> _Loaded:
-        rows = conn.execute("SELECT id, label, institution, account_type FROM accounts ORDER BY id").fetchall()
+        rows = conn.execute("SELECT id, label, institution, account_type, flows, credit_limit, rate_pct "
+                            "FROM accounts ORDER BY id").fetchall()
         ids = dict(zip((r[0] for r in rows), account_ids([r[1] for r in rows])))
         by_label = {r[1]: ids[r[0]] for r in rows}
         # the latest daily value of each account; SQLite takes the bare columns from the row MAX() picked
         latest = {label: (day, total, cash) for label, day, total, cash in conn.execute(
             "SELECT account, MAX(as_of_date), total, cash FROM account_values_daily GROUP BY account")}
+        # the latest cash row's available credit per account (days ascending, so the last one wins)
+        available: dict[int, float | None] = {}
+        for account, value in conn.execute("SELECT account_id, available FROM cash_balances ORDER BY as_of_date"):
+            available[account] = value
         replayed = history(conn)
         days = {warehouse_id: _with_snapshot(replayed.get(warehouse_id, []), latest.get(label))
-                for warehouse_id, label, _, _ in rows}
+                for warehouse_id, label, *_ in rows}
         # money moved is filed under the replayed days and a newer snapshot's day; an account with no replayed
         # history has no days to file it under
         moved = flows(conn, {account: [day for day, _, _ in points] for account, points in days.items()
                              if replayed.get(account)})
+        for warehouse_id, _, _, _, flow_kind, _, _ in rows:
+            if flow_kind == "balance":  # every change is money moved; the first point moves nothing
+                points = days[warehouse_id]
+                moved[warehouse_id] = {day: (value - points[i - 1][1] if i else 0.0)
+                                       for i, (day, value, _) in enumerate(points)}
 
         accounts: list[_LoadedAccount] = []
         series: list[Series] = []
-        for warehouse_id, label, institution, kind in rows:
+        for warehouse_id, label, institution, kind, flow_kind, credit_limit, rate_pct in rows:
             points = days[warehouse_id]
             if points:
                 series.append(Series(id=ids[warehouse_id], points=[
@@ -313,6 +334,7 @@ class FdcConnector:
             accounts.append(_LoadedAccount(
                 id=ids[warehouse_id], label=label, institution=institution_text(institution),
                 type_code=kind, type_display=type_text(kind), value=round(value, 2), cash=round(cash, 2), day=day,
+                flows=flow_kind, credit_limit=credit_limit, rate_pct=rate_pct, available=available.get(warehouse_id),
             ))
 
         holdings, left_out = self._holdings(conn, by_label)
@@ -325,11 +347,24 @@ class FdcConnector:
                        benchmark_rows=benchmark_rows, last_success=last_success(conn))
 
     def _build(self, data: _Loaded, now: datetime) -> Snapshot:
-        accounts = [Account(
-            id=a.id, name=a.label, institution=a.institution, account_type=a.type_display,
-            category=self._category(a.id, a.label, a.type_code),
-            value=a.value, cash=a.cash, as_of=_close(a.day) if a.day else now,
-        ) for a in data.accounts]
+        accounts: list[Account] = []
+        debt_ids: set[str] = set()
+        for a in data.accounts:
+            category = self._category(a.id, a.label, a.type_code)
+            value, cash = a.value, a.cash
+            limit = a.credit_limit
+            if category == "debt":  # the collector stores what a debt owes below zero; the contract wants it owed
+                debt_ids.add(a.id)
+                value, cash = -value, -cash
+                if limit is None and a.available:  # a card's remaining credit tells what its line is
+                    limit = round(value + a.available, 2)
+            accounts.append(Account(
+                id=a.id, name=a.label, institution=a.institution, account_type=a.type_display, category=category,
+                value=value, cash=cash, as_of=_close(a.day) if a.day else now, rate_pct=a.rate_pct, limit=limit))
+        # a debt's history and flows follow its value: what it owed each day, and how that moved
+        history = [Series(id=s.id, points=[ValuePoint(date=p.date, value=-p.value, net_flow=-p.net_flow)
+                                            for p in s.points]) if s.id in debt_ids else s
+                   for s in data.series]
         notes = [_plural(len(accounts), "account"), _plural(len(data.holdings), "holding"),
                  f"prices to {_day(data.prices_to)}" if data.prices_to else "no prices yet"]
         if data.left_out:
@@ -348,7 +383,7 @@ class FdcConnector:
         source = Source(id=self.source_id, label=self.label, kind="fdc", last_success=data.last_success,
                         status="ok" if data.last_success else "stale", detail=" · ".join(notes))
         return Snapshot(generated_at=now, sources=[source], accounts=accounts, holdings=data.holdings,
-                        account_history=data.series, benchmark=benchmark)
+                        account_history=history, benchmark=benchmark)
 
     def _holdings(self, conn: sqlite3.Connection, by_label: dict[str, str]) -> tuple[list[Holding], int]:
         """The latest snapshot's positions, largest first in each account, each with its snapshot's day, and how

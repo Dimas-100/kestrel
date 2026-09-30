@@ -1,8 +1,9 @@
 """A small, fictional financial-data-collector warehouse for the fdc connector's tests.
 
 The tables and views are the subset of the collector's schema the connector reads, copied from its migrations
-(financial-data-collector: src/financial_data_collector/migrations/0001_init.sql, 0002_views.sql and
-0003_derived.sql and 0006_connections.sql), so the connector meets the same shapes. The accounts, symbols and numbers are made up.
+(financial-data-collector: src/financial_data_collector/migrations/0001_init.sql, 0002_views.sql,
+0003_derived.sql and 0006_connections.sql), so the connector meets the same shapes. The accounts, symbols and
+numbers are made up.
 """
 
 from __future__ import annotations
@@ -173,8 +174,8 @@ class Warehouse:
                 flows: str = "transactions", credit_limit: float | None = None, rate_pct: float | None = None,
                 origin: str = "file") -> int:
         cur = self.conn.execute(
-            "INSERT INTO accounts (label, institution, account_type, first_seen, flows, credit_limit, rate_pct, origin) "
-            "VALUES (?, ?, ?, '2026-01-02', ?, ?, ?, ?)",
+            "INSERT INTO accounts (label, institution, account_type, first_seen, flows, credit_limit, rate_pct, "
+            "origin) VALUES (?, ?, ?, '2026-01-02', ?, ?, ?, ?)",
             (label, institution, account_type, flows, credit_limit, rate_pct, origin))
         return int(cur.lastrowid)
 

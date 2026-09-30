@@ -386,3 +386,83 @@ def test_a_broken_source_is_a_red_row_and_the_rest_still_arrives(tmp_path):
     assert errors["portfolio"] == f"no warehouse at {tmp_path / 'nope.db'}"
     assert errors["unset"].startswith("an fdc source needs a path to the warehouse")
     assert len(snap.accounts) == 6  # the demo still arrived
+
+
+def _bank(folder):
+    """Alex's bank through a connection: a card owing 640 (below zero, as the bank reports it) with a rate and a
+    limit set by hand, a checking account whose balance moved three days running, and a card paid past zero."""
+    w = Warehouse(folder / "bank.db")
+    card = w.account("Example Bank Visa", "example_bank", "credit_card", flows="balance", rate_pct=24.9,
+                     credit_limit=5000.0, origin="simplefin")
+    unset = w.account("Example Bank Platinum", "example_bank", "credit_card", flows="balance", origin="simplefin")
+    checking = w.account("Example Bank Checking", "example_bank", "checking", flows="balance", rate_pct=0.1,
+                         origin="simplefin")
+    overpaid = w.account("Example Bank Store Card", "example_bank", "credit_card", flows="balance", origin="simplefin")
+    roth = w.account("Alex Roth IRA", "fidelity", "roth_ira")
+    for day, owed in {23: -700.0, 24: -640.0}.items():
+        w.day(card, d(day), {}, cash=owed)
+    w.snapshot(card, d(24), [], cash=-640.0, available=0.0)
+    w.day(unset, d(24), {}, cash=-1000.0)
+    w.snapshot(unset, d(24), [], cash=-1000.0, available=4000.0)
+    for day, balance in {23: 100.0, 24: 250.0, 25: 200.0}.items():
+        w.day(checking, d(day), {}, cash=balance)
+    w.snapshot(checking, d(25), [], cash=200.0, available=200.0)
+    w.day(overpaid, d(24), {}, cash=25.0)
+    w.snapshot(overpaid, d(24), [], cash=25.0, available=0.0)
+    w.day(roth, d(24), {"SPY": 6000.0}, cash=150.0)
+    w.day(roth, d(25), {"SPY": 6100.0}, cash=150.0)
+    w.flow(roth, d(25), "contribution", 100.0)
+    w.flow(checking, d(24), "contribution", 999.0)   # a balance account's transactions are ignored
+    w.prices("SPY", {d(24): 600.0, d(25): 610.0})
+    w.run("derive", "ok", "2026-09-25T12:05:00Z")
+    return w.close()
+
+
+def test_a_card_is_a_debt_worth_what_it_owes_with_its_rate_and_limit(tmp_path):
+    accounts = {a.id: a for a in connector(_bank(tmp_path)).snapshot(NOW).accounts}
+    visa = accounts["example-bank-visa"]
+    assert (visa.category, visa.value, visa.cash, visa.rate_pct, visa.limit) == ("debt", 640.0, 640.0, 24.9, 5000.0)
+    assert visa.account_type == "Credit card" and visa.institution == "Example Bank"
+    assert [category_of(k) for k in ["credit_card", "loan", "mortgage", "line_of_credit"]] == ["debt"] * 4
+    assert [type_text(k) for k in ["loan", "line_of_credit", "checking", "money_market"]] == [
+        "Loan", "Line of credit", "Checking", "Money market"]
+
+
+def test_a_limit_comes_from_available_credit_when_none_was_set(tmp_path):
+    accounts = {a.id: a for a in connector(_bank(tmp_path)).snapshot(NOW).accounts}
+    assert accounts["example-bank-platinum"].limit == 5000.0          # owed 1000 + available 4000
+    assert accounts["example-bank-visa"].limit == 5000.0              # set by hand wins over available 0
+    assert accounts["example-bank-checking"].limit is None            # not a debt: available means nothing here
+    assert accounts["example-bank-store-card"].limit is None          # available 0: no limit
+
+
+def test_a_card_paid_past_zero_is_a_debt_below_zero(tmp_path):
+    accounts = {a.id: a for a in connector(_bank(tmp_path)).snapshot(NOW).accounts}
+    store = accounts["example-bank-store-card"]
+    assert (store.category, store.value) == ("debt", -25.0)
+
+
+def test_a_balance_accounts_changes_are_money_moved_in_its_own_sign(tmp_path):
+    snap = connector(_bank(tmp_path)).snapshot(NOW)
+    history = {s.id: s.points for s in snap.account_history}
+    assert [(p.date.day, p.value, p.net_flow) for p in history["example-bank-checking"]] == [
+        (23, 100.0, 0.0), (24, 250.0, 150.0), (25, 200.0, -50.0)]          # the 999 contribution is ignored
+    assert [(p.date.day, p.value, p.net_flow) for p in history["example-bank-visa"]] == [
+        (23, 700.0, 0.0), (24, 640.0, -60.0)]                              # owed went down by 60
+    assert [(p.date.day, p.value, p.net_flow) for p in history["example-bank-store-card"]] == [(24, -25.0, 0.0)]
+    assert [(p.date.day, p.net_flow) for p in history["alex-roth-ira"]] == [(24, 0.0), (25, 100.0)]  # unchanged
+    accounts = {a.id: a for a in snap.accounts}
+    assert accounts["example-bank-checking"].category == "cash" and accounts["example-bank-checking"].rate_pct == 0.1
+
+
+def test_the_profile_can_file_a_collector_account_under_debt_and_the_sign_follows(tmp_path):
+    path = _bank(tmp_path)
+    plain = connector(path).snapshot(NOW)
+    filed = connector(path, categories={"alex-roth-ira": "debt"}).snapshot(NOW)   # the same cached load
+    before = {a.id: a for a in plain.accounts}["alex-roth-ira"]
+    after = {a.id: a for a in filed.accounts}["alex-roth-ira"]
+    assert (before.category, before.value) == ("long_term", 6250.0)
+    assert (after.category, after.value, after.cash) == ("debt", -6250.0, -150.0)
+    assert [p.value for p in {s.id: s.points for s in filed.account_history}["alex-roth-ira"]] == [-6150.0, -6250.0]
+    again = {a.id: a for a in connector(path).snapshot(NOW).accounts}["alex-roth-ira"]
+    assert (again.category, again.value) == ("long_term", 6250.0)
