@@ -330,7 +330,7 @@ path = "../trading-rails/data"     # the folder holding paper.json and runs.json
 stale_after = "36h"
 ```
 
-- **`path`** is the folder [trading-rails](https://github.com/Dimas-100/trading-rails)' paper broker and runner write
+- **`path`** is the folder trading-rails' paper broker and runner write
   to: its `paper.json` (cash, positions, open orders) and `runs.jsonl` (one line per step of every cycle it has run).
   A relative path is relative to the folder `profile.toml` is in, like `fdc`'s. It's required: a source with none, or
   an empty one, is a source error — `a rails source needs a path to its data folder …` — not a profile problem, so

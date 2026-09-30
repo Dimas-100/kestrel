@@ -82,7 +82,7 @@ Every page fits a phone and works by keyboard, and every chart has a table view.
 | Repo | Job |
 |---|---|
 | [financial-data-collector](https://github.com/Dimas-100/financial-data-collector) | collects accounts, holdings and prices |
-| [trading-rails](https://github.com/Dimas-100/trading-rails) | trades safely: paper broker, safety gate, backtests |
+| trading-rails | trades safely: paper broker, safety gate, backtests |
 | **kestrel** | shows it all: `fdc` reads financial-data-collector's warehouse, `rails` reads trading-rails' own paper state and run log, and `feed` reads any other system — of your own, such as a private trading desk — that speaks kestrel's data contract, over a URL, a file, or a command kestrel runs itself |
 
 ## Run it
@@ -111,7 +111,7 @@ Make it yours: copy `profile.example.toml` to `profile.toml` (gitignored) and se
    isn't priced there).
 3. Run `kestrel check`: the source should read `ok`, with every account and its category listed under it (never a
    balance). Then `kestrel serve`; `kestrel serve --demo` still shows the demo.
-4. Running [trading-rails](https://github.com/Dimas-100/trading-rails)? Add the commented `rails` block: `path`
+4. Running trading-rails? Add the commented `rails` block: `path`
    points at the folder holding its `paper.json` and `runs.jsonl`. No export step — kestrel reads its files directly.
 5. A system of your own, such as a private trading desk, plugs in through a `feed` source three ways: a `url` it
    serves the contract at, a `path` to a file it writes, or a **`command`** kestrel runs itself and reads from
