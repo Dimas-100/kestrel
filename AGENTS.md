@@ -56,6 +56,7 @@ command kestrel runs itself) and `rails` (a trading-rails install's own paper st
 | `docs/specs/` | One design spec per phase or feature. The first is the overall design. |
 | `docs/design-system.md` | Tokens, typography, layout, components, chart rules, copy rules |
 | `docs/design/mockups/` | Reference mockups (fictional demo data) |
+| `docs/images/` | The README's logo and screenshots. Shoot them from `kestrel serve --demo` only, never from a real profile: 1440 px wide (phone 390), 2× scale, cropped to whole panel rows |
 | `src/kestrel/` | Contract, profile, connectors, views, the read-only server, the CLI |
 | `web/src/` | The app: `styles/tokens.css` (design tokens), `shell/`, `charts/`, `pages/` |
 | `docs/data-contract.md` | The Snapshot format any source speaks; schema in `docs/contract/` |

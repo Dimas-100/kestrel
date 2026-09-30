@@ -1,8 +1,20 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+  <img alt="kestrel's mark: a bird with its wings spread" src="docs/images/logo.svg" width="72">
+</picture>
+
 # kestrel
 
 **One calm, read-only home for all your money.** Your long-term accounts, your trading account and every paper
 book appear side by side. Each strategy gets a page that shows how it trades and whether it's behaving the way its
 backtest said it would.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
+  <img alt="Home: net worth against deposits, where the money sits, trading against index money, and what needs you" src="docs/images/home-light.png">
+</picture>
+
+Every screenshot here is the built-in demo (`kestrel serve --demo`): fictional data, for someone called Alex.
 
 > **Status: all five phases are built.** Every page below runs, reading whatever mix of `fdc`, `feed` and `rails`
 > sources your [profile](#run-it) names, or the demo. See the [design spec](docs/specs/2026-09-25-kestrel-design.md)
@@ -12,6 +24,8 @@ backtest said it would.
 
 One line per page; each has its own empty state naming what kind of source fills it.
 
+### Your money
+
 - **Home** — net worth (deposits vs. market, and minus what's owed), where the money sits, trading vs. index money,
   what needs you, every book at a glance, today's runs, open positions with their room to stop.
 - **Accounts** — every account's value and its deposits-vs-market growth, everything held added up across accounts.
@@ -19,22 +33,36 @@ One line per page; each has its own empty state naming what kind of source fills
 - **Plan** — targets against their band per account, thesis health and conviction, goal progress.
 - **Reserves** — cash and debt: balances, rates, credit utilization, and the spread between what you earn and what
   you owe.
+
+<img alt="Accounts: how much of this year's growth you put in and how much the market added, then every account by value" src="docs/images/accounts-light.png">
+
+### Your trading
+
 - **Books** — every real and paper book: value, since-start return, trades, slots, next run.
 - **Book** — one book's equity against its benchmark, drawdown, scorecard, open positions and trades.
 - **Strategies** — every strategy at a glance, real book vs. paper book.
 - **Strategy** — the rule as four steps, real trades against the backtest's expected spread, trade anatomy, month by
   month.
+
+<img alt="A strategy: the rule in four steps, where each real trade landed against the backtest's spread, and a scorecard of real against expected" src="docs/images/strategy-dark.png">
+
+<img alt="A book: equity against its benchmark, drawdown, the scorecard and open positions with their room to stop" src="docs/images/book-light.png">
+
+### The record
+
 - **Backtests** — the research record: one row per family, its best result, a verdict chip per window.
 - **Calendar** — upcoming and recent dated events (earnings, filings, dividends, …), filterable by kind.
 - **Activity** — runs by day, every alert, and every source's own status and freshness.
 - **Settings** — read-only: who you are, the look, currency and time zone, and every source's kind, what it reads
   and its live status.
 
-Reference mockups, drawn with fictional demo data; clone and open them in a browser:
-[Home](docs/design/mockups/home.html) ·
-[Home, light](docs/design/mockups/home-light.html) ·
-[Strategy](docs/design/mockups/strategy.html) ·
-[Phone](docs/design/mockups/phone.html)
+<img alt="Backtests: one row per strategy family, its best result, and a pass, fail or refused chip per window" src="docs/images/backtests-dark.png">
+
+### On a phone
+
+Every page fits a phone and works by keyboard, and every chart has a table view.
+
+<img alt="Home on a phone: net worth and its chart above a bottom tab bar" src="docs/images/phone.png" width="300">
 
 ## Principles
 
