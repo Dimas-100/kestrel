@@ -42,11 +42,19 @@ def test_a_missing_table_or_view_names_itself_and_the_fix(tmp_path, gone):
 
 
 def test_an_old_schema_version_is_refused(tmp_path):
-    path = Warehouse(tmp_path / "w.db", version=2).close()
-    with pytest.raises(ConnectorError) as error:
+    path = Warehouse(tmp_path / "old.db", version=5).close()
+    with pytest.raises(ConnectorError) as e:
         connector(path).snapshot(NOW)
-    assert str(error.value) == ("this warehouse is at schema version 2 and kestrel needs 3: "
-                                "update financial-data-collector and run `fdc sync`")
+    assert str(e.value) == (f"this warehouse is at schema version 5 and kestrel needs 6: {fdc.UPDATE}")
+
+
+def test_the_fixture_is_the_collectors_current_shape(tmp_path):
+    with connect(Warehouse(tmp_path / "w.db").close()) as conn:
+        assert conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 6
+        columns = {r[1] for r in conn.execute("PRAGMA table_info(accounts)")}
+        assert {"external_key", "origin", "kind_confirmed", "credit_limit", "rate_pct", "flows"} <= columns
+        assert "available" in {r[1] for r in conn.execute("PRAGMA table_info(cash_balances)")}
+        assert "connections" in {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 
 
 def test_an_empty_file_or_another_kind_of_file_is_not_a_warehouse(tmp_path):

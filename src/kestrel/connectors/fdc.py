@@ -27,7 +27,7 @@ from ..profile import BenchmarkCfg
 from .base import ConnectorError
 
 TIMEOUT = 5.0  # seconds to wait for a warehouse another process is writing
-MIN_VERSION = 3  # holdings_daily and cash_daily arrived in the collector's migration 3
+MIN_VERSION = 6  # accounts.flows, credit_limit and rate_pct, and cash_balances.available, arrived in migration 6
 REQUIRED = ("accounts", "transactions", "prices", "sync_runs", "holdings_daily", "cash_daily", "positions_latest",
             "account_values_daily")
 CLOSE = time(16, 0, tzinfo=ZoneInfo("America/New_York"))  # a day's values are the US close

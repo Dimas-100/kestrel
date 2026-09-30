@@ -2,7 +2,7 @@
 
 The tables and views are the subset of the collector's schema the connector reads, copied from its migrations
 (financial-data-collector: src/financial_data_collector/migrations/0001_init.sql, 0002_views.sql and
-0003_derived.sql), so the connector meets the same shapes. The accounts, symbols and numbers are made up.
+0003_derived.sql and 0006_connections.sql), so the connector meets the same shapes. The accounts, symbols and numbers are made up.
 """
 
 from __future__ import annotations
@@ -21,7 +21,13 @@ SCHEMA = {
   slug          TEXT NOT NULL DEFAULT 'other',
   institution   TEXT NOT NULL DEFAULT 'unknown',
   account_type  TEXT NOT NULL DEFAULT 'other',
-  first_seen    TEXT NOT NULL
+  first_seen    TEXT NOT NULL,
+  external_key  TEXT,
+  origin        TEXT NOT NULL DEFAULT 'file',
+  kind_confirmed INTEGER NOT NULL DEFAULT 1,
+  credit_limit  REAL,
+  rate_pct      REAL,
+  flows         TEXT NOT NULL DEFAULT 'transactions'
 )""",
     "securities": """CREATE TABLE securities (
   symbol          TEXT PRIMARY KEY,
@@ -52,6 +58,7 @@ SCHEMA = {
   account_id  INTEGER NOT NULL REFERENCES accounts(id),
   currency    TEXT NOT NULL DEFAULT 'USD',
   amount      REAL NOT NULL,
+  available   REAL,
   source      TEXT NOT NULL,
   PRIMARY KEY (as_of_date, account_id, currency)
 )""",
@@ -89,6 +96,16 @@ SCHEMA = {
   status        TEXT NOT NULL,
   rows_written  INTEGER NOT NULL DEFAULT 0,
   message       TEXT NOT NULL DEFAULT ''
+)""",
+    # 0006_connections.sql
+    "connections": """CREATE TABLE connections (
+  name           TEXT PRIMARY KEY,
+  key_ref        TEXT NOT NULL,
+  created_at     TEXT NOT NULL,
+  removed_at     TEXT,
+  last_fetch_at  TEXT,
+  last_ok_at     TEXT,
+  last_error     TEXT NOT NULL DEFAULT ''
 )""",
     # 0003_derived.sql
     "holdings_daily": """CREATE TABLE holdings_daily (
@@ -141,7 +158,7 @@ def _iso(day: Day) -> str:
 class Warehouse:
     """A fictional warehouse under construction: each method adds rows, `close()` returns the file's path."""
 
-    def __init__(self, path: Path, *, version: int = 4, without: tuple[str, ...] = (), wal: bool = False) -> None:
+    def __init__(self, path: Path, *, version: int = 6, without: tuple[str, ...] = (), wal: bool = False) -> None:
         self.path = path
         self.conn = sqlite3.connect(path)
         if wal:
@@ -152,13 +169,19 @@ class Warehouse:
                                   [(v,) for v in range(1, version + 1)])
         self._tx = 0
 
-    def account(self, label: str, institution: str = "fidelity", account_type: str = "brokerage") -> int:
-        cur = self.conn.execute("INSERT INTO accounts (label, institution, account_type, first_seen) "
-                                "VALUES (?, ?, ?, '2026-01-02')", (label, institution, account_type))
+    def account(self, label: str, institution: str = "fidelity", account_type: str = "brokerage", *,
+                flows: str = "transactions", credit_limit: float | None = None, rate_pct: float | None = None,
+                origin: str = "file") -> int:
+        cur = self.conn.execute(
+            "INSERT INTO accounts (label, institution, account_type, first_seen, flows, credit_limit, rate_pct, origin) "
+            "VALUES (?, ?, ?, '2026-01-02', ?, ?, ?, ?)",
+            (label, institution, account_type, flows, credit_limit, rate_pct, origin))
         return int(cur.lastrowid)
 
-    def snapshot(self, account_id: int, day: Day, positions=(), cash: float | None = None) -> None:
-        """A broker snapshot: positions as (symbol, description, quantity, price, market_value, cost_basis_total)."""
+    def snapshot(self, account_id: int, day: Day, positions=(), cash: float | None = None,
+                 available: float | None = None) -> None:
+        """A broker snapshot: positions as (symbol, description, quantity, price, market_value, cost_basis_total);
+        `available` is a card's remaining credit as the bank reported it."""
         for symbol, description, quantity, price, value, cost in positions:
             self.conn.execute("INSERT OR IGNORE INTO securities (symbol, description, first_seen) "
                               "VALUES (?, ?, '2026-01-02')", (symbol, description))
@@ -166,8 +189,8 @@ class Warehouse:
                               "market_value, cost_basis_total, source) VALUES (?, ?, ?, ?, ?, ?, ?, 'fixture')",
                               (_iso(day), account_id, symbol, quantity, price, value, cost))
         if cash is not None:
-            self.conn.execute("INSERT INTO cash_balances (as_of_date, account_id, amount, source) "
-                              "VALUES (?, ?, ?, 'fixture')", (_iso(day), account_id, cash))
+            self.conn.execute("INSERT INTO cash_balances (as_of_date, account_id, amount, available, source) "
+                              "VALUES (?, ?, ?, ?, 'fixture')", (_iso(day), account_id, cash, available))
 
     def day(self, account_id: int, day: Day, holdings: dict[str, float | None], cash: float | None = None) -> None:
         """One replayed day: each symbol's market value (None when its close is unknown) and the cash."""
