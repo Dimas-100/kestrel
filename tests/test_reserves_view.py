@@ -132,3 +132,26 @@ def test_cash_and_debts_are_largest_first(demo_reserves):
 
 def test_demo_spread_sentence_figures(demo_reserves):
     assert demo_reserves.spread.owed_rate_pct == 24.9 and demo_reserves.spread.earned_rate_pct == 4.1
+
+
+def test_reserves_fills_from_the_collector_alone(tmp_path):
+    from fdc_fixture import Warehouse, d
+
+    from kestrel.connectors.fdc import FdcConnector
+
+    w = Warehouse(tmp_path / "bank.db")
+    card = w.account("Example Bank Visa", "example_bank", "credit_card", flows="balance", rate_pct=24.9,
+                     credit_limit=5000.0, origin="simplefin")
+    savings = w.account("Example Bank Savings", "example_bank", "savings", flows="balance", rate_pct=4.1,
+                        origin="simplefin")
+    w.day(card, d(24), {}, cash=-640.0)
+    w.snapshot(card, d(24), [], cash=-640.0, available=0.0)
+    w.day(savings, d(24), {}, cash=24243.44)
+    w.snapshot(savings, d(24), [], cash=24243.44)
+    w.run("derive", "ok", "2026-09-24T22:00:00Z")
+    snapshot = FdcConnector("bank", "Bank", w.close()).snapshot(NOW)
+    view = reserves_view(snapshot, DEMO_PROFILE, NOW)
+    debt = {line.name: line for line in view.debts}
+    assert debt["Example Bank Visa"].owed == 640.0 and debt["Example Bank Visa"].limit == 5000.0
+    assert debt["Example Bank Visa"].utilization_pct == 12.8 and debt["Example Bank Visa"].rate_pct == 24.9
+    assert {line.name: line.rate_pct for line in view.cash} == {"Example Bank Savings": 4.1}
