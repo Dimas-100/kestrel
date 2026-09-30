@@ -37,3 +37,6 @@ web/tsconfig.tsbuildinfo
 *.swp
 .DS_Store
 Thumbs.db
+
+# feature branches built beside the working folder
+.worktrees/
