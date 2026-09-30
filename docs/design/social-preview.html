@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>kestrel · link card</title>
+<!--
+  The card GitHub shows when the repo's link is shared (docs/images/social-preview.png).
+  To redraw it: open this page in a 1280 × 640 window, screenshot it at 2× scale, save it over
+  docs/images/social-preview.png, then upload that file under the repo's Settings → General → Social preview
+  (GitHub has no API for it). The picture on the right is docs/images/home-dark.png: demo data only.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600&amp;display=swap">
+<style>
+  /* Graphite, dark: the values in web/src/styles/tokens.css */
+  :root {
+    --bg: #0B0C0E; --line2: #2E333A;
+    --ink1: #ECEEF1; --ink2: #A7ADB6; --ref: #7D848E; --acc: #D46C38;
+  }
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; background: var(--bg); color: var(--ink1);
+    font-family: "Geist", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .copy { position: absolute; left: 72px; top: 68px; bottom: 68px; width: 470px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 14px; font-weight: 600; font-size: 30px; letter-spacing: -0.02em; }
+  h1 { margin: 46px 0 0; font-weight: 600; font-size: 54px; line-height: 1.07; letter-spacing: -0.035em; }
+  h1 span { white-space: nowrap; }
+  p { margin: 24px 0 0; font-size: 22px; line-height: 1.42; color: var(--ink2); }
+  .states { margin-top: auto; display: flex; gap: 26px; font-size: 18px; color: var(--ink2); }
+  .state { display: flex; align-items: center; gap: 10px; }
+  /* real = solid, paper = hatched, expected = dotted: the app's .mark, a quarter larger */
+  .mark { width: 15px; height: 15px; border-radius: 4px; box-sizing: border-box; flex: none; }
+  .mark.real { background: var(--acc); }
+  .mark.paper { background-image: repeating-linear-gradient(45deg, var(--acc) 0 1.9px, transparent 1.9px 5px);
+    box-shadow: inset 0 0 0 1.5px var(--acc); }
+  .mark.expected { border: 1.9px dotted var(--ref); background: color-mix(in srgb, var(--ink1) 5%, transparent); }
+  /* the app's main area, without the sidebar and top bar, running off the right and bottom edges */
+  .shot { position: absolute; left: 600px; top: 84px; width: 760px; height: 640px; border: 1px solid var(--line2);
+    border-radius: 16px; background: var(--bg) url(../images/home-dark.png) no-repeat; background-size: 1066px auto;
+    background-position: -190px -52px; }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true"><path fill="#D46C38" d="M1.5 10.2c3.2-.4 6.4.2 9.2 1.6L12 9.4l1.3 2.4c2.8-1.4 6-2 9.2-1.6-2.9 1.4-5.6 3-7.6 5.2l-.6 5.1h-4.6l-.6-5.1c-2-2.2-4.7-3.8-7.6-5.2z"/></svg>
+      kestrel
+    </div>
+    <h1>One calm, <span>read-only</span> home for all your money.</h1>
+    <p>Long-term accounts, your trading account and every paper book, side by side.</p>
+    <div class="states">
+      <span class="state"><span class="mark real"></span>Real</span>
+      <span class="state"><span class="mark paper"></span>Paper</span>
+      <span class="state"><span class="mark expected"></span>Expected</span>
+    </div>
+  </div>
+  <div class="shot" role="img" aria-label="kestrel's Home page, demo data"></div>
+</body>
+</html>
