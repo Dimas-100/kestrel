@@ -95,6 +95,13 @@ A category that isn't one of the five (`long_term`, `trading`, `cash`, `debt`, `
   - a `transfer` keeps its sign; a transfer of shares with no cash amount moves no money,
   - money moved on a day without history (a Saturday deposit) counts on the next day that has one, a newer
     snapshot's day included; money moved after the last day is left for the next sync.
+- **Money the records don't explain yet** (`unexplained_daily`, from the collector's version 7) is money moved
+  too. A broker's balance can show a deposit hours or days before its activity feed posts it. The collector records
+  each day's change that no transaction or split accounts for. It leaves out changes under a dollar and any that
+  reverse within a week, such as a sweep counted twice for a day. kestrel adds what's left to that day's `net_flow` and
+  reports it as the point's `unexplained`. So the deposit never reads as a good day, and the Account page marks it
+  "not posted yet" until the feed catches up. It is filed like a transaction, and it is skipped for a bank
+  account, where every change already counts. A version-6 warehouse still loads, without it.
 - **Holdings:** the broker's latest snapshot of each account (`positions_latest`), each with the day it was
   reported. A position with no market value is left out and counted in the source's detail; one with no price is
   priced at its value over its quantity. When the replayed history is newer than that snapshot, the holdings are

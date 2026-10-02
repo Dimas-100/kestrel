@@ -105,6 +105,15 @@ def test_the_last_eight_days_money_moved_newest_first():
         (9, 50), (8, -25), (7, 50), (6, -25), (5, 50), (4, -25), (3, 50), (2, -25)]
 
 
+def test_money_moved_that_no_transaction_records_yet_says_how_much_of_it_is_unposted():
+    history = [ValuePoint(date=d(2026, 9, 23), value=1000), ValuePoint(date=d(2026, 9, 24), value=1150, net_flow=150,
+                                                                      unexplained=100)]
+    snap = Snapshot(generated_at=NOW, accounts=[account("trading", 1150)],
+                    account_history=[Series(id="trading", points=history)])
+    (flow,) = account_view(snap, Profile(), NOW, "trading").flows
+    assert (flow.date.day, flow.amount, flow.unexplained) == (24, 150, 100)   # 50 recorded, 100 not yet
+
+
 def test_a_margin_debit_weighs_against_the_holdings_and_a_debit_bigger_than_the_holdings_has_no_weights():
     held = [Holding(account_id="margin", symbol="AAPL", quantity=4, price=250, value=1000, cost_basis=900)]
     snap = Snapshot(generated_at=NOW, accounts=[account("margin", 800, cash=-200)], holdings=held)

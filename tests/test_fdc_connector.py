@@ -11,7 +11,8 @@ import kestrel.connectors.fdc as fdc
 from kestrel.connectors import collect
 from kestrel.connectors.base import ConnectorError
 from kestrel.connectors.fdc import FdcConnector, category_of, connect, institution_text, slug, type_text
-from kestrel.profile import BenchmarkCfg, Profile, SourceCfg, load_profile
+from kestrel.profile import DEMO_PROFILE, BenchmarkCfg, Profile, SourceCfg, load_profile
+from kestrel.views.home import home_view
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
 NY = ZoneInfo("America/New_York")
@@ -50,11 +51,12 @@ def test_an_old_schema_version_is_refused(tmp_path):
 
 def test_the_fixture_is_the_collectors_current_shape(tmp_path):
     with connect(Warehouse(tmp_path / "w.db").close()) as conn:
-        assert conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 6
+        assert conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] == 7
         columns = {r[1] for r in conn.execute("PRAGMA table_info(accounts)")}
         assert {"external_key", "origin", "kind_confirmed", "credit_limit", "rate_pct", "flows"} <= columns
         assert "available" in {r[1] for r in conn.execute("PRAGMA table_info(cash_balances)")}
-        assert "connections" in {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        assert {"connections", "unexplained_daily"} <= tables
 
 
 def test_an_empty_file_or_another_kind_of_file_is_not_a_warehouse(tmp_path):
@@ -500,3 +502,49 @@ def test_a_limit_is_only_inferred_from_credit_that_is_above_zero(tmp_path):
     w.snapshot(unknown, d(24), [], cash=-10.0)   # the bank reported no available credit at all
     accounts = {a.id: a for a in connector(w.close()).snapshot(NOW).accounts}
     assert accounts["over"].limit is None and accounts["unknown"].limit is None
+
+
+def _deposit_not_posted(folder, **options):
+    """Alex's trading account: the balance shows a 100 deposit on Thu 24 that no transaction records yet, and a
+    statement on Saturday the 19th shows 5 more that lands on Monday's point."""
+    w = Warehouse(folder / "w.db", **options)
+    trading = w.account("Alex Trading", "webull", "brokerage")
+    for day, (spy, cash) in {18: (1000.0, 0.0), 21: (1010.0, 5.0), 22: (1000.0, 5.0), 23: (990.0, 5.0),
+                             24: (990.0, 105.0)}.items():
+        w.day(trading, d(day), {"SPY": spy}, cash=cash)
+    w.flow(trading, d(22), "contribution", 0.0)
+    if options.get("version", 7) >= 7:
+        w.unexplained(trading, d(19), 5.0)
+        w.unexplained(trading, d(24), 100.0)
+    return w.close()
+
+
+def test_money_the_records_do_not_explain_yet_is_money_moved_not_growth(tmp_path):
+    snap = connector(_deposit_not_posted(tmp_path)).snapshot(NOW)
+    points = {s.id: s.points for s in snap.account_history}["alex-trading"]
+    assert [(p.date.day, p.net_flow, p.unexplained) for p in points] == [
+        (18, 0.0, 0.0), (21, 5.0, 5.0), (22, 0.0, 0.0), (23, 0.0, 0.0), (24, 100.0, 100.0)]  # Saturday's on Monday
+    row = next(a for a in home_view(snap, DEMO_PROFILE, NOW).accounts if a.id == "alex-trading")
+    assert row.day_pct == 0.0                         # the day's 100 is the deposit, not a 10% day
+
+
+def test_a_version_6_warehouse_still_loads_without_it(tmp_path):
+    snap = connector(_deposit_not_posted(tmp_path, version=6)).snapshot(NOW)
+    points = {s.id: s.points for s in snap.account_history}["alex-trading"]
+    assert [p.net_flow for p in points] == [0.0] * 5 and all(p.unexplained == 0.0 for p in points)
+
+
+def test_a_balance_account_ignores_it_and_a_debt_keeps_the_contracts_sign(tmp_path):
+    w = Warehouse(tmp_path / "w.db")
+    checking = w.account("Example Bank Checking", "example_bank", "checking", flows="balance")
+    loan = w.account("Example Car Loan", "example_bank", "loan")   # its flows come from transactions
+    for day, (balance, owed) in {23: (100.0, -1000.0), 24: (250.0, -900.0)}.items():
+        w.day(checking, d(day), {}, cash=balance)
+        w.day(loan, d(day), {}, cash=owed)
+    w.unexplained(checking, d(24), 150.0)   # already money moved: every change of a balance account is
+    w.unexplained(loan, d(24), 100.0)       # a payment no transaction records: money in, owed fell by 100
+    history = {s.id: s.points for s in connector(w.close()).snapshot(NOW).account_history}
+    assert [(p.value, p.net_flow, p.unexplained) for p in history["example-bank-checking"]] == [
+        (100.0, 0.0, 0.0), (250.0, 150.0, 0.0)]
+    assert [(p.value, p.net_flow, p.unexplained) for p in history["example-car-loan"]] == [
+        (1000.0, 0.0, 0.0), (900.0, 100.0, 100.0)]

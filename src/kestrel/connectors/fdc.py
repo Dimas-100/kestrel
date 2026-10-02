@@ -14,7 +14,7 @@ import time as _time  # aliased: `time` below is datetime.time, used for the US 
 import unicodedata
 from bisect import bisect_left
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
@@ -185,16 +185,29 @@ def _with_snapshot(points: list[tuple[str, float, float]],
     return [*points, snapped]
 
 
-def flows(conn: sqlite3.Connection, days: dict[int, list[str]]) -> dict[int, dict[str, float]]:
-    """Per account, the money moved in or out, filed under a history day: a flow on a day without a point goes to
-    the next one (a Saturday deposit is Monday's), and one after the last point is dropped."""
+def _file(rows: Iterable[tuple[int, str, float]], days: dict[int, list[str]]) -> dict[int, dict[str, float]]:
+    """Per account, amounts filed under a history day: one on a day without a point goes to the next one (a
+    Saturday deposit is Monday's), and one after the last point is dropped."""
     out: dict[int, dict[str, float]] = defaultdict(lambda: defaultdict(float))
-    for account, when, kind, amount in conn.execute(FLOWS):
+    for account, when, amount in rows:
         known = days.get(account, [])
         i = bisect_left(known, when[:10])
         if i < len(known):
-            out[account][known[i]] += _flow(kind, amount)
+            out[account][known[i]] += amount
     return out
+
+
+def flows(conn: sqlite3.Connection, days: dict[int, list[str]]) -> dict[int, dict[str, float]]:
+    """Per account, the money moved in or out that transactions record, filed under a history day."""
+    return _file(((account, when, _flow(kind, amount)) for account, when, kind, amount in conn.execute(FLOWS)), days)
+
+
+def unexplained(conn: sqlite3.Connection, days: dict[int, list[str]]) -> dict[int, dict[str, float]]:
+    """Per account, the money moved that no transaction records yet (the collector's `unexplained_daily`, from its
+    version 7), filed under a history day like a transaction. Empty for an older warehouse."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'unexplained_daily'").fetchone():
+        return {}
+    return _file(conn.execute("SELECT account_id, as_of_date, amount FROM unexplained_daily"), days)
 
 
 FileState = tuple[int, int] | None  # (st_mtime_ns, st_size); None when the file doesn't exist
@@ -313,22 +326,27 @@ class FdcConnector:
                 for warehouse_id, label, *_ in rows}
         # money moved is filed under the replayed days and a newer snapshot's day; an account with no replayed
         # history has no days to file it under
-        moved = flows(conn, {account: [day for day, _, _ in points] for account, points in days.items()
-                             if replayed.get(account)})
+        known = {account: [day for day, _, _ in points] for account, points in days.items() if replayed.get(account)}
+        moved = flows(conn, known)
+        # money the balance shows moving that no transaction records yet (a deposit not posted) is money moved too
+        unposted = unexplained(conn, known)
         for warehouse_id, _, _, _, flow_kind, _, _ in rows:
             if flow_kind == "balance":  # every change is money moved; the first point moves nothing
                 points = days[warehouse_id]
                 moved[warehouse_id] = {day: (value - points[i - 1][1] if i else 0.0)
                                        for i, (day, value, _) in enumerate(points)}
+                unposted.pop(warehouse_id, None)  # already counted in its change
 
         accounts: list[_LoadedAccount] = []
         series: list[Series] = []
         for warehouse_id, label, institution, kind, flow_kind, credit_limit, rate_pct in rows:
             points = days[warehouse_id]
             if points:
+                recorded, extra = moved.get(warehouse_id, {}), unposted.get(warehouse_id, {})
                 series.append(Series(id=ids[warehouse_id], points=[
                     ValuePoint(date=date.fromisoformat(day), value=round(value, 2),
-                               net_flow=round(moved[warehouse_id].get(day, 0.0), 2))
+                               net_flow=round(recorded.get(day, 0.0) + extra.get(day, 0.0), 2),
+                               unexplained=round(extra.get(day, 0.0), 2))
                     for day, value, _ in points]))
             day, value, cash = points[-1] if points else (None, 0.0, 0.0)
             accounts.append(_LoadedAccount(
@@ -364,7 +382,7 @@ class FdcConnector:
                 value=value, cash=cash, as_of=_close(a.day) if a.day else now, rate_pct=a.rate_pct, limit=limit))
         # a debt's history is what it owed each day; its flow keeps its meaning (the contract's): money in, a
         # payment, less money out, a charge. The stored balance's own change is already that, so only the value turns
-        history = [Series(id=s.id, points=[ValuePoint(date=p.date, value=-p.value, net_flow=p.net_flow)
+        history = [Series(id=s.id, points=[p.model_copy(update={"value": -p.value})
                                             for p in s.points]) if s.id in debt_ids else s
                    for s in data.series]
         notes = [_plural(len(accounts), "account"), _plural(len(data.holdings), "holding"),

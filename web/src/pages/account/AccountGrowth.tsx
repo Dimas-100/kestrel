@@ -8,6 +8,10 @@ export function flowDay(iso: string, year: string): string {
   return iso.slice(0, 4) === year ? shortDate(iso) : `${monthLabel(iso, true)} ${iso.slice(0, 4)}`
 }
 
+const UNPOSTED =
+  "The balance moved, but the account's records don't show why yet. Most often it's a deposit the broker hasn't " +
+  'posted. It counts as money moved, not growth, and this note goes once the records catch up.'
+
 /** The window's four figures, then the last eight times money moved in or out. */
 export function AccountGrowthPanel({ v, period }: { v: AccountView; period: Window }) {
   const year = v.as_of.slice(0, 4)
@@ -24,6 +28,12 @@ export function AccountGrowthPanel({ v, period }: { v: AccountView; period: Wind
               <span className="num text-xs text-ink2 min-w-[92px]">{flowDay(f.date, year)}</span>
               <span className="text-xs text-ink2">
                 <span aria-hidden="true">{f.amount > 0 ? '▲' : '▼'} </span>{f.amount > 0 ? 'in' : 'out'}
+                {f.unexplained ? (
+                  <>
+                    {' · '}
+                    <span className="text-ink3" title={UNPOSTED}>not posted yet</span>
+                  </>
+                ) : null}
               </span>
               <span className="num ml-auto">{money(Math.abs(f.amount))}</span>
             </li>

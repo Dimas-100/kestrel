@@ -26,1312 +26,1574 @@
       {
         "date": "2025-09-25",
         "value": 128846.51,
-        "net_flow": 0.0
+        "net_flow": 0.0,
+        "unexplained": 0.0
       },
       {
         "date": "2025-09-26",
         "value": 128546.97,
-        "net_flow": -13.11
+        "net_flow": -13.11,
+        "unexplained": 0.0
       },
       {
         "date": "2025-09-29",
         "value": 128727.75,
-        "net_flow": -65.98
+        "net_flow": -65.98,
+        "unexplained": 0.0
       },
       {
         "date": "2025-09-30",
         "value": 127314.01,
-        "net_flow": -83.12
+        "net_flow": -83.12,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-01",
         "value": 124895.02,
-        "net_flow": -2294.42
+        "net_flow": -2294.42,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-02",
         "value": 125564.91,
-        "net_flow": -59.25
+        "net_flow": -59.25,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-03",
         "value": 128131.79,
-        "net_flow": 2156.34
+        "net_flow": 2156.34,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-06",
         "value": 127581.23,
-        "net_flow": -92.87
+        "net_flow": -92.87,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-07",
         "value": 128784.05,
-        "net_flow": -75.75
+        "net_flow": -75.75,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-08",
         "value": 129037.37,
-        "net_flow": -99.68
+        "net_flow": -99.68,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-09",
         "value": 128891.65,
-        "net_flow": -20.55
+        "net_flow": -20.55,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-10",
         "value": 129788.95,
-        "net_flow": -90.65
+        "net_flow": -90.65,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-13",
         "value": 131389.95,
-        "net_flow": -89.63
+        "net_flow": -89.63,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-14",
         "value": 131430.66,
-        "net_flow": -93.96
+        "net_flow": -93.96,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-15",
         "value": 130879.03,
-        "net_flow": -34.85
+        "net_flow": -34.85,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-16",
         "value": 130658.09,
-        "net_flow": -60.23
+        "net_flow": -60.23,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-17",
         "value": 132794.7,
-        "net_flow": 2225.05
+        "net_flow": 2225.05,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-20",
         "value": 133576.13,
-        "net_flow": -93.86
+        "net_flow": -93.86,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-21",
         "value": 133934.43,
-        "net_flow": -61.23
+        "net_flow": -61.23,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-22",
         "value": 134428.41,
-        "net_flow": -15.81
+        "net_flow": -15.81,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-23",
         "value": 134980.31,
-        "net_flow": -68.26
+        "net_flow": -68.26,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-24",
         "value": 134244.8,
-        "net_flow": -93.65
+        "net_flow": -93.65,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-27",
         "value": 134288.0,
-        "net_flow": -54.95
+        "net_flow": -54.95,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-28",
         "value": 134763.02,
-        "net_flow": -33.43
+        "net_flow": -33.43,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-29",
         "value": 135511.34,
-        "net_flow": -21.79
+        "net_flow": -21.79,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-30",
         "value": 135401.12,
-        "net_flow": -50.73
+        "net_flow": -50.73,
+        "unexplained": 0.0
       },
       {
         "date": "2025-10-31",
         "value": 137048.96,
-        "net_flow": 2147.52
+        "net_flow": 2147.52,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-03",
         "value": 134235.85,
-        "net_flow": -2257.48
+        "net_flow": -2257.48,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-04",
         "value": 134047.38,
-        "net_flow": -23.23
+        "net_flow": -23.23,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-05",
         "value": 135910.69,
-        "net_flow": -56.68
+        "net_flow": -56.68,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-06",
         "value": 136515.49,
-        "net_flow": -27.3
+        "net_flow": -27.3,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-07",
         "value": 136325.54,
-        "net_flow": -12.04
+        "net_flow": -12.04,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-10",
         "value": 136373.93,
-        "net_flow": -33.6
+        "net_flow": -33.6,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-11",
         "value": 136605.9,
-        "net_flow": -59.07
+        "net_flow": -59.07,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-12",
         "value": 137220.89,
-        "net_flow": -45.14
+        "net_flow": -45.14,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-13",
         "value": 136666.52,
-        "net_flow": -70.85
+        "net_flow": -70.85,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-14",
         "value": 138721.7,
-        "net_flow": 2157.72
+        "net_flow": 2157.72,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-17",
         "value": 136921.82,
-        "net_flow": -44.44
+        "net_flow": -44.44,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-18",
         "value": 136849.43,
-        "net_flow": -107.13
+        "net_flow": -107.13,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-19",
         "value": 138499.94,
-        "net_flow": -65.36
+        "net_flow": -65.36,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-20",
         "value": 138174.59,
-        "net_flow": -92.39
+        "net_flow": -92.39,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-21",
         "value": 138158.23,
-        "net_flow": -41.8
+        "net_flow": -41.8,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-24",
         "value": 138396.89,
-        "net_flow": -94.69
+        "net_flow": -94.69,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-25",
         "value": 139002.21,
-        "net_flow": -43.89
+        "net_flow": -43.89,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-26",
         "value": 139818.3,
-        "net_flow": -103.12
+        "net_flow": -103.12,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-27",
         "value": 141672.14,
-        "net_flow": -106.15
+        "net_flow": -106.15,
+        "unexplained": 0.0
       },
       {
         "date": "2025-11-28",
         "value": 143187.81,
-        "net_flow": 2231.76
+        "net_flow": 2231.76,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-01",
         "value": 142692.32,
-        "net_flow": -2278.7
+        "net_flow": -2278.7,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-02",
         "value": 141807.46,
-        "net_flow": -79.65
+        "net_flow": -79.65,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-03",
         "value": 140178.05,
-        "net_flow": -11.3
+        "net_flow": -11.3,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-04",
         "value": 141920.08,
-        "net_flow": -63.64
+        "net_flow": -63.64,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-05",
         "value": 142361.44,
-        "net_flow": -47.9
+        "net_flow": -47.9,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-08",
         "value": 142194.5,
-        "net_flow": -71.41
+        "net_flow": -71.41,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-09",
         "value": 141842.76,
-        "net_flow": -22.02
+        "net_flow": -22.02,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-10",
         "value": 140854.98,
-        "net_flow": -67.86
+        "net_flow": -67.86,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-11",
         "value": 140867.36,
-        "net_flow": -94.97
+        "net_flow": -94.97,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-12",
         "value": 142259.43,
-        "net_flow": 2199.81
+        "net_flow": 2199.81,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-15",
         "value": 142594.35,
-        "net_flow": -58.97
+        "net_flow": -58.97,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-16",
         "value": 142779.82,
-        "net_flow": -45.75
+        "net_flow": -45.75,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-17",
         "value": 141980.66,
-        "net_flow": -38.55
+        "net_flow": -38.55,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-18",
         "value": 142532.69,
-        "net_flow": -91.98
+        "net_flow": -91.98,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-19",
         "value": 142023.38,
-        "net_flow": -29.31
+        "net_flow": -29.31,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-22",
         "value": 142583.64,
-        "net_flow": -83.11
+        "net_flow": -83.11,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-23",
         "value": 143595.0,
-        "net_flow": -82.14
+        "net_flow": -82.14,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-24",
         "value": 143233.65,
-        "net_flow": -22.06
+        "net_flow": -22.06,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-25",
         "value": 143705.26,
-        "net_flow": -62.5
+        "net_flow": -62.5,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-26",
         "value": 145774.09,
-        "net_flow": 2230.67
+        "net_flow": 2230.67,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-29",
         "value": 145494.0,
-        "net_flow": -71.07
+        "net_flow": -71.07,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-30",
         "value": 146209.26,
-        "net_flow": -60.46
+        "net_flow": -60.46,
+        "unexplained": 0.0
       },
       {
         "date": "2025-12-31",
         "value": 146268.78,
-        "net_flow": -79.29
+        "net_flow": -79.29,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-01",
         "value": 143051.34,
-        "net_flow": -2282.74
+        "net_flow": -2282.74,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-02",
         "value": 145764.42,
-        "net_flow": -55.39
+        "net_flow": -55.39,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-05",
         "value": 145896.95,
-        "net_flow": -92.7
+        "net_flow": -92.7,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-06",
         "value": 145584.67,
-        "net_flow": -88.46
+        "net_flow": -88.46,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-07",
         "value": 145629.69,
-        "net_flow": -105.82
+        "net_flow": -105.82,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-08",
         "value": 145339.55,
-        "net_flow": -89.51
+        "net_flow": -89.51,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-09",
         "value": 147745.26,
-        "net_flow": 2219.72
+        "net_flow": 2219.72,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-12",
         "value": 148009.79,
-        "net_flow": -81.03
+        "net_flow": -81.03,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-13",
         "value": 149048.52,
-        "net_flow": -76.63
+        "net_flow": -76.63,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-14",
         "value": 148946.01,
-        "net_flow": -108.78
+        "net_flow": -108.78,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-15",
         "value": 150061.81,
-        "net_flow": -60.72
+        "net_flow": -60.72,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-16",
         "value": 150555.79,
-        "net_flow": -103.45
+        "net_flow": -103.45,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-19",
         "value": 150500.34,
-        "net_flow": -39.92
+        "net_flow": -39.92,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-20",
         "value": 151033.35,
-        "net_flow": -97.85
+        "net_flow": -97.85,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-21",
         "value": 151621.71,
-        "net_flow": -51.97
+        "net_flow": -51.97,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-22",
         "value": 151432.41,
-        "net_flow": -72.6
+        "net_flow": -72.6,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-23",
         "value": 153457.49,
-        "net_flow": 2237.67
+        "net_flow": 2237.67,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-26",
         "value": 154353.73,
-        "net_flow": -76.73
+        "net_flow": -76.73,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-27",
         "value": 154773.49,
-        "net_flow": -99.14
+        "net_flow": -99.14,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-28",
         "value": 154164.0,
-        "net_flow": -94.15
+        "net_flow": -94.15,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-29",
         "value": 153176.41,
-        "net_flow": -41.12
+        "net_flow": -41.12,
+        "unexplained": 0.0
       },
       {
         "date": "2026-01-30",
         "value": 154941.36,
-        "net_flow": -11.98
+        "net_flow": -11.98,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-02",
         "value": 152387.65,
-        "net_flow": -2301.76
+        "net_flow": -2301.76,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-03",
         "value": 151028.93,
-        "net_flow": -83.12
+        "net_flow": -83.12,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-04",
         "value": 150892.11,
-        "net_flow": -90.29
+        "net_flow": -90.29,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-05",
         "value": 149768.54,
-        "net_flow": -73.28
+        "net_flow": -73.28,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-06",
         "value": 152501.57,
-        "net_flow": 2143.86
+        "net_flow": 2143.86,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-09",
         "value": 153001.4,
-        "net_flow": -34.83
+        "net_flow": -34.83,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-10",
         "value": 153277.0,
-        "net_flow": -41.26
+        "net_flow": -41.26,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-11",
         "value": 153030.23,
-        "net_flow": -63.31
+        "net_flow": -63.31,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-12",
         "value": 152785.48,
-        "net_flow": -93.31
+        "net_flow": -93.31,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-13",
         "value": 152333.63,
-        "net_flow": -88.04
+        "net_flow": -88.04,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-16",
         "value": 154747.2,
-        "net_flow": -55.95
+        "net_flow": -55.95,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-17",
         "value": 154719.24,
-        "net_flow": -82.5
+        "net_flow": -82.5,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-18",
         "value": 155243.39,
-        "net_flow": -67.04
+        "net_flow": -67.04,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-19",
         "value": 155384.83,
-        "net_flow": -62.98
+        "net_flow": -62.98,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-20",
         "value": 159051.03,
-        "net_flow": 2186.79
+        "net_flow": 2186.79,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-23",
         "value": 158381.36,
-        "net_flow": -43.25
+        "net_flow": -43.25,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-24",
         "value": 157659.03,
-        "net_flow": -64.89
+        "net_flow": -64.89,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-25",
         "value": 157101.16,
-        "net_flow": -13.58
+        "net_flow": -13.58,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-26",
         "value": 157823.82,
-        "net_flow": -42.14
+        "net_flow": -42.14,
+        "unexplained": 0.0
       },
       {
         "date": "2026-02-27",
         "value": 158115.64,
-        "net_flow": -39.57
+        "net_flow": -39.57,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-02",
         "value": 157784.58,
-        "net_flow": -2291.73
+        "net_flow": -2291.73,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-03",
         "value": 156735.96,
-        "net_flow": -104.19
+        "net_flow": -104.19,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-04",
         "value": 155733.9,
-        "net_flow": -97.17
+        "net_flow": -97.17,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-05",
         "value": 155355.72,
-        "net_flow": -100.24
+        "net_flow": -100.24,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-06",
         "value": 156110.28,
-        "net_flow": 2218.42
+        "net_flow": 2218.42,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-09",
         "value": 156108.55,
-        "net_flow": -90.13
+        "net_flow": -90.13,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-10",
         "value": 156751.18,
-        "net_flow": -79.23
+        "net_flow": -79.23,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-11",
         "value": 155919.77,
-        "net_flow": -40.65
+        "net_flow": -40.65,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-12",
         "value": 154416.45,
-        "net_flow": -13.8
+        "net_flow": -13.8,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-13",
         "value": 156963.04,
-        "net_flow": -31.07
+        "net_flow": -31.07,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-16",
         "value": 157590.27,
-        "net_flow": -17.78
+        "net_flow": -17.78,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-17",
         "value": 158661.82,
-        "net_flow": -68.08
+        "net_flow": -68.08,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-18",
         "value": 157609.68,
-        "net_flow": -26.54
+        "net_flow": -26.54,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-19",
         "value": 158222.01,
-        "net_flow": -33.65
+        "net_flow": -33.65,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-20",
         "value": 159826.54,
-        "net_flow": 2162.58
+        "net_flow": 2162.58,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-23",
         "value": 161792.89,
-        "net_flow": -53.48
+        "net_flow": -53.48,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-24",
         "value": 161969.66,
-        "net_flow": -37.52
+        "net_flow": -37.52,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-25",
         "value": 160894.76,
-        "net_flow": -101.75
+        "net_flow": -101.75,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-26",
         "value": 160521.88,
-        "net_flow": -42.39
+        "net_flow": -42.39,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-27",
         "value": 161902.03,
-        "net_flow": -58.26
+        "net_flow": -58.26,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-30",
         "value": 163130.34,
-        "net_flow": -68.24
+        "net_flow": -68.24,
+        "unexplained": 0.0
       },
       {
         "date": "2026-03-31",
         "value": 164948.46,
-        "net_flow": -38.84
+        "net_flow": -38.84,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-01",
         "value": 162216.77,
-        "net_flow": -2274.1
+        "net_flow": -2274.1,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-02",
         "value": 163182.64,
-        "net_flow": -100.43
+        "net_flow": -100.43,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-03",
         "value": 162990.84,
-        "net_flow": 2216.3
+        "net_flow": 2216.3,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-06",
         "value": 163085.01,
-        "net_flow": -26.71
+        "net_flow": -26.71,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-07",
         "value": 163197.39,
-        "net_flow": -49.12
+        "net_flow": -49.12,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-08",
         "value": 162914.15,
-        "net_flow": -45.62
+        "net_flow": -45.62,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-09",
         "value": 162365.91,
-        "net_flow": -89.08
+        "net_flow": -89.08,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-10",
         "value": 161949.03,
-        "net_flow": -29.65
+        "net_flow": -29.65,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-13",
         "value": 161011.84,
-        "net_flow": -33.35
+        "net_flow": -33.35,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-14",
         "value": 159363.71,
-        "net_flow": -21.82
+        "net_flow": -21.82,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-15",
         "value": 159114.98,
-        "net_flow": -14.33
+        "net_flow": -14.33,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-16",
         "value": 159492.72,
-        "net_flow": -74.7
+        "net_flow": -74.7,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-17",
         "value": 162141.19,
-        "net_flow": 2165.53
+        "net_flow": 2165.53,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-20",
         "value": 160350.32,
-        "net_flow": -105.59
+        "net_flow": -105.59,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-21",
         "value": 160086.01,
-        "net_flow": -43.52
+        "net_flow": -43.52,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-22",
         "value": 160931.51,
-        "net_flow": -46.57
+        "net_flow": -46.57,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-23",
         "value": 158629.6,
-        "net_flow": -58.02
+        "net_flow": -58.02,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-24",
         "value": 160793.82,
-        "net_flow": -20.6
+        "net_flow": -20.6,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-27",
         "value": 159091.6,
-        "net_flow": -50.42
+        "net_flow": -50.42,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-28",
         "value": 158592.41,
-        "net_flow": -39.82
+        "net_flow": -39.82,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-29",
         "value": 156798.95,
-        "net_flow": -24.56
+        "net_flow": -24.56,
+        "unexplained": 0.0
       },
       {
         "date": "2026-04-30",
         "value": 157299.55,
-        "net_flow": -105.67
+        "net_flow": -105.67,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-01",
         "value": 157049.48,
-        "net_flow": 19.62
+        "net_flow": 19.62,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-04",
         "value": 157784.36,
-        "net_flow": -23.32
+        "net_flow": -23.32,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-05",
         "value": 157509.47,
-        "net_flow": -75.43
+        "net_flow": -75.43,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-06",
         "value": 157644.39,
-        "net_flow": -22.88
+        "net_flow": -22.88,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-07",
         "value": 158636.09,
-        "net_flow": -48.05
+        "net_flow": -48.05,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-08",
         "value": 156205.26,
-        "net_flow": -101.67
+        "net_flow": -101.67,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-11",
         "value": 156020.07,
-        "net_flow": -64.14
+        "net_flow": -64.14,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-12",
         "value": 155158.1,
-        "net_flow": -33.78
+        "net_flow": -33.78,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-13",
         "value": 155190.01,
-        "net_flow": -82.65
+        "net_flow": -82.65,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-14",
         "value": 155145.17,
-        "net_flow": -63.85
+        "net_flow": -63.85,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-15",
         "value": 157944.36,
-        "net_flow": 2153.11
+        "net_flow": 2153.11,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-18",
         "value": 158082.39,
-        "net_flow": -69.31
+        "net_flow": -69.31,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-19",
         "value": 158234.8,
-        "net_flow": -45.69
+        "net_flow": -45.69,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-20",
         "value": 157686.53,
-        "net_flow": -49.95
+        "net_flow": -49.95,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-21",
         "value": 157323.36,
-        "net_flow": -88.09
+        "net_flow": -88.09,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-22",
         "value": 158568.77,
-        "net_flow": -46.6
+        "net_flow": -46.6,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-25",
         "value": 159517.9,
-        "net_flow": -34.95
+        "net_flow": -34.95,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-26",
         "value": 159583.79,
-        "net_flow": -34.69
+        "net_flow": -34.69,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-27",
         "value": 159595.76,
-        "net_flow": -53.27
+        "net_flow": -53.27,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-28",
         "value": 160921.51,
-        "net_flow": -30.26
+        "net_flow": -30.26,
+        "unexplained": 0.0
       },
       {
         "date": "2026-05-29",
         "value": 162825.44,
-        "net_flow": 2162.76
+        "net_flow": 2162.76,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-01",
         "value": 159161.85,
-        "net_flow": -2244.68
+        "net_flow": -2244.68,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-02",
         "value": 160592.97,
-        "net_flow": -56.53
+        "net_flow": -56.53,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-03",
         "value": 162366.9,
-        "net_flow": -57.88
+        "net_flow": -57.88,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-04",
         "value": 160758.17,
-        "net_flow": -46.98
+        "net_flow": -46.98,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-05",
         "value": 161005.66,
-        "net_flow": -12.53
+        "net_flow": -12.53,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-08",
         "value": 161664.19,
-        "net_flow": -85.23
+        "net_flow": -85.23,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-09",
         "value": 161659.19,
-        "net_flow": -42.48
+        "net_flow": -42.48,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-10",
         "value": 161840.75,
-        "net_flow": -58.0
+        "net_flow": -58.0,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-11",
         "value": 163309.17,
-        "net_flow": -69.6
+        "net_flow": -69.6,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-12",
         "value": 166116.61,
-        "net_flow": 2178.24
+        "net_flow": 2178.24,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-15",
         "value": 164899.33,
-        "net_flow": -35.91
+        "net_flow": -35.91,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-16",
         "value": 165177.35,
-        "net_flow": -37.55
+        "net_flow": -37.55,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-17",
         "value": 165864.85,
-        "net_flow": -24.8
+        "net_flow": -24.8,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-18",
         "value": 165148.22,
-        "net_flow": -100.63
+        "net_flow": -100.63,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-19",
         "value": 162935.5,
-        "net_flow": -50.68
+        "net_flow": -50.68,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-22",
         "value": 163732.82,
-        "net_flow": -46.69
+        "net_flow": -46.69,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-23",
         "value": 163488.12,
-        "net_flow": -11.8
+        "net_flow": -11.8,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-24",
         "value": 163685.33,
-        "net_flow": -12.5
+        "net_flow": -12.5,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-25",
         "value": 163558.44,
-        "net_flow": -22.19
+        "net_flow": -22.19,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-26",
         "value": 165573.39,
-        "net_flow": 2215.62
+        "net_flow": 2215.62,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-29",
         "value": 163801.05,
-        "net_flow": -70.1
+        "net_flow": -70.1,
+        "unexplained": 0.0
       },
       {
         "date": "2026-06-30",
         "value": 164454.32,
-        "net_flow": -71.1
+        "net_flow": -71.1,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-01",
         "value": 162221.63,
-        "net_flow": -2210.97
+        "net_flow": -2210.97,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-02",
         "value": 163214.41,
-        "net_flow": -97.16
+        "net_flow": -97.16,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-03",
         "value": 163508.25,
-        "net_flow": -64.95
+        "net_flow": -64.95,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-06",
         "value": 163144.12,
-        "net_flow": -33.9
+        "net_flow": -33.9,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-07",
         "value": 163325.82,
-        "net_flow": -65.77
+        "net_flow": -65.77,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-08",
         "value": 161438.63,
-        "net_flow": -56.71
+        "net_flow": -56.71,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-09",
         "value": 163251.31,
-        "net_flow": -95.03
+        "net_flow": -95.03,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-10",
         "value": 163557.03,
-        "net_flow": 2218.29
+        "net_flow": 2218.29,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-13",
         "value": 163445.84,
-        "net_flow": -53.06
+        "net_flow": -53.06,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-14",
         "value": 163144.06,
-        "net_flow": -100.56
+        "net_flow": -100.56,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-15",
         "value": 162649.92,
-        "net_flow": -62.39
+        "net_flow": -62.39,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-16",
         "value": 161971.43,
-        "net_flow": -17.02
+        "net_flow": -17.02,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-17",
         "value": 162034.89,
-        "net_flow": -95.22
+        "net_flow": -95.22,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-20",
         "value": 161806.99,
-        "net_flow": -36.31
+        "net_flow": -36.31,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-21",
         "value": 161016.28,
-        "net_flow": -11.1
+        "net_flow": -11.1,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-22",
         "value": 161323.81,
-        "net_flow": -20.47
+        "net_flow": -20.47,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-23",
         "value": 163495.15,
-        "net_flow": -109.54
+        "net_flow": -109.54,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-24",
         "value": 164879.28,
-        "net_flow": 2183.99
+        "net_flow": 2183.99,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-27",
         "value": 164105.68,
-        "net_flow": -56.04
+        "net_flow": -56.04,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-28",
         "value": 165333.92,
-        "net_flow": -48.69
+        "net_flow": -48.69,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-29",
         "value": 165828.15,
-        "net_flow": -73.6
+        "net_flow": -73.6,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-30",
         "value": 165234.19,
-        "net_flow": -98.08
+        "net_flow": -98.08,
+        "unexplained": 0.0
       },
       {
         "date": "2026-07-31",
         "value": 164288.94,
-        "net_flow": -97.03
+        "net_flow": -97.03,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-03",
         "value": 162475.42,
-        "net_flow": -2306.3
+        "net_flow": -2306.3,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-04",
         "value": 163647.51,
-        "net_flow": -77.0
+        "net_flow": -77.0,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-05",
         "value": 163790.59,
-        "net_flow": -12.42
+        "net_flow": -12.42,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-06",
         "value": 163762.12,
-        "net_flow": -92.14
+        "net_flow": -92.14,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-07",
         "value": 163304.76,
-        "net_flow": 2211.47
+        "net_flow": 2211.47,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-10",
         "value": 162948.84,
-        "net_flow": -45.51
+        "net_flow": -45.51,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-11",
         "value": 163862.53,
-        "net_flow": -12.2
+        "net_flow": -12.2,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-12",
         "value": 164818.9,
-        "net_flow": -46.95
+        "net_flow": -46.95,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-13",
         "value": 163172.59,
-        "net_flow": -92.16
+        "net_flow": -92.16,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-14",
         "value": 163987.89,
-        "net_flow": -85.32
+        "net_flow": -85.32,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-17",
         "value": 164104.34,
-        "net_flow": -83.7
+        "net_flow": -83.7,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-18",
         "value": 164020.93,
-        "net_flow": -83.02
+        "net_flow": -83.02,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-19",
         "value": 164171.66,
-        "net_flow": -62.89
+        "net_flow": -62.89,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-20",
         "value": 164553.93,
-        "net_flow": -14.88
+        "net_flow": -14.88,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-21",
         "value": 167970.59,
-        "net_flow": 2235.51
+        "net_flow": 2235.51,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-24",
         "value": 166954.43,
-        "net_flow": -68.92
+        "net_flow": -68.92,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-25",
         "value": 168143.39,
-        "net_flow": -108.7
+        "net_flow": -108.7,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-26",
         "value": 169811.66,
-        "net_flow": -40.41
+        "net_flow": -40.41,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-27",
         "value": 168602.15,
-        "net_flow": -67.86
+        "net_flow": -67.86,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-28",
         "value": 168820.3,
-        "net_flow": -85.43
+        "net_flow": -85.43,
+        "unexplained": 0.0
       },
       {
         "date": "2026-08-31",
         "value": 168072.06,
-        "net_flow": -46.94
+        "net_flow": -46.94,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-01",
         "value": 163879.42,
-        "net_flow": -2264.95
+        "net_flow": -2264.95,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-02",
         "value": 163492.9,
-        "net_flow": -28.57
+        "net_flow": -28.57,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-03",
         "value": 165194.37,
-        "net_flow": -79.71
+        "net_flow": -79.71,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-04",
         "value": 167821.23,
-        "net_flow": 2174.28
+        "net_flow": 2174.28,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-07",
         "value": 167790.18,
-        "net_flow": -77.57
+        "net_flow": -77.57,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-08",
         "value": 167253.52,
-        "net_flow": -79.92
+        "net_flow": -79.92,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-09",
         "value": 168227.9,
-        "net_flow": -23.86
+        "net_flow": -23.86,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-10",
         "value": 168150.83,
-        "net_flow": -87.18
+        "net_flow": -87.18,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-11",
         "value": 166699.03,
-        "net_flow": -56.49
+        "net_flow": -56.49,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-14",
         "value": 165994.3,
-        "net_flow": -47.14
+        "net_flow": -47.14,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-15",
         "value": 165208.19,
-        "net_flow": -76.21
+        "net_flow": -76.21,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-16",
         "value": 163861.83,
-        "net_flow": -71.68
+        "net_flow": -71.68,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-17",
         "value": 164747.46,
-        "net_flow": -77.67
+        "net_flow": -77.67,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-18",
         "value": 165417.03,
-        "net_flow": 2181.2
+        "net_flow": 2181.2,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-21",
         "value": 167177.04,
-        "net_flow": -43.87
+        "net_flow": -43.87,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-22",
         "value": 167322.11,
-        "net_flow": -88.88
+        "net_flow": -88.88,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-23",
         "value": 168279.2,
-        "net_flow": -17.35
+        "net_flow": -17.35,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-24",
         "value": 168359.56,
-        "net_flow": -60.38
+        "net_flow": -60.38,
+        "unexplained": 0.0
       },
       {
         "date": "2026-09-25",
         "value": 168278.24,
-        "net_flow": -88.02
+        "net_flow": -88.02,
+        "unexplained": 0.0
       }
     ],
     "no_history": 0

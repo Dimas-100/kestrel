@@ -47,6 +47,7 @@ export interface ValuePoint {
   date: string
   value: number
   net_flow: number
+  unexplained?: number // the part of net_flow no transaction records yet (absent from an older server: 0)
 }
 
 export interface NetWorth {
@@ -551,6 +552,7 @@ export interface AccountsView {
 export interface Flow {
   date: string
   amount: number // positive in, negative out
+  unexplained?: number // the part of amount no transaction records yet: a deposit the broker hasn't posted
 }
 
 export interface HoldingRow {
