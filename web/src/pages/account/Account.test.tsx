@@ -65,6 +65,16 @@ describe('Account page', { timeout: 15_000 }, () => {
     expect(flowDay('2025-11-03', '2026')).toBe('3 Nov 2025')
   })
 
+  it('says when money moved that the records do not show yet', async () => {
+    const flows = [{ date: '2026-09-24', amount: 100, unexplained: 100 }, ...accountFixture.flows.slice(0, 7)]
+    renderApp('/accounts/roth', withView({ ...accountFixture, flows }))
+    const growth = await findPanel('Growth')
+    const [first, second] = within(growth).getAllByRole('listitem')
+    expect(first.textContent).toBe('Thu 24 Sep▲ in · not posted yet$100.00')
+    expect(within(first).getByText('not posted yet').getAttribute('title')).toMatch(/hasn.t posted/)
+    expect(second.textContent).not.toContain('not posted yet')
+  })
+
   it('weighs each holding with its gain, then the cash and the totals', async () => {
     renderApp('/accounts/roth')
     const holdings = await findPanel('Holdings')
