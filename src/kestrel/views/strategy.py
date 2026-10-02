@@ -488,8 +488,8 @@ def strategies_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> S
             book=primary.money if primary else None, trades=row.trades if row else 0,
             per_trade_pct=row.per_trade_pct if row else None, band_lo=row.band_lo if row else None,
             band_hi=row.band_hi if row else None, verdict=row.verdict if row else "none",
-            win_rate=100 * sum(t.pnl > 0 for t in mine) / len(mine) if mine else None,
-            avg_return_pct=sum(t.return_pct for t in mine) / len(mine) if mine else None,
+            win_rate=round(100 * sum(t.pnl > 0 for t in mine) / len(mine), 1) if mine else None,
+            avg_return_pct=round(sum(t.return_pct for t in mine) / len(mine), 3) if mine else None,
             pnl=round(sum(t.pnl for t in mine), 2), last_closed=mine[-1].closed if mine else None,
         ))
     return StrategiesView(strategies=cards)

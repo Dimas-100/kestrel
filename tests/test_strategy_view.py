@@ -48,6 +48,13 @@ def test_the_list_has_a_card_per_strategy_with_its_books(demo):
     assert (cards["ibs"].trades, cards["ibs"].verdict) == (7, "early")
 
 
+def test_a_card_rounds_its_rates_so_every_platform_prints_the_same_figure(demo):
+    # an unrounded mean's last digit hangs on how the platform's libm rounded the demo's trades
+    for card in strategies_view(demo, DEMO_PROFILE, NOW).strategies:
+        assert card.win_rate is None or card.win_rate == round(card.win_rate, 1)
+        assert card.avg_return_pct is None or card.avg_return_pct == round(card.avg_return_pct, 3)
+
+
 def test_the_primary_book_follows_the_requested_money(demo):
     real = strategy_view(demo, DEMO_PROFILE, NOW, "rsi2", "real")
     paper = strategy_view(demo, DEMO_PROFILE, NOW, "rsi2", "paper")
