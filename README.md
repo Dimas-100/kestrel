@@ -105,10 +105,10 @@ Make it yours: copy `profile.example.toml` to `profile.toml` (gitignored) and se
 1. Fill a warehouse with [financial-data-collector](https://github.com/Dimas-100/financial-data-collector)
    (`fdc sync`).
 2. In `profile.toml`, swap the demo source for the commented `fdc` block: `path` is the warehouse, relative to
-   `profile.toml`, and `[sources.categories]` files your trading accounts under `trading`. A card or a loan doesn't
-   come from the collector (its values are what an account holds): it arrives from a feed as a `debt` account (step
-   5). Set `[benchmark]` to a symbol the collector already prices (an index fund you hold, for example; SPY often
-   isn't priced there).
+   `profile.toml`, and `[sources.categories]` files your trading accounts under `trading`. Banks and cards you
+   connected in the collector arrive with it, as `cash` and `debt` accounts; `debt` is also a valid category to
+   file a collector account under. Set `[benchmark]` to a symbol the collector already prices (an index fund you
+   hold, for example; SPY often isn't priced there).
 3. Run `kestrel check`: the source should read `ok`, with every account and its category listed under it (never a
    balance). Then `kestrel serve`; `kestrel serve --demo` still shows the demo.
 4. Running trading-rails? Add the commented `rails` block: `path`

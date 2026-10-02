@@ -37,7 +37,7 @@ label = "Portfolio"
 path = "../financial-data-collector/data/warehouse.db"   # relative to this profile's folder
 stale_after = "36h"
 
-[sources.categories]          # optional: account id or exact label = long_term | trading | cash | other
+[sources.categories]          # optional: account id or exact label = long_term | trading | cash | debt | other
 "brokerage-2" = "trading"
 ```
 
@@ -49,8 +49,10 @@ stale_after = "36h"
   they are missing; kestrel never changes the warehouse's data.
 - **Cached.** kestrel keeps what it read, keyed to the warehouse's and its `-wal` file's size and modification time,
   so a sync shows up at once (and within a minute at most, for a same-size write that leaves both looking unchanged).
-- **Needs** schema version 3 or later: the tables `accounts`, `transactions`, `prices`, `sync_runs`, `holdings_daily`
-  and `cash_daily`, and the views `positions_latest` and `account_values_daily`.
+- **Needs** schema version 6 or later (the collector's release with `fdc connect`): the tables `accounts`,
+  `transactions`, `prices`, `sync_runs`, `cash_balances`, `holdings_daily` and `cash_daily`, and the views
+  `positions_latest` and `account_values_daily`. An older warehouse reads `this warehouse is at schema version 5
+  and kestrel needs 6: update financial-data-collector and run fdc sync`.
 
 ### Accounts
 
@@ -60,7 +62,7 @@ stale_after = "36h"
 | name | the label |
 | institution | `fidelity` is Fidelity, `webull` Webull, anything else title-cased; `unknown` is left out |
 | type | `roth_ira` is Roth IRA, `traditional_ira` Traditional IRA, `401k` 401(k), `brokerage` Brokerage, `crypto` Crypto (and the other retirement types the same way); anything else title-cased |
-| category | set in `[sources.categories]` by id or label (an id wins over a label), else from the type: retirement accounts, an HSA, a pension and `brokerage` are long-term; `checking`, `savings`, `cash` and `money_market` are cash; anything else, crypto included, is other |
+| category | set in `[sources.categories]` by id or label (an id wins over a label), else from the type: retirement accounts, an HSA, a pension and `brokerage` are long-term; `checking`, `savings`, `cash` and `money_market` are cash; `credit_card`, `loan`, `mortgage` and `line_of_credit` are debt; anything else, crypto included, is other |
 
 Trading money is whatever you file under `trading`. Until a real trading book has a history of its own, Home's
 "Trading vs your index money" draws the trading accounts.
@@ -73,6 +75,15 @@ A category that isn't one of the five (`long_term`, `trading`, `cash`, `debt`, `
 - **Value and cash:** the newer of the broker's last snapshot (`account_values_daily`) and the last replayed day
   (`holdings_daily` plus `cash_daily`). When both are from the same day, the snapshot wins. A value is as of that
   day's US close.
+- **A debt is what it owes.** The collector stores a card's or a loan's balance below zero, as the bank reports it;
+  kestrel shows it as the amount owed, positive when owed and below zero when the balance is in your favour, and
+  its history the same way. Its `limit` is the one set with `fdc accounts set --limit`, else what it owes plus the
+  remaining credit the bank reported, when it reported one above zero.
+- **A rate** (`rate_pct`: what cash earns, what a debt costs) is the one set with `fdc accounts set --rate`.
+- **A bank account has no transactions in the warehouse** (`flows = 'balance'`), so every change in its balance
+  counts as money moved, never as growth: money in is positive and money out is negative, and for a card or a
+  loan a payment is money in and a charge is money out, as the contract says. Paying a card from checking nets to
+  nothing; a paycheck never shows as market growth; interest doesn't show as growth either.
 - **History:** each account's holdings plus its cash, per day, ending on the account's value: the snapshot's total
   replaces the replayed day it shares, a newer snapshot adds its day, and an account with only a snapshot has a
   one-day history. So the Accounts total, the growth's "Now" and each account's chart agree.
@@ -110,17 +121,18 @@ Run `kestrel check`. Under the source's line it lists each account as `id  categ
 |---|---|
 | `no warehouse at …` | Check `path`: it is relative to the folder `profile.toml` is in. |
 | `… is not a financial-data-collector warehouse` | The file isn't a collector warehouse (or is empty): check `path`. |
-| `this warehouse is at schema version 2 …` or `this warehouse is missing holdings_daily …` | Update financial-data-collector and run `fdc sync`. |
+| `this warehouse is at schema version 5 …` or `this warehouse is missing holdings_daily …` | Update financial-data-collector and run `fdc sync`. |
 | `the warehouse couldn't be read: database is locked` | Another program held the file for more than five seconds. Refresh once it is done. |
 | `no account matches categories 'brokerage-9'` | Use an id from the account lines, or the exact label. |
 | `no SPY prices in the warehouse` | Set `[benchmark] symbol` to something the collector prices, or add it to the collector. |
 
 An unknown category is a profile error, not a line under the source: `kestrel check` stops before reading any source
 with `profile problem: <path>: sources.0: Value error, unknown category 'trade' for 'Brokerage' (use long_term,
-trading, cash, debt or other)` and exits with status 2. For a collector account, use `long_term`, `trading`, `cash`
-or `other`: the collector's values are always what an account holds, and `debt` would count that as owed. A card or
-a loan comes from a feed instead, as an account with `category: "debt"` whose `value` is what it owes (see
-[the data contract](data-contract.md)).
+trading, cash, debt or other)` and exits with status 2. A card or a loan comes from the collector when it was
+connected there (`fdc connect simplefin`) or filed under `debt` in `[sources.categories]`; a feed can still send one
+as an account with `category: "debt"` whose `value` is what it owes (see [the data contract](data-contract.md)).
+The reader needs a warehouse at schema version 6 or later; an older one reads `this warehouse is at schema
+version 5 and kestrel needs 6: update financial-data-collector and run fdc sync`.
 
 ## `feed`: any system that serves the contract
 
