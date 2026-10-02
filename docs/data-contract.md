@@ -19,7 +19,10 @@ code entering this repo ([how](connectors.md#feed-any-system-that-serves-the-con
   performance is measured net of money moving in and out. Date a flow on the day the value first includes it: a
   deposit dated before the balance shows it reads as a loss that day and a gain the day it lands. kestrel only
   guards the extreme case (a deposit bigger than the value it lands on waits for the next point rather than turning
-  the return line upside down).
+  the return line upside down). A point's optional `unexplained` (default 0) is the part of its `net_flow` that no
+  recorded transaction explains yet: the balance moved and the source's records don't say why, most often a
+  deposit the broker hasn't posted. It is already inside `net_flow`. kestrel only uses it to label that money as
+  not posted yet.
 - `status` on a source is `ok`, `stale` or `error`; kestrel also marks a source stale once its `last_success` is older
   than the profile's `stale_after` for it.
 - An alert's `link` is a page inside kestrel (`/books`) or empty. A link to another site (`https://…`, `//host`) fails

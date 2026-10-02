@@ -59,6 +59,9 @@ class ValuePoint(Model):
     date: dt.date
     value: float
     net_flow: float = 0.0  # deposits minus withdrawals on that day
+    # the part of net_flow no recorded transaction explains yet: the balance moved and the records don't say why
+    # (most often a deposit the broker hasn't posted)
+    unexplained: float = 0.0
 
 
 class Series(Model):

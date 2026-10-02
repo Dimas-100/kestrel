@@ -1376,6 +1376,11 @@
           "default": 0.0,
           "title": "Net Flow",
           "type": "number"
+        },
+        "unexplained": {
+          "default": 0.0,
+          "title": "Unexplained",
+          "type": "number"
         }
       },
       "required": [

@@ -2,8 +2,8 @@
 
 The tables and views are the subset of the collector's schema the connector reads, copied from its migrations
 (financial-data-collector: src/financial_data_collector/migrations/0001_init.sql, 0002_views.sql,
-0003_derived.sql and 0006_connections.sql), so the connector meets the same shapes. The accounts, symbols and
-numbers are made up.
+0003_derived.sql, 0006_connections.sql and 0007_unexplained.sql), so the connector meets the same shapes. A
+warehouse below version 7 has no `unexplained_daily`. The accounts, symbols and numbers are made up.
 """
 
 from __future__ import annotations
@@ -126,6 +126,15 @@ SCHEMA = {
   basis       TEXT NOT NULL,
   PRIMARY KEY (as_of_date, account_id)
 )""",
+    # 0007_unexplained.sql
+    "unexplained_daily": """CREATE TABLE unexplained_daily (
+  as_of_date  TEXT NOT NULL,
+  account_id  INTEGER NOT NULL REFERENCES accounts(id),
+  cash        REAL NOT NULL,
+  holdings    REAL NOT NULL,
+  amount      REAL NOT NULL,
+  PRIMARY KEY (as_of_date, account_id)
+)""",
     # 0002_views.sql
     "positions_latest": """CREATE VIEW positions_latest AS
 SELECT p.as_of_date, a.label AS account, a.institution, a.account_type,
@@ -159,11 +168,13 @@ def _iso(day: Day) -> str:
 class Warehouse:
     """A fictional warehouse under construction: each method adds rows, `close()` returns the file's path."""
 
-    def __init__(self, path: Path, *, version: int = 6, without: tuple[str, ...] = (), wal: bool = False) -> None:
+    def __init__(self, path: Path, *, version: int = 7, without: tuple[str, ...] = (), wal: bool = False) -> None:
         self.path = path
         self.conn = sqlite3.connect(path)
         if wal:
             self.conn.execute("PRAGMA journal_mode=WAL")  # how the collector opens its own warehouse
+        if version < 7:
+            without = (*without, "unexplained_daily")
         self.conn.executescript(";\n".join(sql for name, sql in SCHEMA.items() if name not in without) + ";")
         if "schema_version" not in without:
             self.conn.executemany("INSERT INTO schema_version VALUES (?, '2026-09-01T00:00:00Z')",
@@ -205,6 +216,11 @@ class Warehouse:
         self._tx += 1
         self.conn.execute("INSERT INTO transactions (account_id, trade_date, type, amount, source, dedupe_key) "
                           "VALUES (?, ?, ?, ?, 'fixture', ?)", (account_id, _iso(day), kind, amount, f"k{self._tx}"))
+
+    def unexplained(self, account_id: int, day: Day, amount: float) -> None:
+        """A day's change the records don't explain (the collector's derive writes these), all of it cash."""
+        self.conn.execute("INSERT INTO unexplained_daily VALUES (?, ?, ?, 0, ?)",
+                          (_iso(day), account_id, amount, amount))
 
     def prices(self, symbol: str, closes: dict[Day, float]) -> None:
         self.conn.executemany("INSERT INTO prices (symbol, date, close, adj_close, source) VALUES (?, ?, ?, ?, 'x')",

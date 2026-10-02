@@ -61,6 +61,7 @@ class AccountsView(View):
 class Flow(View):
     date: dt.date
     amount: float  # positive in, negative out
+    unexplained: float = 0.0  # the part of `amount` no transaction records yet (a deposit the broker hasn't posted)
 
 
 class HoldingRow(View):
@@ -211,7 +212,8 @@ def account_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, account
         id=account.id, name=account.name, institution=account.institution, account_type=account.account_type,
         category=account.category, value=account.value, as_of=account.as_of.date(), points=points,
         growth={w: None for w in WINDOWS} if account.category == "debt" else growths(points, today),
-        flows=[Flow(date=p.date, amount=p.net_flow) for p in reversed(points) if round(p.net_flow, 2) != 0][:FLOWS],
+        flows=[Flow(date=p.date, amount=p.net_flow, unexplained=p.unexplained)
+               for p in reversed(points) if round(p.net_flow, 2) != 0][:FLOWS],
         holdings=[_row(h, whole) for h in held], holdings_as_of=max((h.as_of for h in held if h.as_of), default=None),
         cash=account.cash, cash_weight=_share(account.cash, whole),
         totals=Totals(value=round(whole, 2), cost_basis=round(cost, 2) if cost is not None else None,
