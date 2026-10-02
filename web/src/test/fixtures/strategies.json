@@ -28,8 +28,8 @@
       "band_lo": -0.168,
       "band_hi": 1.848,
       "verdict": "in_band",
-      "win_rate": 64.70588235294117,
-      "avg_return_pct": 0.7900000000000001,
+      "win_rate": 64.7,
+      "avg_return_pct": 0.79,
       "pnl": 741.2,
       "last_closed": "2026-09-18"
     },
@@ -53,8 +53,8 @@
       "band_lo": null,
       "band_hi": null,
       "verdict": "early",
-      "win_rate": 57.142857142857146,
-      "avg_return_pct": 0.2685714285714286,
+      "win_rate": 57.1,
+      "avg_return_pct": 0.269,
       "pnl": 11.32,
       "last_closed": "2026-09-24"
     },
@@ -78,8 +78,8 @@
       "band_lo": -0.609,
       "band_hi": 0.809,
       "verdict": "below",
-      "win_rate": 18.181818181818183,
-      "avg_return_pct": -1.289090909090909,
+      "win_rate": 18.2,
+      "avg_return_pct": -1.289,
       "pnl": -3396.99,
       "last_closed": "2026-09-21"
     },
@@ -103,8 +103,8 @@
       "band_lo": -15.026,
       "band_hi": 23.026,
       "verdict": "in_band",
-      "win_rate": 61.53846153846154,
-      "avg_return_pct": 1.3784615384615377,
+      "win_rate": 61.5,
+      "avg_return_pct": 1.378,
       "pnl": -32.57,
       "last_closed": "2026-08-04"
     }
