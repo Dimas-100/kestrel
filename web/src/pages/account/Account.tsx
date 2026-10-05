@@ -1,4 +1,4 @@
-// One account: its value over time against what went in, how it grew, and what it holds.
+// One account: its value over time against what went in, how it grew, what it holds, and what moved through it.
 import { useState } from 'react'
 import { CategoryChip } from '../../components/bits'
 import { HttpError, useAccount, useShell, type Window } from '../../lib/api'
@@ -6,6 +6,7 @@ import { kindText } from '../accounts/Accounts'
 import { Soon } from '../Soon'
 import { AccountGrowthPanel, flowDay } from './AccountGrowth'
 import { HoldingsPanel } from './HoldingsPanel'
+import { TransactionsPanel } from './TransactionsPanel'
 import { ValuePanel } from './ValuePanel'
 
 export function Account({ id }: { id: string }) {
@@ -36,6 +37,7 @@ export function Account({ id }: { id: string }) {
         <ValuePanel v={v} period={period} onPeriod={setPeriod} />
         <AccountGrowthPanel v={v} period={period} />
         <HoldingsPanel v={v} year={year} />
+        <TransactionsPanel v={v} year={year} />
       </div>
     </>
   )

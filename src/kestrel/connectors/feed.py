@@ -361,7 +361,7 @@ _COUNT_KINDS: tuple[tuple[str, str, str], ...] = (
     ("accounts", "account", "accounts"), ("books", "book", "books"), ("strategies", "strategy", "strategies"),
     ("trades", "trade", "trades"), ("targets", "target", "targets"), ("theses", "thesis", "theses"),
     ("events", "event", "events"), ("goals", "goal", "goals"), ("exposures", "exposure", "exposures"),
-    ("backtests", "backtest", "backtests"),
+    ("backtests", "backtest", "backtests"), ("transactions", "transaction", "transactions"),
 )
 MAX_COUNT_KINDS = 6
 

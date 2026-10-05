@@ -232,3 +232,14 @@ def test_duplicate_new_block_items_within_one_source_keep_the_first(tmp_path):
     assert snap.sources[0].detail == (
         "2 targets · 2 theses · 2 events · 2 goals · 2 exposures · 2 backtests · ignored duplicate ids: roth-vti, "
         "KO, house, MSFT, dip-a1")
+
+
+def test_a_duplicate_accounts_transactions_go_with_it(tmp_path):
+    row = {"date": "2026-09-24", "amount": -42.17, "description": "GROCERY MART"}
+    first = feed_file(tmp_path, {**with_account(desk()), "transactions": [{**row, "account_id": "brokerage"}]},
+                      "desk.json")
+    later = feed_file(tmp_path, {**household(), "transactions": [{**row, "account_id": "brokerage", "amount": -1.0},
+                                                                 {**row, "account_id": "hsa"}]}, "household.json")
+    snap = collect(profile_of(first, later), NOW)
+    assert [(t.account_id, t.amount) for t in snap.transactions] == [("brokerage", -42.17), ("hsa", -42.17)]
+    assert snap.sources[0].detail == "1 account · 2 books · 1 strategy · 2 trades · 1 transaction"

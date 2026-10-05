@@ -575,6 +575,22 @@ export interface Totals {
   unknown_cost: number
 }
 
+export interface TransactionRow {
+  date: string
+  amount: number // money in positive, money out negative
+  description: string
+  counterparty: string
+  category: string
+}
+
+export interface Transactions {
+  rows: TransactionRow[] // newest first
+  count: number
+  since: string // the oldest row's day
+  money_in: number
+  money_out: number // as a positive amount
+}
+
 export interface AccountView {
   id: string
   name: string
@@ -591,6 +607,7 @@ export interface AccountView {
   cash: number
   cash_weight: number | null
   totals: Totals
+  transactions: Transactions | null // null when the source sends no rows for this account
 }
 
 // --- the Calendar page (src/kestrel/views/calendar.py) -----------------------------------------------------------

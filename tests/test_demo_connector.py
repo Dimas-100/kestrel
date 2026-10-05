@@ -261,3 +261,24 @@ def test_holdings_are_priced_consistently_and_the_trading_account_holds_the_real
     assert trading == {p.symbol: p.quantity for p in snap.positions if p.book_id == "rsi2-real"}
     assert [h.symbol for h in snap.holdings if h.cost_basis is None] == ["KO"]  # a cost the broker never reported
     assert len({h.symbol for h in snap.holdings}) == 13
+
+
+def test_the_bank_accounts_have_ninety_days_of_transactions_that_add_up_to_their_flows():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    today = dt.date(2026, 9, 25)
+    bank = {a.id for a in snap.accounts if a.category in ("cash", "debt")}
+    assert {t.account_id for t in snap.transactions} == bank == {"checking", "savings", "card"}
+    assert all(today - dt.timedelta(days=90) <= t.date <= today for t in snap.transactions)
+    assert all(t.description and t.amount != 0 for t in snap.transactions)
+    history = {s.id: {p.date: p.net_flow for p in s.points} for s in snap.account_history}
+    for account_id in bank:
+        by_day: dict = {}
+        for t in snap.transactions:
+            if t.account_id == account_id:
+                by_day[t.date] = round(by_day.get(t.date, 0.0) + t.amount, 2)
+        assert by_day, account_id
+        for day, total in by_day.items():
+            assert total == round(history[account_id][day], 2), (account_id, day)
+        # and every day the account moved inside the window has its rows
+        moved = {day for day, flow in history[account_id].items() if flow and day >= today - dt.timedelta(days=90)}
+        assert moved <= set(by_day), account_id

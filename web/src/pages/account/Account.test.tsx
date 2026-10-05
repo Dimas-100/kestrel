@@ -1,7 +1,8 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AccountView } from '../../lib/api'
-import { accountFixture, renderApp } from '../../test/renderApp'
+import { accountCheckingFixture, accountFixture, renderApp } from '../../test/renderApp'
+import { money } from '../../lib/format'
 import { flowDay } from './AccountGrowth'
 import { quantityText } from './HoldingsPanel'
 
@@ -160,5 +161,38 @@ describe('Account page', { timeout: 15_000 }, () => {
     unmount()
     renderApp('/accounts/roth', { account: [] })
     expect((await screen.findByRole('alert')).textContent).toBe('This account couldn’t load: network is off in tests')
+  })
+
+  it('lists a bank account’s transactions newest first, with the totals, a Show filter and a search', async () => {
+    renderApp('/accounts/checking', { account: [{ id: 'checking', view: accountCheckingFixture }] })
+    const panel = await findPanel('Transactions')
+    const t = accountCheckingFixture.transactions as NonNullable<AccountView['transactions']>
+    expect(panel.querySelector('.panel-sub')?.textContent).toBe(
+      `${t.count} since ${flowDay(t.since, '2026')} · in ${money(t.money_in)} · out ${money(t.money_out)}`)
+    const body = rows(panel)
+    expect(body).toHaveLength(t.count)
+    expect(body[0]).toContain(t.rows[0].description)
+    expect(body[0]).toContain(flowDay(t.rows[0].date, '2026'))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Out' }))
+    expect(rows(panel).length).toBeGreaterThan(0)
+    expect(rows(panel).every((r) => r?.includes('−$'))).toBe(true)
+    fireEvent.click(within(panel).getByRole('button', { name: 'In' }))
+    expect(rows(panel).length).toBeGreaterThan(0)
+    expect(rows(panel).every((r) => r?.includes('+$'))).toBe(true)
+    fireEvent.click(within(panel).getByRole('button', { name: 'All' }))
+    const search = within(panel).getByRole('searchbox', { name: 'Search transactions' })
+    fireEvent.change(search, { target: { value: 'rent' } })
+    expect(rows(panel).length).toBeGreaterThan(0)
+    expect(rows(panel).every((r) => /rent/i.test(r ?? ''))).toBe(true)
+    fireEvent.change(search, { target: { value: 'landlord' } }) // the counterparty matches too
+    expect(rows(panel).length).toBeGreaterThan(0)
+    fireEvent.change(search, { target: { value: 'zzz' } })
+    expect(panel.textContent).toContain('No transactions match.')
+  })
+
+  it('shows no Transactions panel for an account whose source sends none', async () => {
+    renderApp('/accounts/roth')
+    await findPanel('Holdings')
+    expect(() => panel('Transactions')).toThrow()
   })
 })

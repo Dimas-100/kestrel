@@ -143,7 +143,8 @@ def _dedupe_within(part: Snapshot) -> tuple[Snapshot, list[str]]:
 
 def _without_duplicates(parts: list[Snapshot]) -> list[Snapshot]:
     """When a later source uses an account, book or strategy id an earlier one already has, the earlier one's item
-    stays and the later one's goes, with everything that hangs off it: an account's holdings and history; a book's
+    stays and the later one's goes, with everything that hangs off it: an account's holdings, transactions and
+    history; a book's
     history, positions, trades, trade charts and runs. Books keep pointing at the first strategy of their id. A
     history whose id an earlier source's history already has goes too, even without an item of that id, so every
     page reads the same one. A target, thesis, event, goal, exposure or backtest whose key an earlier source already
@@ -182,6 +183,7 @@ def _without_duplicates(parts: list[Snapshot]) -> list[Snapshot]:
         out.append(part.model_copy(update={
             "accounts": [a for a in part.accounts if a.id not in accounts],
             "holdings": [h for h in part.holdings if h.account_id not in accounts],
+            "transactions": [t for t in part.transactions if t.account_id not in accounts],
             "account_history": [s for s in part.account_history if s.id not in accounts | account_history],
             "books": [b for b in part.books if b.id not in books],
             "book_history": [s for s in part.book_history if s.id not in books | book_history],

@@ -20,6 +20,8 @@ GENERATED = [
     (ROOT / "web" / "src" / "test" / "fixtures" / "accounts.json", ["demo", "--view", "accounts", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "account-roth.json",
      ["demo", "--view", "account", "--id", "roth", "--now", NOW]),
+    (ROOT / "web" / "src" / "test" / "fixtures" / "account-checking.json",
+     ["demo", "--view", "account", "--id", "checking", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "books.json", ["demo", "--view", "books", "--now", NOW]),
     (ROOT / "web" / "src" / "test" / "fixtures" / "book-rsi2-real.json",
      ["demo", "--view", "book", "--id", "rsi2-real", "--now", NOW]),

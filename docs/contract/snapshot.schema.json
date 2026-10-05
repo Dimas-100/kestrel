@@ -1361,6 +1361,46 @@
       "title": "TradeChart",
       "type": "object"
     },
+    "Transaction": {
+      "description": "Money that moved through an account, as its own records post it: a charge, a payment, a deposit, interest.\nPosted rows only; a source leaves pending ones out. `amount` is signed, money in positive and money out negative,\nthe same convention as a history point's net_flow: on a card a payment is money in and a charge money out.",
+      "properties": {
+        "account_id": {
+          "title": "Account Id",
+          "type": "string"
+        },
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "amount": {
+          "title": "Amount",
+          "type": "number"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "counterparty": {
+          "default": "",
+          "title": "Counterparty",
+          "type": "string"
+        },
+        "category": {
+          "default": "",
+          "title": "Category",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account_id",
+        "date",
+        "amount",
+        "description"
+      ],
+      "title": "Transaction",
+      "type": "object"
+    },
     "ValuePoint": {
       "properties": {
         "date": {
@@ -1468,6 +1508,14 @@
         "$ref": "#/$defs/Series"
       },
       "title": "Account History",
+      "type": "array"
+    },
+    "transactions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Transaction"
+      },
+      "title": "Transactions",
       "type": "array"
     },
     "books": {

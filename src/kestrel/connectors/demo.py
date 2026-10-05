@@ -36,6 +36,7 @@ from ..contract import (
     Thesis,
     Trade,
     TradeChart,
+    Transaction,
     ValuePoint,
     WatchItem,
 )
@@ -315,6 +316,52 @@ def _card(days: list[date], seed: int) -> tuple[list[float], list[float], list[f
         flows.append(round(paid - charges[i], 2))
         payments.append(paid)
     return owed, flows, payments
+
+
+TRANSACTION_DAYS = 90  # what a bank feed carries
+MERCHANTS = (("Grocery Mart", "groceries"), ("Coffee Bar", "dining"), ("Fuel Stop", "transport"),
+             ("Streaming Service", "subscriptions"), ("Pharmacy", "health"), ("Bookshop", "shopping"),
+             ("Hardware Store", "home"))
+
+
+def _transactions(days: list[date], seed: int, *, card_flows: list[float], card_payments: list[float],
+                  savings_flows: list[float], deposits: list[tuple[str, list[float]]]) -> list[Transaction]:
+    """Ninety days of posted rows for the bank accounts. Each day's rows add up to the account's flow that day (the
+    demo's bank moves by its flows alone, so the rows and the history can't disagree): checking's pay, rent, the
+    transfers into the other accounts and the card's payment; the card's charges at fictional merchants and its
+    payments; savings' deposits."""
+    rng = random.Random(f"{seed}:transactions")
+    first = days[-1] - timedelta(days=TRANSACTION_DAYS)
+    rows: list[Transaction] = []
+    for i, day in enumerate(days):
+        if i == 0 or day < first:
+            continue
+        pay = PAY if day.weekday() == 4 and day.toordinal() // 7 % 2 == 0 else 0.0
+        rent = RENT if day.month != days[i - 1].month else 0.0
+        if pay:
+            rows.append(Transaction(account_id="checking", date=day, amount=pay, description="Payroll deposit",
+                                    counterparty="Employer", category="income"))
+        if rent:
+            rows.append(Transaction(account_id="checking", date=day, amount=-rent, description="Rent",
+                                    counterparty="Landlord", category="housing"))
+        for label, flows in deposits:
+            if flows[i]:
+                rows.append(Transaction(account_id="checking", date=day, amount=-flows[i],
+                                        description=f"Transfer to {label}", category="transfer"))
+        if card_payments[i]:
+            rows.append(Transaction(account_id="checking", date=day, amount=-card_payments[i],
+                                    description="Card payment", counterparty="Bank D", category="transfer"))
+            rows.append(Transaction(account_id="card", date=day, amount=card_payments[i],
+                                    description="Payment from checking", counterparty="Bank C", category="payment"))
+        charge = round(card_payments[i] - card_flows[i], 2)
+        if charge:
+            merchant, category = rng.choice(MERCHANTS)
+            rows.append(Transaction(account_id="card", date=day, amount=-charge, description=merchant.upper(),
+                                    counterparty=merchant, category=category))
+        if savings_flows[i]:
+            rows.append(Transaction(account_id="savings", date=day, amount=savings_flows[i],
+                                    description="Transfer from checking", category="transfer"))
+    return rows
 
 
 def _checking(days: list[date], transfers: list[float], card_payments: list[float]) -> tuple[list[float], list[float]]:
@@ -598,6 +645,11 @@ class DemoConnector:
             Series(id="checking", points=_points(days, checking, checking_flows)),
             Series(id="card", points=_points(days, card, card_flows)),
         ]
+        transactions = _transactions(days, self.seed, card_flows=card_flows, card_payments=card_payments,
+                                     savings_flows=savings_flows,
+                                     deposits=[("Roth IRA", roth_flows), ("Brokerage", brokerage_flows),
+                                               ("High-yield savings", savings_flows),
+                                               ("Trading account", trading_flows)])
         cash_runway = Target(id="cash-runway", label="Cash runway", unit="x", target=6, low=4,
                              actual=round((savings[-1] + checking[-1]) / MONTHLY_SPEND, 1),
                              note="Months of spending the cash accounts cover")
@@ -643,6 +695,7 @@ class DemoConnector:
         ]
         return Snapshot(
             generated_at=now, sources=sources, accounts=accounts, holdings=holdings, account_history=account_history,
+            transactions=transactions,
             books=books, book_history=book_history, positions=positions, trades=trades,
             trade_charts=[chart for book in books for chart in _charts(book, trades, days, self.seed)],
             strategies=STRATEGIES,

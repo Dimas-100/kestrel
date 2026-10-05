@@ -277,3 +277,21 @@ def test_merge_keeps_every_new_block():
     assert [g.id for g in merged.goals] == ["house", "car"]
     assert [e.symbol for e in merged.exposures] == ["MSFT", "AAPL"]
     assert [b.id for b in merged.backtests] == ["dip-a1", "dip-a2"]
+
+
+TRANSACTION = {"account_id": "checking", "date": "2026-09-24", "amount": -42.17, "description": "GROCERY MART",
+               "counterparty": "Grocery Mart", "category": "groceries"}
+
+
+def test_transactions_default_empty_round_trip_and_merge():
+    account = {"id": "checking", "name": "Checking", "category": "cash", "value": 800.0, "as_of": NOW.isoformat()}
+    assert Snapshot.model_validate(minimal(accounts=[account])).transactions == []
+    snap = Snapshot.model_validate(minimal(accounts=[account], transactions=[TRANSACTION]))
+    assert Snapshot.model_validate_json(snap.model_dump_json()) == snap
+    t = snap.transactions[0]
+    assert (t.account_id, t.date, t.amount, t.description) == ("checking", dt.date(2026, 9, 24), -42.17, "GROCERY MART")
+    bare = Snapshot.model_validate(minimal(transactions=[
+        {"account_id": "card", "date": "2026-09-20", "amount": 200.0, "description": "PAYMENT"}]))
+    assert bare.transactions[0].counterparty == "" and bare.transactions[0].category == ""
+    merged = merge([snap, bare], generated_at=NOW)
+    assert [t.account_id for t in merged.transactions] == ["checking", "card"]

@@ -612,3 +612,11 @@ def test_a_feed_file_is_found_from_the_profiles_folder_and_a_broken_feed_is_a_re
     assert rows["desk"] == ("ok", "2 books · 1 strategy · 2 trades")
     assert rows["night"] == ("error", "set KESTREL_NIGHT_TOKEN in the environment (token_env)")
     assert len(snap.accounts) == 6 and len(snap.books) == 7  # the demo's and the desk's
+
+
+def test_the_detail_counts_transactions_last(tmp_path):
+    payload = desk(transactions=[{"account_id": "checking", "date": "2026-09-24", "amount": -42.17,
+                                  "description": "GROCERY MART"} for _ in range(2)])
+    snap = from_file(feed_file(tmp_path, payload))
+    assert snap.sources[0].detail == "2 books · 1 strategy · 2 trades · 2 transactions"
+    assert len(snap.transactions) == 2
