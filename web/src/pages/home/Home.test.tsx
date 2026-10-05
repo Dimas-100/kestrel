@@ -26,11 +26,11 @@ describe('Home', { timeout: 15_000 }, () => {
     expect(within(nw).getByText(`.${cents}`)).toBeTruthy()
   })
 
-  it('says what is owed under net worth, and nothing when nothing is', async () => {
+  it('says what is owned and owed under net worth, and nothing when nothing is owed', async () => {
     const { unmount } = renderApp('/')
     const nw = await screen.findByRole('region', { name: 'Net worth' })
     expect(homeFixture.net_worth.owed).toBe(640) // the demo's card, already taken off the total
-    expect(within(nw).getByText(/owed$/).textContent).toBe('net of $640.00 owed')
+    expect(within(nw).getByText(/^you own/).textContent).toBe('you own $168,918.24 · owe $640.00')
     unmount()
     for (const owed of [0, -25]) { // nothing owed, or a card paid past zero: no line
       const { unmount: done } = renderApp('/', { home: { ...homeFixture, net_worth: { ...homeFixture.net_worth, owed } } })

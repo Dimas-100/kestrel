@@ -52,6 +52,7 @@ export interface ValuePoint {
 
 export interface NetWorth {
   total: number // everything owned less everything owed
+  owned: number // everything the accounts hold, before what is owed: total + owed
   owed: number // what the debt accounts owe, already taken off total; 0 with none
   debt_accounts: number // how many accounts that owed comes from
   today: Delta
@@ -556,6 +557,8 @@ export interface AccountsView {
   as_of: string
   count: number
   total: number
+  owned: number // everything the accounts hold, before what is owed
+  owed: number // what the debt accounts owe
   growth: Record<Window, Growth | null> // "Now" is total
   no_history: number // accounts with no history, counted in the growth at today's balance
   accounts: AccountLine[]

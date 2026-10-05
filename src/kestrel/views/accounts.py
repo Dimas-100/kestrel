@@ -52,6 +52,8 @@ class AccountsView(View):
     as_of: dt.datetime
     count: int
     total: float  # everything owned less everything owed: the net worth
+    owned: float  # everything the accounts hold, before what is owed
+    owed: float  # what the debt accounts owe; 0 with none, below 0 for a card paid past zero
     growth: dict[Window, Growth | None]  # all accounts together, what is owed counting against them; "Now" is `total`
     no_history: int  # accounts with no history of their own: counted in the growth at today's balance, flat
     accounts: list[AccountLine]  # largest first, then what is owed
@@ -200,7 +202,8 @@ def accounts_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> Acc
             day_pct=_day_pct(points), year_market=year.market if year else None,
         ))
     rows.sort(key=lambda r: (r.category == "debt", -r.value, r.name))
-    return AccountsView(as_of=now, count=len(rows), total=round(owned - owed, 2),
+    return AccountsView(as_of=now, count=len(rows), total=round(owned - owed, 2), owned=round(owned, 2),
+                        owed=round(owed, 2),
                         growth=growths(net_points(snapshot), today), no_history=len(no_history(snapshot)),
                         accounts=rows,
                         holdings=combined_holdings(snapshot))

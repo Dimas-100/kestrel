@@ -21,13 +21,15 @@ describe('Accounts', { timeout: 15_000 }, () => {
     renderApp('/accounts')
     const title = await screen.findByRole('heading', { level: 1, name: 'Accounts' })
     // every account together, net of the $640.00 owed on the card
-    expect(title.closest('header')?.textContent).toBe('MoneyAccounts6 accounts, $168,278.24 in all. This year the '
+    expect(title.closest('header')?.textContent).toBe('MoneyAccounts6 accounts: you own $168,918.24 and owe $640.00, '
+      + '$168,278.24 net. This year the '
       + 'market added ▲ up +$11,511.65 and you deposited $13,715.25.')
   })
 
   it('words the sentence for one account, a withdrawal, and a year without history', () => {
-    expect(headline(accountsFixture)).toEqual({ lead: '6 accounts, $168,278.24 in all.', moved: 'you deposited $13,715.25' })
-    const one: AccountsView = { ...accountsFixture, count: 1, total: 500, growth: {
+    expect(headline(accountsFixture)).toEqual({ lead: '6 accounts: you own $168,918.24 and owe $640.00, $168,278.24 net.',
+      moved: 'you deposited $13,715.25' })
+    const one: AccountsView = { ...accountsFixture, count: 1, total: 500, owned: 500, owed: 0, growth: {
       ...accountsFixture.growth, ytd: { ...ytd, deposits: -250 } } }
     expect(headline(one)).toEqual({ lead: '1 account, $500.00 in all.', moved: 'you withdrew $250.00' })
     expect(headline({ ...accountsFixture, growth: { ...accountsFixture.growth, ytd: null } }).moved).toBeNull()

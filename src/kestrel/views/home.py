@@ -26,6 +26,7 @@ class Delta(View):
 
 class NetWorth(View):
     total: float  # everything owned less everything owed: always the last of `points` when there are any
+    owned: float  # everything the accounts hold, before what is owed: total + owed
     owed: float  # what the debt accounts owe, already taken off `total`; 0 with none, below 0 for a card paid past zero
     debt_accounts: int  # how many accounts that owed comes from (for "Owed: $X across N accounts")
     today: Delta
@@ -297,7 +298,7 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
     owned = sum(a.value for a in snapshot.accounts if a.category != "debt")
     owed = sum(a.value for a in snapshot.accounts if a.category == "debt")
     net_worth = NetWorth(
-        total=round(owned - owed, 2), owed=round(owed, 2),
+        total=round(owned - owed, 2), owned=round(owned, 2), owed=round(owed, 2),
         debt_accounts=sum(1 for a in snapshot.accounts if a.category == "debt"),
         today=_delta(net, today), month=_delta(net, today.replace(day=1)), year=_delta(net, dt.date(today.year, 1, 1)),
         year_flows=round(sum(p.net_flow for p in net[1:] if p.date >= dt.date(today.year, 1, 1)), 2),
