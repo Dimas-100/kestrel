@@ -13,6 +13,8 @@ from .home import age_text
 PAST_DAYS = 7  # how far back "the past 7 days" reaches
 LATE_FIRST = ("failed", "late")  # within a day, these statuses sort ahead of the rest
 ALERT_ORDER = {"serious": 0, "warning": 1, "note": 2}
+WEEK_DAYS = 7  # the week grid: this many days back, plus today
+WORST = {"failed": 0, "late": 1, "due": 2, "paused": 3, "done": 4}  # a day's cell shows the worst of its runs
 
 
 class RunRow(View):
@@ -41,8 +43,21 @@ class ActivitySource(View):
     detail: str
 
 
+class WeekCell(View):
+    date: dt.date
+    status: Literal["done", "due", "late", "failed", "paused"] | None  # None: the job had no run that day
+
+
+class WeekRow(View):
+    label: str  # the job
+    cells: list[WeekCell]  # the eight days from a week ago to today
+
+
 class ActivityView(View):
     as_of: dt.datetime
+    summary: str  # the header's sentence: today's runs, the next one, the sources, the alerts
+    next_run: RunRow | None  # the earliest run still due at or after now, today or later
+    week: list[WeekRow]  # one row per job, in the order the jobs run through the day
     days: list[DayRuns]
     counts: dict[str, int]  # by run status, over the runs shown in `days`
     alerts: list[Alert]  # serious, warning, note
@@ -91,6 +106,59 @@ def _alerts(snapshot: Snapshot) -> list[Alert]:
     return sorted(snapshot.alerts, key=lambda a: ALERT_ORDER[a.level])
 
 
+def week_rows(runs: list[Run], today: dt.date, tz) -> list[WeekRow]:
+    """One row per job that ran in the eight days from a week ago to today, in the order the jobs run through the
+    day (the earliest time of day each was seen); a cell per day, the worst status of that day's runs, None when
+    the job didn't run. The day a run falls on is read in the profile's zone."""
+    days = [today - dt.timedelta(days=WEEK_DAYS - i) for i in range(WEEK_DAYS + 1)]
+    by_label: dict[str, dict[dt.date, str]] = {}
+    first_seen: dict[str, dt.time] = {}
+    for r in runs:
+        local = r.time.astimezone(tz)
+        day = local.date()
+        if day < days[0] or day > today:
+            continue
+        cells = by_label.setdefault(r.label, {})
+        current = cells.get(day)
+        if current is None or WORST[r.status] < WORST[current]:
+            cells[day] = r.status
+        if r.label not in first_seen or local.time() < first_seen[r.label]:
+            first_seen[r.label] = local.time()
+    return [WeekRow(label=label, cells=[WeekCell(date=d, status=by_label[label].get(d)) for d in days])
+            for label in sorted(by_label, key=lambda label: (first_seen[label], label))]
+
+
+def _next_run(runs: list[Run], now: dt.datetime, book_names: dict[str, str]) -> RunRow | None:
+    due = sorted((r for r in runs if r.status == "due" and r.time >= now), key=lambda r: r.time)
+    if not due:
+        return None
+    r = due[0]
+    return RunRow(time=r.time, label=r.label, book_id=r.book_id,
+                  book_name=book_names.get(r.book_id, r.book_id) if r.book_id else None, status=r.status,
+                  detail=r.detail)
+
+
+def activity_summary(today_runs: list[Run], next_run: RunRow | None, sources: list[ActivitySource],
+                     alerts: list[Alert], tz) -> str:
+    """Today's runs, the next one, the sources and the alerts, each part left out when there is nothing to say."""
+    parts = []
+    if not today_runs:
+        parts.append("No runs today.")
+    else:
+        bad = sum(1 for r in today_runs if r.status in LATE_FIRST)
+        parts.append(f"{bad} run{'s' if bad != 1 else ''} failed or late today." if bad
+                     else "Every run so far today is done.")
+    if next_run is not None:
+        parts.append(f"Next: {next_run.label} at {next_run.time.astimezone(tz).strftime('%H:%M')}.")
+    if sources:
+        bad = sum(1 for s in sources if s.status != "ok")
+        parts.append(f"{bad} source{'s are' if bad != 1 else ' is'} stale or failing." if bad
+                     else "Every source is fresh.")
+    if alerts:
+        parts.append(f"{len(alerts)} alert{'s' if len(alerts) != 1 else ''}.")
+    return " ".join(parts)
+
+
 def activity_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> ActivityView:
     tz = profile.tz
     today = now.astimezone(tz).date()
@@ -114,5 +182,9 @@ def activity_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> Act
                 status=r.status, detail=r.detail,
             ))
         days.append(DayRuns(date=day, label=_day_label(day, today), runs=rows))
-    return ActivityView(as_of=now, days=days, counts=counts, alerts=_alerts(snapshot),
-                        sources=_sources(snapshot, profile, now))
+    sources = _sources(snapshot, profile, now)
+    alerts = _alerts(snapshot)
+    next_run = _next_run(snapshot.runs, now, book_names)
+    return ActivityView(as_of=now, summary=activity_summary(by_date.get(today, []), next_run, sources, alerts, tz),
+                        next_run=next_run, week=week_rows(snapshot.runs, today, tz), days=days, counts=counts,
+                        alerts=alerts, sources=sources)
