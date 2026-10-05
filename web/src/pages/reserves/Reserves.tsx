@@ -1,8 +1,10 @@
-// Cash and debt: balances, rates, utilization, and the spread between what you pay and what you earn.
+// Your reserves: how long the cash would last, what has been coming in and going out, what cash sits where, what
+// is owed, and the spread between what you pay and what you earn (spec 2026-10-05 reserves page).
 import { useReserves } from '../../lib/api'
-import { money } from '../../lib/format'
 import { CashPanel } from './CashPanel'
 import { DebtPanel } from './DebtPanel'
+import { FlowsPanel } from './FlowsPanel'
+import { RunwayPanel } from './RunwayPanel'
 import { SpreadPanel } from './SpreadPanel'
 
 export function Reserves() {
@@ -18,7 +20,7 @@ export function Reserves() {
       <header className="mb-5">
         <div className="label">Money</div>
         <h1 className="text-3xl font-semibold tracking-[-0.025em] mt-1.5">Reserves</h1>
-        {!empty && <p className="text-ink2 mt-1.5">{money(v.totals.net)} in cash after debts.</p>}
+        {!empty && v.summary && <p className="text-ink2 mt-1.5 max-w-[70ch]">{v.summary}</p>}
       </header>
       {empty ? (
         <div className="panel text-ink2">
@@ -26,9 +28,11 @@ export function Reserves() {
         </div>
       ) : (
         <div className="grid12">
-          <SpreadPanel totals={v.totals} spread={v.spread} />
-          <CashPanel cash={v.cash} />
+          <RunwayPanel runway={v.runway} totals={v.totals} accounts={v.cash.length} />
+          <FlowsPanel flows={v.flows} />
+          <CashPanel cash={v.cash} viewDay={v.as_of} />
           <DebtPanel debts={v.debts} />
+          <SpreadPanel totals={v.totals} spread={v.spread} />
         </div>
       )}
     </>
