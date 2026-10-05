@@ -86,6 +86,8 @@ class Counts(View):
 
 class PlanView(View):
     as_of: dt.datetime
+    summary: str  # the header's sentence: goals ahead and the next, targets off plan, theses needing a look
+    actions: list[Attention]  # this month's to-do, warnings first; the link is empty (the page is the plan)
     accounts: list[AccountTargets]
     unscoped: list[TargetRow]
     theses: list[ThesisRow]
@@ -338,6 +340,125 @@ def thesis_attention(snapshot: Snapshot) -> list[Attention]:
     return items
 
 
+def _day_text(day: dt.date) -> str:
+    """"25 Jul 2027": the day without a leading zero, the month's short name, the year."""
+    return f"{day.day} {day.strftime('%b')} {day.year}"
+
+
+def _money_text(value: float) -> str:
+    return f"${value:,.2f}"
+
+
+def _unit_text(value: float, unit: str) -> str:
+    return f"{value:.1f}%" if unit == "%" else f"{value:.1f}x"
+
+
+def _band_text(low: float | None, high: float | None, unit: str) -> str:
+    """"band 18–22%" / "band 4–8x": whole numbers plainly, else one decimal; an open end says "from" or "up to"."""
+    def short(v: float) -> str:
+        return str(int(v)) if float(v).is_integer() else f"{v:.1f}"
+    suffix = "%" if unit == "%" else "x"
+    if low is not None and high is not None:
+        return f"band {short(low)}–{short(high)}{suffix}"
+    if low is not None:
+        return f"band from {short(low)}{suffix}"
+    if high is not None:
+        return f"band up to {short(high)}{suffix}"
+    return "no band"
+
+
+def _pct_there(row: GoalRow) -> str:
+    return f"{int(round(row.progress_pct or 0))}% there"
+
+
+def plan_summary(goals: list[GoalRow], off_plan: int, has_targets: bool, needing: int) -> str:
+    """The header's sentence, in three parts: the goals ahead and the next dated one, the targets off plan, and the
+    theses that need a look. Each part is left out when there is nothing to say about it."""
+    parts = []
+    ahead = [g for g in goals if not g.reached]
+    dated = sorted((g for g in ahead if g.by is not None), key=lambda g: g.by)
+    if not goals:
+        parts.append("No goals yet.")
+    elif not ahead:
+        parts.append("Every goal is reached.")
+    else:
+        count = f"{len(ahead)} goal{'s' if len(ahead) != 1 else ''} ahead"
+        if dated:
+            g = dated[0]
+            parts.append(f"{count}. The next is {g.label}, {_pct_there(g)}, by {_day_text(g.by)}.")
+        else:
+            parts.append(f"{count}, none dated.")
+    if off_plan:
+        parts.append(f"{off_plan} target{' is' if off_plan == 1 else 's are'} off plan.")
+    elif has_targets:
+        parts.append("Every target sits on plan.")
+    if needing:
+        parts.append(f"{needing} {'thesis needs' if needing == 1 else 'theses need'} a look.")
+    return " ".join(parts)
+
+
+DUE_WITHIN_MONTHS = 12  # a dated goal this close gets a monthly line in this month's actions
+
+
+def _target_action(row: TargetRow, where: str) -> Attention | None:
+    """"Add $80.00 to XLP in Roth IRA" when the gap is money; "XLP is 4.0 pts under its band in Roth IRA" when it is
+    points or a ratio; nothing for a row on plan or unknown."""
+    if row.status not in ("over", "under") or row.gap is None or row.gap_unit is None:
+        return None
+    amount = abs(row.gap)
+    suffix = f" in {where}" if where else ""
+    if row.gap_unit == "money":
+        title = (f"Add {_money_text(amount)} to {row.label}{suffix}" if row.status == "under"
+                 else f"Trim {_money_text(amount)} from {row.label}{suffix}")
+    else:
+        digits = 2 if amount < 0.1 else 1
+        figure = f"{amount:.{digits}f}{'x' if row.gap_unit == 'x' else ' pts'}"
+        title = f"{row.label} is {figure} {row.status} its band{suffix}"
+    actual = "—" if row.actual is None else _unit_text(row.actual, row.unit)
+    held = "actual" if row.unit == "x" else "held"
+    aim = f" · aim {_unit_text(row.target, row.unit)}" if row.target is not None else ""
+    detail = f"{actual} {held}{aim} · {_band_text(row.low, row.high, row.unit)}"
+    return Attention(level="warning", title=title, detail=detail, link="")
+
+
+def plan_actions(accounts: list[AccountTargets], unscoped: list[TargetRow], theses: list[ThesisRow],
+                 goals: list[GoalRow]) -> list[Attention]:
+    """This month's to-do (spec §2.2): off-plan targets, theses on alert, overdue goals (warnings); theses on watch
+    and goals due within a year (notes). Warnings first, each kind in the order the page lists it."""
+    warnings: list[Attention] = []
+    notes: list[Attention] = []
+    for a in accounts:
+        for row in a.rows:
+            item = _target_action(row, a.name)
+            if item:
+                warnings.append(item)
+    for row in unscoped:
+        item = _target_action(row, "")
+        if item:
+            warnings.append(item)
+    for t in theses:
+        if t.health == "alert":
+            warnings.append(Attention(level="warning", title=f"Review {t.symbol}: thesis on alert",
+                                      detail=t.reasons[0] if t.reasons else "", link=""))
+    for g in goals:
+        if g.overdue and g.by is not None:
+            warnings.append(Attention(level="warning", title=f"{g.label} was due {_day_text(g.by)}",
+                                      detail=_pct_there(g), link=""))
+    for t in theses:
+        if t.health == "watch":
+            notes.append(Attention(level="note", title=f"Look at {t.symbol}: thesis on watch",
+                                   detail=t.reasons[0] if t.reasons else "", link=""))
+    for g in goals:
+        due_soon = (g.by is not None and not g.reached and not g.overdue and g.months_left is not None
+                    and g.months_left <= DUE_WITHIN_MONTHS and g.monthly_needed is not None)
+        if due_soon:
+            how = " in deposits" if g.measure == "deposits" else ""
+            title = f"Put about {_money_text(g.monthly_needed)} a month{how} toward {g.label}"
+            detail = f"to reach {_money_text(g.target)} by {_day_text(g.by)} · {_pct_there(g)}"
+            notes.append(Attention(level="note", title=title, detail=detail, link=""))
+    return warnings + notes
+
+
 def plan_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> PlanView:
     today = now.astimezone(profile.tz).date()
     accounts, unscoped = plan_targets(snapshot)
@@ -346,8 +467,12 @@ def plan_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> PlanVie
     goals = [_goal_row(g, snapshot.accounts, history, today) for g in snapshot.goals]
     off_plan = sum(1 for a in accounts for r in a.rows if r.status in ("over", "under")) + \
         sum(1 for r in unscoped if r.status in ("over", "under"))
+    alert = sum(1 for t in theses if t.health == "alert")
+    watch = sum(1 for t in theses if t.health == "watch")
+    has_targets = bool(unscoped) or any(a.rows for a in accounts)
     return PlanView(
-        as_of=now, accounts=accounts, unscoped=unscoped, theses=theses, goals=goals,
-        counts=Counts(off_plan=off_plan, theses_alert=sum(1 for t in theses if t.health == "alert"),
-                     theses_watch=sum(1 for t in theses if t.health == "watch")),
+        as_of=now, summary=plan_summary(goals, off_plan, has_targets, alert + watch),
+        actions=plan_actions(accounts, unscoped, theses, goals),
+        accounts=accounts, unscoped=unscoped, theses=theses, goals=goals,
+        counts=Counts(off_plan=off_plan, theses_alert=alert, theses_watch=watch),
     )

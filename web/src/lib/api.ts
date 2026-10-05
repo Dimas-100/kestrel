@@ -872,6 +872,8 @@ export interface GoalRow {
 
 export interface PlanView {
   as_of: string
+  summary: string // the header's sentence: goals ahead and the next, targets off plan, theses needing a look
+  actions: Attention[] // this month's to-do, warnings first; the link is empty (the page is the plan)
   accounts: AccountTargets[]
   unscoped: TargetRow[]
   theses: ThesisRow[]

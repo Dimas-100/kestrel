@@ -154,6 +154,15 @@ p .num, .prose .num, .panel-sub .num { font-family: var(--k-sans); letter-spacin
   .ev-mark { width: 13px; height: 13px; }
 }
 
+/* --- the Plan page's goal cards: three abreast with hairlines between, stacked on a phone ------------------ */
+.goal-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; }
+.goal-cards > article + article { border-left: 1px solid var(--line); padding-left: 20px; }
+@media (max-width: 900px) {
+  .goal-cards { grid-template-columns: 1fr; gap: 0; }
+  .goal-cards > article + article { border-left: 0; padding-left: 0; border-top: 1px solid var(--line);
+    padding-top: 14px; margin-top: 14px; }
+}
+
 /* --- layout ------------------------------------------------------------------------------------------------ */
 .shell { display: flex; min-height: 100vh; }
 .sidebar { width: 256px; flex: none; height: 100vh; position: sticky; top: 0; background: var(--side);
