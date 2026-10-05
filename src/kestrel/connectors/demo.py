@@ -706,8 +706,8 @@ class DemoConnector:
         )
 
     def _runs(self, local: datetime) -> list[Run]:
-        if local.weekday() >= 5:
-            return []
+        """Today's runs (done up to now, due after) and the past week's, every weekday: all done but one failed run
+        and one late one, so the Activity page's week grid has something to say. A weekend day has no runs."""
         plan = [
             (time(9, 25), "Opening leader · paper", "leader-paper", "Screens at 09:45", "Screened at 09:45 · no entry"),
             (time(9, 31), "Morning run", "rsi2-real", "Places queued entries and exits",
@@ -719,10 +719,22 @@ class DemoConnector:
              "Queued 1 entry"),
             (time(19, 0), "Watchdog", None, "Checks every run reported in", "All runs reported in"),
         ]
+        today = local.date()
+        weekdays_back = [d for d in (today - timedelta(days=n) for n in range(1, 8)) if d.weekday() < 5]
+        failed_day = next((d for d in weekdays_back if (today - d).days >= 4), None)
+        late_day = next((d for d in weekdays_back if (today - d).days >= 2 and d != failed_day), None)
         runs = []
-        for at, label, book_id, due_detail, done_detail in plan:
-            when = datetime.combine(local.date(), at, tzinfo=local.tzinfo)
-            done = when <= local
-            runs.append(Run(time=when, label=label, book_id=book_id, status="done" if done else "due",
-                            detail=done_detail if done else due_detail))
+        for day in [*reversed(weekdays_back), *([today] if today.weekday() < 5 else [])]:
+            for at, label, book_id, due_detail, done_detail in plan:
+                when = datetime.combine(day, at, tzinfo=local.tzinfo)
+                if day == today:
+                    done = when <= local
+                    status, detail = ("done", done_detail) if done else ("due", due_detail)
+                elif day == failed_day and label == "Evening run":
+                    status, detail = "failed", "The broker timed out; the retry at 18:15 ran"
+                elif day == late_day and label == "Watchdog":
+                    status, detail = "late", "Reported in 40 minutes late"
+                else:
+                    status, detail = "done", done_detail
+                runs.append(Run(time=when, label=label, book_id=book_id, status=status, detail=detail))
         return runs

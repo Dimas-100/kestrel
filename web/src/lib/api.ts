@@ -496,8 +496,21 @@ export interface ActivitySource {
   detail: string
 }
 
+export interface WeekCell {
+  date: string
+  status: RunRow['status'] | null // null: the job had no run that day
+}
+
+export interface WeekRow {
+  label: string // the job
+  cells: WeekCell[] // the eight days from a week ago to today
+}
+
 export interface ActivityView {
   as_of: string
+  summary: string // the header's sentence: today's runs, the next one, the sources, the alerts
+  next_run: RunRow | null // the earliest run still due at or after now, today or later
+  week: WeekRow[] // one row per job, in the order the jobs run through the day
   days: DayRuns[]
   counts: Record<string, number>
   alerts: Attention[] // serious, warning, note

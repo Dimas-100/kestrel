@@ -2,7 +2,7 @@ import datetime as dt
 
 from kestrel.contract import Alert, Run, Snapshot, Source
 from kestrel.profile import Profile, SourceCfg
-from kestrel.views.activity import activity_view
+from kestrel.views.activity import activity_view, week_rows
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)  # a Friday, in UTC (the default profile's tz)
 TODAY = dt.date(2026, 9, 25)
@@ -115,3 +115,62 @@ def test_age_text_reused_from_home():
     from kestrel.views.activity import age_text as activity_age_text
     from kestrel.views.home import age_text as home_age_text
     assert activity_age_text is home_age_text
+
+
+# ---------------------------------------------------------------- the sentence, the next run and the week (2026-10-05)
+
+UTC = Profile(app={"timezone": "UTC"})  # the default profile keeps New York; these sentences print times
+
+
+def _at(days_from_today: int, hour: int, minute: int, status: str, label: str) -> Run:
+    when = dt.datetime.combine(TODAY + dt.timedelta(days=days_from_today), dt.time(hour, minute),
+                               tzinfo=dt.timezone.utc)
+    return Run(time=when, label=label, status=status, detail="")
+
+
+def test_summary_names_todays_runs_the_next_one_the_sources_and_the_alerts():
+    runs = [_at(0, 9, 31, "done", "Morning run"), _at(0, 15, 45, "failed", "Retry"), _at(0, 23, 0, "due", "Backup"),
+            _at(0, 17, 30, "late", "Evening suite"), _at(1, 9, 31, "due", "Morning run")]
+    sources = [Source(id="desk", label="Desk", kind="feed", status="ok", last_success=NOW),
+               Source(id="bank", label="Bank", kind="feed", status="stale", last_success=NOW)]
+    alerts = [Alert(level="warning", title="KO is near its stop")]
+    v = activity_view(Snapshot(generated_at=NOW, runs=runs, sources=sources, alerts=alerts), UTC, NOW)
+    assert v.summary == "2 runs failed or late today. Next: Backup at 23:00. 1 source is stale or failing. 1 alert."
+    assert (v.next_run.label, v.next_run.time.hour) == ("Backup", 23)
+    fine = activity_view(Snapshot(generated_at=NOW, runs=[_at(0, 9, 31, "done", "Morning run")],
+                                  sources=[sources[0]]), UTC, NOW)
+    assert fine.summary == "Every run so far today is done. Every source is fresh."
+    assert fine.next_run is None
+    assert activity_view(Snapshot(generated_at=NOW), UTC, NOW).summary == "No runs today."
+
+
+def test_the_next_run_is_the_earliest_still_due_at_or_after_now_today_or_later():
+    runs = [_at(0, 9, 0, "due", "Missed"),  # before now (21:08): not next, it is late or stale
+            _at(1, 9, 31, "due", "Tomorrow morning"), _at(0, 23, 0, "due", "Backup"), _at(0, 22, 0, "paused", "Off")]
+    v = activity_view(Snapshot(generated_at=NOW, runs=runs), UTC, NOW)
+    assert (v.next_run.label, v.next_run.time.hour) == ("Backup", 23)
+    assert "Next: Backup at 23:00." in v.summary
+
+
+def test_week_rows_one_per_job_in_the_order_they_run_with_blanks_and_the_worst_of_a_day():
+    runs = [_at(-6, 17, 30, "done", "Evening suite"), _at(-6, 9, 31, "done", "Morning run"),
+            _at(-3, 9, 31, "failed", "Morning run"), _at(-3, 9, 40, "done", "Morning run"),  # worst of the day: failed
+            _at(-1, 9, 31, "late", "Morning run"), _at(0, 9, 31, "done", "Morning run"),
+            _at(1, 9, 31, "due", "Morning run")]  # tomorrow: not in the week
+    v = activity_view(Snapshot(generated_at=NOW, runs=runs), UTC, NOW)
+    assert [r.label for r in v.week] == ["Morning run", "Evening suite"]
+    morning = v.week[0]
+    assert [c.date for c in morning.cells] == [TODAY - dt.timedelta(days=7 - i) for i in range(8)]
+    assert [c.status for c in morning.cells] == [None, "done", None, None, "failed", None, "late", "done"]
+    assert [c.status for c in v.week[1].cells] == [None, "done", None, None, None, None, None, None]
+    assert week_rows([], TODAY, dt.timezone.utc) == []
+
+
+def test_the_week_uses_the_profiles_zone_for_the_day_a_run_falls_on():
+    ny = Profile(app={"timezone": "America/New_York"})
+    late_utc = Run(time=dt.datetime(2026, 9, 25, 2, 30, tzinfo=dt.timezone.utc), label="Night", status="done",
+                   detail="")
+    v = activity_view(Snapshot(generated_at=NOW, runs=[late_utc]), ny, NOW)  # 22:30 on the 24th in New York
+    cells = {c.date: c.status for c in v.week[0].cells}
+    assert cells[dt.date(2026, 9, 24)] == "done" and cells[dt.date(2026, 9, 25)] is None
+

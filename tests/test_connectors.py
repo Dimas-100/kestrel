@@ -114,7 +114,8 @@ def test_the_demo_left_in_next_to_a_feed_of_the_same_data_counts_once(tmp_path, 
     for field in ("accounts", "holdings", "account_history", "books", "book_history", "positions", "trades",
                   "trade_charts", "strategies", "targets", "theses", "events", "goals", "exposures", "backtests"):
         assert getattr(snap, field) == getattr(demo, field), field
-    assert len(snap.runs) == len(demo.runs) + 2  # the two runs that belong to no book
+    # the runs that belong to no book come from both sources (a run has no id to drop a duplicate by)
+    assert len(snap.runs) == len(demo.runs) + sum(1 for r in demo.runs if r.book_id is None)
     # an id is named once: seven symbols are both a thesis and an exposure. The detail names the first six non-zero
     # kinds (accounts, books, strategies, trades, targets, theses): events, goals, exposures and backtests are all
     # non-zero too, but the row stops at six.

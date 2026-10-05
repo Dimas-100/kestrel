@@ -1939,6 +1939,76 @@
       "book_id": "rsi2-real",
       "status": "done",
       "detail": "1 exit sold · MSFT entry filled"
+    },
+    {
+      "time": "2026-09-24T17:45:00-04:00",
+      "label": "Evening run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "Queued 1 entry"
+    },
+    {
+      "time": "2026-09-24T09:31:00-04:00",
+      "label": "Morning run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "1 exit sold · MSFT entry filled"
+    },
+    {
+      "time": "2026-09-23T17:45:00-04:00",
+      "label": "Evening run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "Queued 1 entry"
+    },
+    {
+      "time": "2026-09-23T09:31:00-04:00",
+      "label": "Morning run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "1 exit sold · MSFT entry filled"
+    },
+    {
+      "time": "2026-09-22T17:45:00-04:00",
+      "label": "Evening run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "Queued 1 entry"
+    },
+    {
+      "time": "2026-09-22T09:31:00-04:00",
+      "label": "Morning run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "1 exit sold · MSFT entry filled"
+    },
+    {
+      "time": "2026-09-21T17:45:00-04:00",
+      "label": "Evening run",
+      "book_id": "rsi2-real",
+      "status": "failed",
+      "detail": "The broker timed out; the retry at 18:15 ran"
+    },
+    {
+      "time": "2026-09-21T09:31:00-04:00",
+      "label": "Morning run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "1 exit sold · MSFT entry filled"
+    },
+    {
+      "time": "2026-09-18T17:45:00-04:00",
+      "label": "Evening run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "Queued 1 entry"
+    },
+    {
+      "time": "2026-09-18T09:31:00-04:00",
+      "label": "Morning run",
+      "book_id": "rsi2-real",
+      "status": "done",
+      "detail": "1 exit sold · MSFT entry filled"
     }
   ]
 }

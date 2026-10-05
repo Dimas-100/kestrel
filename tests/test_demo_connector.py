@@ -49,11 +49,22 @@ def test_every_trade_and_position_belongs_to_a_book_and_every_book_to_a_strategy
     assert all(t.opened <= t.closed for t in snap.trades)
 
 
-def test_runs_follow_the_clock_and_a_weekend_has_none():
+def test_runs_follow_the_clock_and_a_weekend_day_has_none_of_its_own():
     snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
-    status = {r.label: r.status for r in snap.runs}
-    assert status["Morning run"] == "done" and status["Nightly suite"] == "due"
-    assert DemoConnector("demo", NY).snapshot(SATURDAY).runs == []
+    today = {r.label: r.status for r in snap.runs if r.time.astimezone(NY).date() == dt.date(2026, 9, 25)}
+    assert today["Morning run"] == "done" and today["Nightly suite"] == "due"
+    saturday = DemoConnector("demo", NY).snapshot(SATURDAY).runs
+    assert not [r for r in saturday if r.time.astimezone(NY).date() == dt.date(2026, 9, 26)]
+    assert saturday  # the past week's weekdays are still there for the Activity page's grid
+
+
+def test_the_past_weeks_runs_are_done_but_for_one_failed_and_one_late():
+    snap = DemoConnector("demo", NY).snapshot(FRIDAY_EVENING)
+    past = [r for r in snap.runs if r.time.astimezone(NY).date() < dt.date(2026, 9, 25)]
+    days = {r.time.astimezone(NY).date() for r in past}
+    assert days == {dt.date(2026, 9, d) for d in (18, 21, 22, 23, 24)}  # five weekdays back, no weekend
+    assert sorted(r.status for r in past if r.status != "done") == ["failed", "late"]
+    assert all(r.time.astimezone(NY).date().weekday() < 5 for r in past)
 
 
 def test_collect_marks_an_unknown_connector_as_an_error_and_keeps_going():

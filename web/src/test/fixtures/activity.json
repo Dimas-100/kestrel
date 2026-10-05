@@ -1,5 +1,238 @@
 {
   "as_of": "2026-09-25T21:08:00Z",
+  "summary": "Every run so far today is done. Next: Nightly suite at 17:30. 1 source is stale or failing.",
+  "next_run": {
+    "time": "2026-09-25T17:30:00-04:00",
+    "label": "Nightly suite",
+    "book_id": null,
+    "book_name": null,
+    "status": "due",
+    "detail": "Signals, paper fills, the nightly note"
+  },
+  "week": [
+    {
+      "label": "Opening leader · paper",
+      "cells": [
+        {
+          "date": "2026-09-18",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-19",
+          "status": null
+        },
+        {
+          "date": "2026-09-20",
+          "status": null
+        },
+        {
+          "date": "2026-09-21",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-22",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-23",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-24",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-25",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "label": "Morning run",
+      "cells": [
+        {
+          "date": "2026-09-18",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-19",
+          "status": null
+        },
+        {
+          "date": "2026-09-20",
+          "status": null
+        },
+        {
+          "date": "2026-09-21",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-22",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-23",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-24",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-25",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "label": "ETF close entries · paper",
+      "cells": [
+        {
+          "date": "2026-09-18",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-19",
+          "status": null
+        },
+        {
+          "date": "2026-09-20",
+          "status": null
+        },
+        {
+          "date": "2026-09-21",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-22",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-23",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-24",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-25",
+          "status": "done"
+        }
+      ]
+    },
+    {
+      "label": "Nightly suite",
+      "cells": [
+        {
+          "date": "2026-09-18",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-19",
+          "status": null
+        },
+        {
+          "date": "2026-09-20",
+          "status": null
+        },
+        {
+          "date": "2026-09-21",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-22",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-23",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-24",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-25",
+          "status": "due"
+        }
+      ]
+    },
+    {
+      "label": "Evening run",
+      "cells": [
+        {
+          "date": "2026-09-18",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-19",
+          "status": null
+        },
+        {
+          "date": "2026-09-20",
+          "status": null
+        },
+        {
+          "date": "2026-09-21",
+          "status": "failed"
+        },
+        {
+          "date": "2026-09-22",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-23",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-24",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-25",
+          "status": "due"
+        }
+      ]
+    },
+    {
+      "label": "Watchdog",
+      "cells": [
+        {
+          "date": "2026-09-18",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-19",
+          "status": null
+        },
+        {
+          "date": "2026-09-20",
+          "status": null
+        },
+        {
+          "date": "2026-09-21",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-22",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-23",
+          "status": "late"
+        },
+        {
+          "date": "2026-09-24",
+          "status": "done"
+        },
+        {
+          "date": "2026-09-25",
+          "status": "due"
+        }
+      ]
+    }
+  ],
   "days": [
     {
       "date": "2026-09-25",
@@ -54,11 +287,283 @@
           "detail": "Checks every run reported in"
         }
       ]
+    },
+    {
+      "date": "2026-09-24",
+      "label": "Thu 24 Sep",
+      "runs": [
+        {
+          "time": "2026-09-24T09:25:00-04:00",
+          "label": "Opening leader · paper",
+          "book_id": "leader-paper",
+          "book_name": "Opening leader",
+          "status": "done",
+          "detail": "Screened at 09:45 · no entry"
+        },
+        {
+          "time": "2026-09-24T09:31:00-04:00",
+          "label": "Morning run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "1 exit sold · MSFT entry filled"
+        },
+        {
+          "time": "2026-09-24T15:56:00-04:00",
+          "label": "ETF close entries · paper",
+          "book_id": "ibs-paper",
+          "book_name": "ETF close strength",
+          "status": "done",
+          "detail": "Bought XLF at the close"
+        },
+        {
+          "time": "2026-09-24T17:30:00-04:00",
+          "label": "Nightly suite",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "Nightly note written"
+        },
+        {
+          "time": "2026-09-24T17:45:00-04:00",
+          "label": "Evening run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "Queued 1 entry"
+        },
+        {
+          "time": "2026-09-24T19:00:00-04:00",
+          "label": "Watchdog",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "All runs reported in"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-23",
+      "label": "Wed 23 Sep",
+      "runs": [
+        {
+          "time": "2026-09-23T19:00:00-04:00",
+          "label": "Watchdog",
+          "book_id": null,
+          "book_name": null,
+          "status": "late",
+          "detail": "Reported in 40 minutes late"
+        },
+        {
+          "time": "2026-09-23T09:25:00-04:00",
+          "label": "Opening leader · paper",
+          "book_id": "leader-paper",
+          "book_name": "Opening leader",
+          "status": "done",
+          "detail": "Screened at 09:45 · no entry"
+        },
+        {
+          "time": "2026-09-23T09:31:00-04:00",
+          "label": "Morning run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "1 exit sold · MSFT entry filled"
+        },
+        {
+          "time": "2026-09-23T15:56:00-04:00",
+          "label": "ETF close entries · paper",
+          "book_id": "ibs-paper",
+          "book_name": "ETF close strength",
+          "status": "done",
+          "detail": "Bought XLF at the close"
+        },
+        {
+          "time": "2026-09-23T17:30:00-04:00",
+          "label": "Nightly suite",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "Nightly note written"
+        },
+        {
+          "time": "2026-09-23T17:45:00-04:00",
+          "label": "Evening run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "Queued 1 entry"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-22",
+      "label": "Tue 22 Sep",
+      "runs": [
+        {
+          "time": "2026-09-22T09:25:00-04:00",
+          "label": "Opening leader · paper",
+          "book_id": "leader-paper",
+          "book_name": "Opening leader",
+          "status": "done",
+          "detail": "Screened at 09:45 · no entry"
+        },
+        {
+          "time": "2026-09-22T09:31:00-04:00",
+          "label": "Morning run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "1 exit sold · MSFT entry filled"
+        },
+        {
+          "time": "2026-09-22T15:56:00-04:00",
+          "label": "ETF close entries · paper",
+          "book_id": "ibs-paper",
+          "book_name": "ETF close strength",
+          "status": "done",
+          "detail": "Bought XLF at the close"
+        },
+        {
+          "time": "2026-09-22T17:30:00-04:00",
+          "label": "Nightly suite",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "Nightly note written"
+        },
+        {
+          "time": "2026-09-22T17:45:00-04:00",
+          "label": "Evening run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "Queued 1 entry"
+        },
+        {
+          "time": "2026-09-22T19:00:00-04:00",
+          "label": "Watchdog",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "All runs reported in"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-21",
+      "label": "Mon 21 Sep",
+      "runs": [
+        {
+          "time": "2026-09-21T17:45:00-04:00",
+          "label": "Evening run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "failed",
+          "detail": "The broker timed out; the retry at 18:15 ran"
+        },
+        {
+          "time": "2026-09-21T09:25:00-04:00",
+          "label": "Opening leader · paper",
+          "book_id": "leader-paper",
+          "book_name": "Opening leader",
+          "status": "done",
+          "detail": "Screened at 09:45 · no entry"
+        },
+        {
+          "time": "2026-09-21T09:31:00-04:00",
+          "label": "Morning run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "1 exit sold · MSFT entry filled"
+        },
+        {
+          "time": "2026-09-21T15:56:00-04:00",
+          "label": "ETF close entries · paper",
+          "book_id": "ibs-paper",
+          "book_name": "ETF close strength",
+          "status": "done",
+          "detail": "Bought XLF at the close"
+        },
+        {
+          "time": "2026-09-21T17:30:00-04:00",
+          "label": "Nightly suite",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "Nightly note written"
+        },
+        {
+          "time": "2026-09-21T19:00:00-04:00",
+          "label": "Watchdog",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "All runs reported in"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-18",
+      "label": "Fri 18 Sep",
+      "runs": [
+        {
+          "time": "2026-09-18T09:25:00-04:00",
+          "label": "Opening leader · paper",
+          "book_id": "leader-paper",
+          "book_name": "Opening leader",
+          "status": "done",
+          "detail": "Screened at 09:45 · no entry"
+        },
+        {
+          "time": "2026-09-18T09:31:00-04:00",
+          "label": "Morning run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "1 exit sold · MSFT entry filled"
+        },
+        {
+          "time": "2026-09-18T15:56:00-04:00",
+          "label": "ETF close entries · paper",
+          "book_id": "ibs-paper",
+          "book_name": "ETF close strength",
+          "status": "done",
+          "detail": "Bought XLF at the close"
+        },
+        {
+          "time": "2026-09-18T17:30:00-04:00",
+          "label": "Nightly suite",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "Nightly note written"
+        },
+        {
+          "time": "2026-09-18T17:45:00-04:00",
+          "label": "Evening run",
+          "book_id": "rsi2-real",
+          "book_name": "Mean reversion",
+          "status": "done",
+          "detail": "Queued 1 entry"
+        },
+        {
+          "time": "2026-09-18T19:00:00-04:00",
+          "label": "Watchdog",
+          "book_id": null,
+          "book_name": null,
+          "status": "done",
+          "detail": "All runs reported in"
+        }
+      ]
     }
   ],
   "counts": {
-    "done": 3,
-    "due": 3
+    "done": 31,
+    "due": 3,
+    "late": 1,
+    "failed": 1
   },
   "alerts": [],
   "sources": [
