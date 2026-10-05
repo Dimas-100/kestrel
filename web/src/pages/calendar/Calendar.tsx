@@ -1,31 +1,23 @@
-// Company events ahead and behind: earnings, filings, insider trades and dividends, filterable by kind.
+// Company events ahead and behind: earnings, filings, insider trades and dividends, as a month or as lists,
+// filterable by kind.
 import { useState } from 'react'
 import { Empty } from '../../charts/marks'
 import { Panel, Seg } from '../../components/bits'
-import { Icon } from '../../components/Icon'
 import { type CalendarView, type EventKind, type EventRow, useCalendar } from '../../lib/api'
 import { shortDate } from '../../lib/format'
+import { EventItem, eventKey, KIND_LABEL } from './EventItem'
+import { allEvents, MonthView } from './MonthView'
 
-export const KIND_LABEL: Record<EventKind, string> = {
-  earnings: 'Earnings', filing: 'Filing', insider: 'Insider', dividend: 'Dividend', other: 'Other',
-}
+export { eventKey, isHttpsUrl, KIND_LABEL } from './EventItem'
+
 const KINDS: EventKind[] = ['earnings', 'filing', 'insider', 'dividend', 'other']
 type Filter = 'all' | EventKind
 const FILTER_OPTIONS = ['all', ...KINDS] as const
 const FILTER_LABEL: Record<Filter, string> = { all: 'All', ...KIND_LABEL }
-
-/** https only: the contract already refuses anything else, but a link is never built from an unchecked string. */
-export function isHttpsUrl(url: string): boolean {
-  return url.startsWith('https://')
-}
+const VIEWS = ['Month', 'List'] as const
 
 export function matches(kind: EventKind, filter: Filter): boolean {
   return filter === 'all' || filter === kind
-}
-
-/** A stable key for an event row: it carries no id of its own, so date+kind+symbol+title identifies it. */
-export function eventKey(e: EventRow): string {
-  return `${e.date}|${e.kind}|${e.symbol}|${e.title}`
 }
 
 function KindFilter({ value, onChange }: { value: Filter; onChange: (v: Filter) => void }) {
@@ -37,29 +29,6 @@ function CountsRow({ counts }: { counts: CalendarView['counts'] }) {
     <div className="flex flex-wrap gap-2">
       {KINDS.map((k) => <span key={k} className="chip">{KIND_LABEL[k]} {counts[k]}</span>)}
     </div>
-  )
-}
-
-function EventItem({ e }: { e: EventRow }) {
-  return (
-    <li className="flex items-start gap-3 py-2.5 border-b border-line last:border-0">
-      <div className="num text-xs text-ink3 pt-0.5 w-16 shrink-0">{shortDate(e.date)}</div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          {e.symbol && <span className="num font-semibold">{e.symbol}</span>}
-          <span className="text-ink1">{e.title}</span>
-          <span className="chip" style={{ padding: '2px 8px' }}>{KIND_LABEL[e.kind]}</span>
-          {e.held && <span className="chip" style={{ padding: '2px 8px' }}>Held</span>}
-        </div>
-        {e.detail && <div className="text-xs text-ink3 mt-0.5">{e.detail}</div>}
-        {isHttpsUrl(e.url) && (
-          <a href={e.url} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs mt-1" style={{ color: 'var(--acc-ink)' }}>
-            Source<Icon name="arrow" size={11} />
-          </a>
-        )}
-      </div>
-    </li>
   )
 }
 
@@ -96,15 +65,32 @@ function RecentPanel({ view, filter }: { view: CalendarView; filter: Filter }) {
   )
 }
 
+/** The selected day's events, beside the month. Its title says the day, so the rows leave the date off. */
+function DayPanel({ day, events }: { day: string; events: EventRow[] }) {
+  const n = events.length
+  return (
+    <Panel id="calendar-day" title={shortDate(day)} subtitle={n === 0 ? 'No events' : n === 1 ? '1 event' : `${n} events`}
+      span={4}>
+      {n === 0 ? <Empty>Nothing on this day.</Empty> : (
+        <ul className="mt-3.5">{events.map((e) => <EventItem key={eventKey(e)} e={e} date={false} />)}</ul>
+      )}
+    </Panel>
+  )
+}
+
 export function Calendar() {
   const query = useCalendar()
   const [filter, setFilter] = useState<Filter>('all')
+  const [mode, setMode] = useState<(typeof VIEWS)[number]>('Month')
+  const [picked, setPicked] = useState<string | null>(null) // null: today, until a day is chosen
   if (query.isPending) return <p className="text-ink3" role="status">Loading the calendar…</p>
   if (!query.data) {
     return <div role="alert" className="panel">Calendar couldn&rsquo;t load: {query.error.message}</div>
   }
   const view = query.data
   const empty = view.upcoming.length === 0 && view.recent.length === 0
+  const day = picked ?? view.today
+  const events = allEvents(view).filter((e) => matches(e.kind, filter))
   return (
     <>
       <header className="mb-5">
@@ -121,10 +107,22 @@ export function Calendar() {
         <div className="grid12">
           <div className="span-12 flex flex-wrap items-center justify-between gap-3">
             <CountsRow counts={view.counts} />
-            <KindFilter value={filter} onChange={setFilter} />
+            <div className="flex flex-wrap items-center gap-3">
+              <Seg label="View" options={VIEWS} value={mode} onChange={setMode} />
+              <KindFilter value={filter} onChange={setFilter} />
+            </div>
           </div>
-          <UpcomingPanel view={view} filter={filter} />
-          <RecentPanel view={view} filter={filter} />
+          {mode === 'Month' ? (
+            <>
+              <MonthView events={events} today={view.today} selected={day} onSelect={setPicked} />
+              <DayPanel day={day} events={events.filter((e) => e.date === day)} />
+            </>
+          ) : (
+            <>
+              <UpcomingPanel view={view} filter={filter} />
+              <RecentPanel view={view} filter={filter} />
+            </>
+          )}
         </div>
       )}
     </>

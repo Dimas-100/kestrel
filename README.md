@@ -51,7 +51,7 @@ One line per page; each has its own empty state naming what kind of source fills
 ### The record
 
 - **Backtests** — the research record: one row per family, its best result, a verdict chip per window.
-- **Calendar** — upcoming and recent dated events (earnings, filings, dividends, …), filterable by kind.
+- **Calendar** — the month as a grid, each day with its events (earnings, filings, dividends, …), or the same events as lists; filterable by kind.
 - **Activity** — runs by day, every alert, and every source's own status and freshness.
 - **Settings** — read-only: who you are, the look, currency and time zone, and every source's kind, what it reads
   and its live status.

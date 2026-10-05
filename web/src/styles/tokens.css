@@ -121,6 +121,39 @@ p .num, .prose .num, .panel-sub .num { font-family: var(--k-sans); letter-spacin
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* --- the month calendar (Calendar page): a table of days, kind letters beside symbols, one tab stop ------ */
+.cal { width: 100%; border-collapse: separate; border-spacing: 4px; margin: 10px -4px 0; table-layout: fixed; }
+.cal th { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink3); font-weight: 500;
+  text-align: left; padding: 0 0 4px 7px; }
+.cal td { padding: 0; vertical-align: top; }
+.cal-out { font-size: 11px; color: var(--ink3); opacity: 0.55; padding: 7px 0 0 7px; }
+.cal-day { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; min-height: 74px;
+  padding: 6px; text-align: left; border: 1px solid var(--line); border-radius: 7px; background: none;
+  color: var(--ink1); cursor: pointer; font: inherit; }
+.cal-day:hover { background: color-mix(in srgb, var(--ink1) 4%, transparent); }
+.cal-day.sel { background: var(--panel2); box-shadow: inset 0 0 0 1px var(--line2); }
+.cal-num { font-size: 11px; line-height: 1; color: var(--ink2); align-self: flex-start; padding: 3px; border-radius: 4px; }
+.cal-day.today .cal-num { box-shadow: 0 0 0 1px var(--acc); color: var(--ink1); }
+.cal-evs { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ev { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink2); min-width: 0; }
+.ev-mark { width: 14px; height: 14px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  font: 600 9px/1 var(--k-mono); border-radius: 3px; box-shadow: inset 0 0 0 1px var(--ink2); color: var(--ink2); }
+.ev.held .ev-mark { background: var(--ink2); color: var(--panel); }
+.ev-sym { font-family: var(--k-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev.held .ev-sym { font-weight: 600; color: var(--ink1); }
+.cal-more { font-size: 10px; color: var(--ink3); }
+.cal-today { width: auto; padding: 0 10px; font: 500 12px/1 var(--k-sans); }
+.icon-btn:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 640px) {
+  .cal { border-spacing: 2px; margin: 8px -2px 0; }
+  .cal th { padding-left: 3px; font-size: 10px; letter-spacing: 0.04em; }
+  .cal-out { padding: 5px 0 0 4px; }
+  .cal-day { min-height: 44px; padding: 4px; gap: 3px; }
+  .cal-evs { flex-direction: row; flex-wrap: wrap; gap: 2px; }
+  .ev-sym { display: none; }
+  .ev-mark { width: 13px; height: 13px; }
+}
+
 /* --- layout ------------------------------------------------------------------------------------------------ */
 .shell { display: flex; min-height: 100vh; }
 .sidebar { width: 256px; flex: none; height: 100vh; position: sticky; top: 0; background: var(--side);
