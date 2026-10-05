@@ -4,12 +4,15 @@ goals coming along?"""
 from __future__ import annotations
 
 import datetime as dt
+import math
 from typing import Literal
 
 from ..contract import Account, Goal, Snapshot, Target, Thesis, ValuePoint
 from ..profile import Profile
 from ._base import View
-from .home import CATEGORY_LABELS, Attention
+from .home import CATEGORY_LABELS, Attention, net_points, round_step
+
+PASSED_ROUNDS = 8  # how many crossed round numbers the record keeps
 
 Status = Literal["on", "over", "under", "unknown"]
 HEALTH_RANK = {"alert": 0, "watch": 1, "ok": 2, "none": 3}
@@ -73,9 +76,16 @@ class GoalRow(View):
     # overdue, or current is unknown
     monthly_needed: float | None
     reached: bool
+    reached_on: dt.date | None = None  # the first day the scope's value met the target, from history; None without
     overdue: bool  # `by` has passed and the goal isn't reached (a far placeholder date such as 9999-12-31 never is)
     missing_accounts: list[str] = []  # account id(s) this goal names that no source sent; current is None when set
     unknown_reason: str = ""  # why current is unknown when no account is missing ("" otherwise)
+
+
+class Passed(View):
+    date: dt.date
+    label: str  # "$15,000" or the goal's label
+    kind: Literal["round", "goal"]
 
 
 class Counts(View):
@@ -88,6 +98,7 @@ class PlanView(View):
     as_of: dt.datetime
     summary: str  # the header's sentence: goals ahead and the next, targets off plan, theses needing a look
     actions: list[Attention]  # this month's to-do, warnings first; the link is empty (the page is the plan)
+    passed: list[Passed]  # round numbers the net worth crossed and goals reached, newest first (spec §2.2)
     accounts: list[AccountTargets]
     unscoped: list[TargetRow]
     theses: list[ThesisRow]
@@ -284,6 +295,50 @@ def _goal_pace_start(g: Goal, today: dt.date) -> dt.date:
     return today
 
 
+def _scope_history(scope_ids: list[str], by_id: dict[str, Account],
+                   history: dict[str, list[ValuePoint]]) -> list[tuple[dt.date, float]]:
+    """The scope's signed value on each day its accounts have history, each account carried forward from its last
+    point; a day counts only once every account in the scope has started. Empty when any account has no history."""
+    series = {aid: {p.date: p.value for p in history.get(aid, [])} for aid in scope_ids}
+    if not scope_ids or any(not s for s in series.values()):
+        return []
+    sign = {aid: -1.0 if by_id[aid].category == "debt" else 1.0 for aid in scope_ids}
+    days = sorted({day for s in series.values() for day in s})
+    last: dict[str, float] = {}
+    out = []
+    for day in days:
+        for aid, s in series.items():
+            if day in s:
+                last[aid] = s[day]
+        if len(last) == len(scope_ids):
+            out.append((day, round(sum(sign[aid] * last[aid] for aid in scope_ids), 2)))
+    return out
+
+
+def _reached_on(g: Goal, scope_ids: list[str], by_id: dict[str, Account],
+                history: dict[str, list[ValuePoint]]) -> dt.date | None:
+    if g.measure == "deposits":
+        return None
+    return next((day for day, value in _scope_history(scope_ids, by_id, history) if value >= g.target), None)
+
+
+def passed_list(snapshot: Snapshot, goals: list[GoalRow]) -> list[Passed]:
+    """Round numbers the net-worth history crossed, each on the first day it did (the last PASSED_ROUNDS), and the
+    goals reached on a known day; newest first, a round number before a goal on the same day."""
+    points = net_points(snapshot)
+    rounds: dict[float, dt.date] = {}
+    for prev, cur in zip(points, points[1:]):
+        step = round_step(cur.value)
+        r = math.floor(cur.value / step) * step
+        while r > prev.value and r > 0:
+            rounds.setdefault(r, cur.date)
+            r -= step
+    newest = sorted(rounds.items(), key=lambda item: item[1])[-PASSED_ROUNDS:]
+    items = [Passed(date=day, label=f"${r:,.0f}", kind="round") for r, day in newest]
+    items += [Passed(date=g.reached_on, label=g.label, kind="goal") for g in goals if g.reached and g.reached_on]
+    return sorted(items, key=lambda m: (-m.date.toordinal(), m.kind != "round"))
+
+
 def _goal_row(g: Goal, accounts: list[Account], history: dict[str, list[ValuePoint]], today: dt.date) -> GoalRow:
     by_id = {a.id: a for a in accounts}
     scope_ids, scope_text, missing = _goal_scope(g, accounts)
@@ -311,7 +366,9 @@ def _goal_row(g: Goal, accounts: list[Account], history: dict[str, list[ValuePoi
     monthly_needed = None if reached or months_left is None else round((g.target - current) / max(1, months_left), 2)
     return GoalRow(id=g.id, label=g.label, scope_text=scope_text, measure=g.measure, current=current,
                    target=g.target, progress_pct=progress, by=g.by, months_left=months_left,
-                   monthly_needed=monthly_needed, reached=reached, overdue=overdue, missing_accounts=[])
+                   monthly_needed=monthly_needed, reached=reached,
+                   reached_on=_reached_on(g, scope_ids, by_id, history) if reached else None, overdue=overdue,
+                   missing_accounts=[])
 
 
 def target_attention(snapshot: Snapshot) -> list[Attention]:
@@ -472,7 +529,7 @@ def plan_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> PlanVie
     has_targets = bool(unscoped) or any(a.rows for a in accounts)
     return PlanView(
         as_of=now, summary=plan_summary(goals, off_plan, has_targets, alert + watch),
-        actions=plan_actions(accounts, unscoped, theses, goals),
+        actions=plan_actions(accounts, unscoped, theses, goals), passed=passed_list(snapshot, goals),
         accounts=accounts, unscoped=unscoped, theses=theses, goals=goals,
         counts=Counts(off_plan=off_plan, theses_alert=alert, theses_watch=watch),
     )

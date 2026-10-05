@@ -26,7 +26,7 @@ export function Activity() {
       </header>
       <div className="grid12">
         <TodayPanel today={today} next={v.next_run} now={v.as_of} tz={tz} />
-        <WeekPanel week={v.week} today={todayIso} />
+        <WeekPanel week={v.week} streak={v.streak_days} today={todayIso} />
         <AlertsPanel alerts={v.alerts} />
         <SourcesPanel sources={v.sources} tz={tz} />
       </div>

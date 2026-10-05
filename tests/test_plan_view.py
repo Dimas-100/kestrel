@@ -528,3 +528,31 @@ def test_the_demo_plan_has_a_summary_and_actions(demo_plan):
     assert [x.level for x in demo_plan.actions][:3] == ["warning", "warning", "warning"]
     assert any(t.startswith("Put about") for t in (x.title for x in demo_plan.actions))
 
+
+# ---------------------------------------------------------------- the record of what was passed (2026-10-05 milestones)
+
+def test_a_goal_knows_the_day_its_scope_first_met_the_target_and_a_deposits_goal_has_none():
+    history = [Series(id="a", points=[ValuePoint(date=d(2026, 8, 1), value=400),
+                                      ValuePoint(date=d(2026, 8, 15), value=520),
+                                      ValuePoint(date=d(2026, 9, 1), value=480), ValuePoint(date=TODAY, value=600)])]
+    goals = [Goal(id="g", label="Trip", target=500, account_id="a"),
+             Goal(id="dep", label="Save", target=100, account_id="a", measure="deposits", by=d(2026, 12, 31)),
+             Goal(id="far", label="Far", target=5000, account_id="a")]
+    v = plan_view(snap(accounts=[account("a", 600)], goals=goals, account_history=history), Profile(), NOW)
+    rows = {g.id: g for g in v.goals}
+    assert (rows["g"].reached, rows["g"].reached_on) == (True, d(2026, 8, 15))  # the first day it met 500
+    assert rows["dep"].reached_on is None and rows["far"].reached_on is None
+    assert plan_view(snap(accounts=[account("a", 600)], goals=[goals[0]]), Profile(), NOW).goals[0].reached_on is None
+
+
+def test_the_passed_list_holds_round_numbers_and_reached_goals_newest_first():
+    pts = [ValuePoint(date=d(2026, 6, 1), value=9400), ValuePoint(date=d(2026, 7, 1), value=10200),
+           ValuePoint(date=d(2026, 8, 1), value=9900), ValuePoint(date=d(2026, 9, 1), value=10600),
+           ValuePoint(date=TODAY, value=15200)]
+    goals = [Goal(id="g", label="Trip", target=10000, account_id="a")]
+    v = plan_view(snap(accounts=[account("a", 15200)], goals=goals, account_history=[Series(id="a", points=pts)]),
+                  Profile(), NOW)
+    assert [(m.date, m.label, m.kind) for m in v.passed] == [
+        (TODAY, "$15,000", "round"), (d(2026, 7, 1), "$10,000", "round"), (d(2026, 7, 1), "Trip", "goal")]
+    assert plan_view(snap(accounts=[account("a", 100)]), Profile(), NOW).passed == []
+

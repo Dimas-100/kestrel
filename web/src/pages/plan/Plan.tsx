@@ -27,7 +27,7 @@ export function Plan() {
         </div>
       ) : (
         <div className="grid12">
-          <MilestonesPanel goals={v.goals} today={v.as_of.slice(0, 10)} />
+          <MilestonesPanel goals={v.goals} passed={v.passed} today={v.as_of.slice(0, 10)} />
           <ThisMonthPanel actions={v.actions} />
           <AllocationPanel accounts={v.accounts} unscoped={v.unscoped} />
           <ThesesPanel theses={v.theses} />

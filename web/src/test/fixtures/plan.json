@@ -33,6 +33,13 @@
       "link": ""
     }
   ],
+  "passed": [
+    {
+      "date": "2026-01-15",
+      "label": "$150,000",
+      "kind": "round"
+    }
+  ],
   "accounts": [
     {
       "account_id": "roth",
@@ -475,6 +482,7 @@
       "months_left": 51,
       "monthly_needed": 629.59,
       "reached": false,
+      "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
       "unknown_reason": ""
@@ -491,6 +499,7 @@
       "months_left": 15,
       "monthly_needed": 740.27,
       "reached": false,
+      "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
       "unknown_reason": ""
@@ -507,6 +516,7 @@
       "months_left": 33,
       "monthly_needed": 2476.42,
       "reached": false,
+      "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
       "unknown_reason": ""
@@ -523,6 +533,7 @@
       "months_left": 63,
       "monthly_needed": 1276.91,
       "reached": false,
+      "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
       "unknown_reason": ""
@@ -539,6 +550,7 @@
       "months_left": 3,
       "monthly_needed": 150.0,
       "reached": false,
+      "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
       "unknown_reason": ""

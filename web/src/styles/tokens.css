@@ -163,6 +163,9 @@ p .num, .prose .num, .panel-sub .num { font-family: var(--k-sans); letter-spacin
     padding-top: 14px; margin-top: 14px; }
 }
 
+/* --- the progress ring's one reveal: the arc draws itself when the page opens; nothing moves for reduced motion */
+@media (prefers-reduced-motion: no-preference) { .ring-arc { transition: stroke-dasharray 600ms ease-out; } }
+
 /* --- layout ------------------------------------------------------------------------------------------------ */
 .shell { display: flex; min-height: 100vh; }
 .sidebar { width: 256px; flex: none; height: 100vh; position: sticky; top: 0; background: var(--side);

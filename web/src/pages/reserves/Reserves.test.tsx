@@ -140,4 +140,14 @@ describe('Reserves', { timeout: 15_000 }, () => {
     fireEvent.click(within(nav).getByRole('link', { name: /Reserves/ }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Reserves' })).toBeTruthy()
   })
+
+  it('lets you try paying the dearest card from cash, and says what it saves and leaves', async () => {
+    renderApp('/reserves')
+    const summary = await screen.findByRole('region', { name: 'Earning against owing' })
+    const slider = within(summary).getByRole('slider', { name: 'Pay this much of the Credit card from cash' }) as HTMLInputElement
+    expect(Number(slider.value)).toBe(640)
+    expect(slider.max).toBe('640')
+    fireEvent.change(slider, { target: { value: '320' } })
+    expect(summary.textContent).toContain('Paying $320.00 saves about $66.56 a year and leaves $30,575.98 in cash.')
+  })
 })

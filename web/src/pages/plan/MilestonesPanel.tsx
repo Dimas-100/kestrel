@@ -5,10 +5,11 @@ import { clampTip, nearestIndex } from '../../charts/geometry'
 import { useIndex, useWidth } from '../../charts/hooks'
 import { Empty, Tip } from '../../charts/marks'
 import { Missing, Panel, Seg } from '../../components/bits'
-import type { GoalRow } from '../../lib/api'
+import type { GoalRow, Passed } from '../../lib/api'
 import { longDate, money, num } from '../../lib/format'
 import { ProgressRing } from './ProgressRing'
 import { monthlyText, monthsBetween, nextDated, timelinePosition, yearTicks } from './timeline'
+import { monthsToReach, reachDate } from './whatif'
 
 const VIEWS = ['Chart', 'Table'] as const
 const NEXT = 3
@@ -19,7 +20,7 @@ const HEIGHT = 56
 const TICK_LABEL_PX = 36 // a four-digit year at 10 px, with air: ticks closer than this are thinned
 
 function whenText(g: GoalRow): string {
-  if (g.reached) return 'Reached'
+  if (g.reached) return g.reached_on ? `Reached ${longDate(g.reached_on)}` : 'Reached'
   if (g.overdue && g.by) return `was due ${longDate(g.by)}`
   if (g.by) return `by ${longDate(g.by)}${g.months_left != null ? ` · ${g.months_left} months` : ''}`
   return 'ongoing'
@@ -88,19 +89,58 @@ function Timeline({ goals, today }: { goals: GoalRow[]; today: string }) {
   )
 }
 
-function GoalCard({ g }: { g: GoalRow }) {
-  const monthly = monthlyText(g)
+/** "reaches $1,800 by 25 Nov 2026" at a monthly amount, or "never at this pace" at zero; a value goal keeps its caveat. */
+function WhatIf({ g, today }: { g: GoalRow & { current: number; monthly_needed: number }; today: string }) {
+  const [monthly, setMonthly] = useState(Math.round(g.monthly_needed))
+  const max = Math.max(1, Math.round(g.monthly_needed * 3))
+  const months = monthsToReach(g.current, g.target, monthly)
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-2 text-xs text-ink3">
+        <input type="range" min={0} max={max} step={1} value={monthly} aria-label={`${g.label}: a month`}
+          onChange={(e) => setMonthly(Number(e.target.value))} className="flex-1 min-w-0" style={{ accentColor: 'var(--acc)' }} />
+        <span className="num whitespace-nowrap">{money(monthly, false)} a month</span>
+      </div>
+      <p className="text-xs text-ink3 mt-1">
+        {months == null ? 'never at this pace'
+          : <>reaches <span className="num">{money(g.target, false)}</span> by {longDate(reachDate(today, months))}
+            {g.measure === 'value' && ', before any market growth'}</>}
+      </p>
+    </div>
+  )
+}
+
+function GoalCard({ g, today }: { g: GoalRow; today: string }) {
+  const tryable = !g.reached && !g.overdue && g.current != null && g.monthly_needed != null
   return (
     <article aria-labelledby={`goal-${g.id}`} className="flex gap-4">
       <ProgressRing pct={g.progress_pct ?? 0} label={g.label} reached={g.reached} />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <h3 id={`goal-${g.id}`} className="text-sm font-semibold leading-snug">{g.label}</h3>
         <div className="text-xs text-ink3 mt-0.5">{g.scope_text}</div>
         <div className="num text-[13px] mt-2">{money(g.current ?? 0, false)} / {money(g.target, false)}</div>
         <div className="text-xs text-ink3 mt-1">{whenText(g)}</div>
-        {!g.reached && !g.overdue && monthly && <p className="text-xs text-ink3 mt-1">{monthly}</p>}
+        {!g.reached && !g.overdue && monthlyText(g) && <p className="text-xs text-ink3 mt-1">{monthlyText(g)}</p>}
+        {tryable && <WhatIf g={g as GoalRow & { current: number; monthly_needed: number }} today={today} />}
       </div>
     </article>
+  )
+}
+
+function PassedList({ passed }: { passed: Passed[] }) {
+  if (passed.length === 0) return null
+  return (
+    <div className="mt-5">
+      <div className="label mb-1">Passed</div>
+      <ul aria-label="Passed">
+        {passed.map((m) => (
+          <li key={`${m.kind}-${m.label}-${m.date}`} className="flex items-baseline justify-between gap-3 py-1.5 border-t border-line text-sm">
+            <span className="font-medium">{m.label}</span>
+            <span className="text-xs text-ink3 whitespace-nowrap">{m.kind === 'round' ? 'passed' : 'reached'} {longDate(m.date)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -149,7 +189,7 @@ function GoalsTable({ goals }: { goals: GoalRow[] }) {
               <td className="text-ink2">{g.scope_text}</td>
               <td className="r">
                 {g.progress_pct == null ? <span className="text-xs text-ink3">— · {unknownText(g)}</span>
-                  : <span className="num">{g.reached ? 'Reached' : `${num(g.progress_pct, 0)}%`}</span>}
+                  : <span className="num">{g.reached ? whenText(g) : `${num(g.progress_pct, 0)}%`}</span>}
               </td>
               <td className="r num">{g.current == null ? <Missing /> : money(g.current, false)}</td>
               <td className="r num">{money(g.target, false)}</td>
@@ -164,7 +204,7 @@ function GoalsTable({ goals }: { goals: GoalRow[] }) {
   )
 }
 
-export function MilestonesPanel({ goals, today }: { goals: GoalRow[]; today: string }) {
+export function MilestonesPanel({ goals, passed, today }: { goals: GoalRow[]; passed: Passed[]; today: string }) {
   const [view, setView] = useState<(typeof VIEWS)[number]>('Chart')
   const next = nextDated(goals, NEXT)
   const ongoing = goals.filter((g) => g.by == null)
@@ -180,7 +220,7 @@ export function MilestonesPanel({ goals, today }: { goals: GoalRow[]; today: str
         <>
           <div className="mt-3"><Timeline goals={goals} today={today} /></div>
           {next.length > 0 && (
-            <div className="goal-cards mt-5">{next.map((g) => <GoalCard key={g.id} g={g} />)}</div>
+            <div className="goal-cards mt-5">{next.map((g) => <GoalCard key={g.id} g={g} today={today} />)}</div>
           )}
           {ongoing.length > 0 && (
             <div className="mt-5">
@@ -188,6 +228,7 @@ export function MilestonesPanel({ goals, today }: { goals: GoalRow[]; today: str
               <ul>{ongoing.map((g) => <OngoingRow key={g.id} g={g} />)}</ul>
             </div>
           )}
+          <PassedList passed={passed} />
         </>
       )}
     </Panel>

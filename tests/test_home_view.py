@@ -16,7 +16,7 @@ from kestrel.contract import (
     ValuePoint,
 )
 from kestrel.profile import DEMO_PROFILE, Profile
-from kestrel.views.home import home_view
+from kestrel.views.home import home_view, next_round, round_step
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
 
@@ -324,4 +324,29 @@ def test_net_worth_says_what_is_owned_before_what_is_owed(demo_home):
     card = Account(id="card", name="Card", category="debt", value=200, as_of=NOW)
     nw = home_view(_tiny([held, card], []), Profile(), NOW).net_worth
     assert (nw.owned, nw.owed, nw.total) == (1000.0, 200.0, 800.0)
+
+
+# ---------------------------------------------------------------- the next round number (2026-10-05 milestones)
+
+def test_the_step_is_half_the_power_of_ten_below_and_the_next_round_number_follows():
+    assert [round_step(v) for v in (14215.01, 168278.24, 1421.0, 9800.0, 52300.0, 0.0, -5.0)] == [
+        5000.0, 50000.0, 500.0, 500.0, 5000.0, 500.0, 500.0]
+    assert [next_round(v) for v in (14215.01, 168278.24, 1421.0, 9800.0, 15000.0)] == [
+        15000.0, 200000.0, 1500.0, 10000.0, 20000.0]  # exactly on one: the next is the one after
+
+
+def test_net_worth_names_the_next_round_number_and_a_crossing_today():
+    a = Account(id="a", name="A", category="long_term", value=14215.01, as_of=NOW)
+    before = [ValuePoint(date=dt.date(2026, 9, 24), value=14800.0),
+              ValuePoint(date=dt.date(2026, 9, 25), value=14215.01)]
+    nw = home_view(_tiny([a], [Series(id="a", points=before)]), Profile(), NOW).net_worth
+    assert (nw.next_round, nw.to_go, nw.passed_today) == (15000.0, 784.99, None)
+    crossed = [ValuePoint(date=dt.date(2026, 9, 24), value=14900.0),
+               ValuePoint(date=dt.date(2026, 9, 25), value=15100.0)]
+    b = Account(id="a", name="A", category="long_term", value=15100.0, as_of=NOW)
+    nw = home_view(_tiny([b], [Series(id="a", points=crossed)]), Profile(), NOW).net_worth
+    assert (nw.next_round, nw.passed_today) == (20000.0, 15000.0)
+    above = [ValuePoint(date=dt.date(2026, 9, 24), value=15050.0), ValuePoint(date=dt.date(2026, 9, 25), value=15100.0)]
+    assert home_view(_tiny([b], [Series(id="a", points=above)]), Profile(), NOW).net_worth.passed_today is None
+    assert home_view(_tiny([b], []), Profile(), NOW).net_worth.passed_today is None  # no day before to cross from
 
