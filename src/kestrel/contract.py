@@ -69,6 +69,19 @@ class Series(Model):
     points: list[ValuePoint]
 
 
+class Transaction(Model):
+    """Money that moved through an account, as its own records post it: a charge, a payment, a deposit, interest.
+    Posted rows only; a source leaves pending ones out. `amount` is signed, money in positive and money out negative,
+    the same convention as a history point's net_flow: on a card a payment is money in and a charge money out."""
+
+    account_id: str
+    date: dt.date
+    amount: float
+    description: str
+    counterparty: str = ""  # the other side, when the source names one
+    category: str = ""  # the source's own word for it, shown as text
+
+
 class Step(Model):
     label: str  # "Universe", "Entry", "Protect", "Exit"
     title: str
@@ -326,6 +339,7 @@ class Snapshot(Model):
     accounts: list[Account] = []
     holdings: list[Holding] = []
     account_history: list[Series] = []
+    transactions: list[Transaction] = []
     books: list[Book] = []
     book_history: list[Series] = []
     positions: list[Position] = []
@@ -349,7 +363,7 @@ class Snapshot(Model):
 
 
 _LIST_FIELDS = (
-    "sources", "accounts", "holdings", "account_history", "books", "book_history",
+    "sources", "accounts", "holdings", "account_history", "transactions", "books", "book_history",
     "positions", "trades", "trade_charts", "strategies", "runs", "alerts",
     "targets", "theses", "events", "goals", "exposures", "backtests",
 )

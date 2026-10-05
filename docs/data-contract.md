@@ -80,6 +80,25 @@ nothing to market growth, and the chart says how many accounts are counted that 
 | `rate_pct` | yearly interest, in percent: what cash earns (APY), what debt costs (APR) |
 | `limit` | a credit line's limit |
 
+### Transactions
+
+Money that moved through an account, as the account's own records post it: a charge, a payment, a deposit,
+interest. One row per posted transaction; a source leaves pending ones out and sends each row once. A row carries no
+id of its own. Added 2026-10-05, after the six blocks above, and optional like them.
+
+| Field | Meaning |
+|---|---|
+| `account_id` | the account it belongs to |
+| `date` | the day it posted |
+| `amount` | signed: money in positive, money out negative. On a card a payment is money in and a charge money out, the convention the account's `net_flow` uses |
+| `description` | what the bank says it was |
+| `counterparty` | optional: the other side, when the source names one |
+| `category` | optional: the source's own word for it, shown as text |
+
+The Account page lists an account's rows newest first with the totals in and out; an account with no rows shows no
+list. A row for an account the document doesn't name is kept and never shown. When a later source reuses an account
+id, the later account's rows go with it (see connectors.md).
+
 ### Targets
 
 What the plan says an account should hold.

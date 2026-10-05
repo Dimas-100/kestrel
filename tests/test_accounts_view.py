@@ -5,7 +5,7 @@ from fdc_fixture import household
 
 from kestrel.connectors import collect
 from kestrel.connectors.fdc import FdcConnector
-from kestrel.contract import Account, Holding, Series, Snapshot, ValuePoint
+from kestrel.contract import Account, Holding, Series, Snapshot, Transaction, ValuePoint
 from kestrel.profile import DEMO_PROFILE, Profile
 from kestrel.views.accounts import account_view, accounts_view, growth, window_start
 
@@ -208,3 +208,23 @@ def test_one_account_says_which_day_its_holdings_are_from(tmp_path, demo):
         "alex-brokerage": (d(2026, 9, 25), d(2026, 9, 25)), "alex-trading": (d(2026, 9, 25), d(2026, 9, 25)),
         "alex-crypto": (d(2026, 9, 25), None), "alex-old-401k": (d(2026, 9, 21), None)}  # nothing held: no day
     assert account_view(demo, DEMO_PROFILE, NOW, "roth").holdings_as_of is None  # the demo doesn't say
+
+
+def test_transactions_newest_first_with_the_totals_in_and_out_and_none_without_any(demo):
+    rows = [Transaction(account_id="checking", date=d(2026, 9, 24), amount=-42.17, description="GROCERY MART",
+                        counterparty="Grocery Mart", category="groceries"),
+            Transaction(account_id="checking", date=d(2026, 9, 25), amount=1500.0, description="PAYROLL ACME"),
+            Transaction(account_id="checking", date=d(2026, 9, 24), amount=-10.0, description="COFFEE BAR"),
+            Transaction(account_id="card", date=d(2026, 9, 20), amount=200.0, description="PAYMENT")]
+    snap = Snapshot(generated_at=NOW, accounts=[account("checking", 800), account("card", 50)], transactions=rows)
+    t = account_view(snap, Profile(), NOW, "checking").transactions
+    assert [(r.date.day, r.amount, r.description) for r in t.rows] == [
+        (25, 1500.0, "PAYROLL ACME"), (24, -42.17, "GROCERY MART"), (24, -10.0, "COFFEE BAR")]
+    assert (t.rows[1].counterparty, t.rows[1].category, t.rows[0].counterparty) == ("Grocery Mart", "groceries", "")
+    assert (t.count, t.since, t.money_in, t.money_out) == (3, d(2026, 9, 24), 1500.0, 52.17)
+    assert account_view(snap, Profile(), NOW, "card").transactions.money_out == 0.0
+    assert account_view(Snapshot(generated_at=NOW, accounts=[account("roth", 1)]), Profile(), NOW,
+                        "roth").transactions is None
+    # the demo: its bank accounts have rows, its brokerage accounts don't
+    assert account_view(demo, DEMO_PROFILE, NOW, "checking").transactions.count > 20
+    assert account_view(demo, DEMO_PROFILE, NOW, "roth").transactions is None

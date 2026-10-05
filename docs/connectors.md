@@ -314,7 +314,7 @@ everything that hangs off it:
 
 | A later source's duplicate | Goes with it |
 |---|---|
-| account id | its holdings and its account history |
+| account id | its holdings, its transactions and its account history |
 | book id | its book history, positions, trades, trade charts and runs |
 | strategy id | nothing else: books keep pointing at the first source's strategy |
 

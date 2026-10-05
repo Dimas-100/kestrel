@@ -29,7 +29,7 @@ One line per page; each has its own empty state naming what kind of source fills
 - **Home** — net worth (deposits vs. market, and minus what's owed), where the money sits, trading vs. index money,
   what needs you, every book at a glance, today's runs, open positions with their room to stop.
 - **Accounts** — every account's value and its deposits-vs-market growth, everything held added up across accounts.
-- **Account** — one account's value, growth and holdings.
+- **Account** — one account's value, growth and holdings, and for a bank account its transactions.
 - **Plan** — targets against their band per account, thesis health and conviction, goal progress.
 - **Reserves** — cash and debt: balances, rates, credit utilization, and the spread between what you earn and what
   you owe.

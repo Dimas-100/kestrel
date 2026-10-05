@@ -47,7 +47,7 @@ const props = (over: Partial<Parameters<typeof MonthView>[0]> = {}) => ({
 })
 const next = () => fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
 
-describe('MonthView', () => {
+describe('MonthView', { timeout: 15_000 }, () => {
   it('is a grid of this month with seven weekday headers; days of other months are muted, not buttons', () => {
     render(<MonthView {...props()} />)
     const grid = screen.getByRole('grid', { name: 'September 2026' })

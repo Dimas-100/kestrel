@@ -84,6 +84,22 @@ class Totals(View):
     unknown_cost: int  # holdings left out of the cost and gain totals
 
 
+class TransactionRow(View):
+    date: dt.date
+    amount: float  # money in positive, money out negative
+    description: str
+    counterparty: str
+    category: str
+
+
+class Transactions(View):
+    rows: list[TransactionRow]  # newest first
+    count: int
+    since: dt.date  # the oldest row's day
+    money_in: float
+    money_out: float  # as a positive amount
+
+
 class AccountView(View):
     id: str
     name: str
@@ -100,6 +116,7 @@ class AccountView(View):
     cash: float
     cash_weight: float | None
     totals: Totals
+    transactions: Transactions | None  # None when the source sends no rows for this account
 
 
 def window_start(window: Window, today: dt.date, points: list[ValuePoint]) -> dt.date:
@@ -208,6 +225,15 @@ def account_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, account
     known = [(h.value, h.cost_basis) for h in held if h.cost_basis is not None]
     cost = sum(c for _, c in known) if known else None
     gain = sum(v - c for v, c in known) if known else None
+    # newest first; the rows of one day keep the order the source gave them
+    rows = sorted((t for t in snapshot.transactions if t.account_id == account.id), key=lambda t: t.date, reverse=True)
+    transactions = Transactions(
+        rows=[TransactionRow(date=t.date, amount=t.amount, description=t.description, counterparty=t.counterparty,
+                             category=t.category) for t in rows],
+        count=len(rows), since=rows[-1].date,
+        money_in=round(sum(t.amount for t in rows if t.amount > 0), 2),
+        money_out=round(-sum(t.amount for t in rows if t.amount < 0), 2) + 0.0,
+    ) if rows else None
     return AccountView(
         id=account.id, name=account.name, institution=account.institution, account_type=account.account_type,
         category=account.category, value=account.value, as_of=account.as_of.date(), points=points,
@@ -220,4 +246,5 @@ def account_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, account
                       gain=round(gain, 2) if gain is not None else None,
                       gain_pct=round(gain / cost * 100, 2) if cost and gain is not None else None,
                       unknown_cost=len(held) - len(known)),  # the gain totals leave these out
+        transactions=transactions,
     )

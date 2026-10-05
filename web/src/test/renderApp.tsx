@@ -21,6 +21,7 @@ import type {
 } from '../lib/api'
 import { createAppRouter } from '../router'
 import accountJson from './fixtures/account-roth.json'
+import accountCheckingJson from './fixtures/account-checking.json'
 import accountsJson from './fixtures/accounts.json'
 import activityJson from './fixtures/activity.json'
 import backtestsJson from './fixtures/backtests.json'
@@ -49,6 +50,7 @@ export const strategiesFixture = (strategiesJson satisfies Widen<StrategiesView>
 export const strategyFixture = (strategyJson satisfies Widen<StrategyView>) as unknown as StrategyView
 export const accountsFixture = (accountsJson satisfies Widen<AccountsView>) as unknown as AccountsView
 export const accountFixture = (accountJson satisfies Widen<AccountView>) as unknown as AccountView
+export const accountCheckingFixture = (accountCheckingJson satisfies Widen<AccountView>) as unknown as AccountView
 export const booksFixture = (booksJson satisfies Widen<BooksView>) as unknown as BooksView
 export const bookFixture = (bookJson satisfies Widen<BookView>) as unknown as BookView
 export const activityFixture = (activityJson satisfies Widen<ActivityView>) as unknown as ActivityView
