@@ -8,6 +8,9 @@
   "net_worth": {
     "total": 168278.24,
     "owned": 168918.24,
+    "next_round": 200000.0,
+    "to_go": 31721.76,
+    "passed_today": null,
     "owed": 640.0,
     "debt_accounts": 1,
     "today": {

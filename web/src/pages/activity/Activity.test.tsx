@@ -71,7 +71,7 @@ describe('Activity', { timeout: 15_000 }, () => {
   })
 
   it('says so when there is no activity yet', async () => {
-    renderApp('/activity', { activity: { as_of: activityFixture.as_of, summary: 'No runs today.', next_run: null,
+    renderApp('/activity', { activity: { as_of: activityFixture.as_of, summary: 'No runs today.', streak_days: 0, next_run: null,
       week: [], days: [], counts: {}, alerts: [], sources: [] } })
     expect(await screen.findByText('Nothing has run yet today.')).toBeTruthy()
     expect(screen.getByText('No runs recorded yet. They appear once a scheduled task reports in.')).toBeTruthy()
@@ -87,5 +87,13 @@ describe('Activity', { timeout: 15_000 }, () => {
   it('says so when activity could not load', async () => {
     renderApp('/activity', { activity: null })
     expect((await screen.findByRole('alert')).textContent).toBe('Activity couldn’t load: network is off in tests')
+  })
+
+  it('says how many weekdays in a row every job has run', async () => {
+    renderApp('/activity')
+    await screen.findByRole('heading', { level: 1, name: 'Activity' })
+    expect(region('The week').textContent).toContain('Every job has run for 1 weekday in a row.')
+    renderApp('/activity', { activity: { ...activityFixture, streak_days: 0 } })
+    expect((await screen.findAllByText(/The streak starts with tomorrow/)).length).toBeGreaterThan(0)
   })
 })

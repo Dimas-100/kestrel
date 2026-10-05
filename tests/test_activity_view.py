@@ -174,3 +174,15 @@ def test_the_week_uses_the_profiles_zone_for_the_day_a_run_falls_on():
     cells = {c.date: c.status for c in v.week[0].cells}
     assert cells[dt.date(2026, 9, 24)] == "done" and cells[dt.date(2026, 9, 25)] is None
 
+
+def test_the_streak_counts_weekdays_in_a_row_where_every_job_ran_and_none_failed():
+    # Fri 18 .. Fri 25 Sep (today, a Friday); the week grid holds a week back plus today
+    def day(n, status="done", label="Morning run"):
+        return _at(-n, 9, 31, status, label)
+    runs = [day(7), day(4), day(3), day(2), day(1), day(0)]  # Mon 21 .. Fri 25 and Fri 18: the weekend 19/20 is free
+    v = activity_view(Snapshot(generated_at=NOW, runs=runs), UTC, NOW)
+    assert v.streak_days == 6
+    failed = runs + [day(2, "failed", "Evening run"), day(1, "done", "Evening run"), day(0, "done", "Evening run")]
+    assert activity_view(Snapshot(generated_at=NOW, runs=failed), UTC, NOW).streak_days == 2  # Thu 24, Fri 25
+    assert activity_view(Snapshot(generated_at=NOW), UTC, NOW).streak_days == 0
+

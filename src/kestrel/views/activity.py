@@ -56,6 +56,7 @@ class WeekRow(View):
 class ActivityView(View):
     as_of: dt.datetime
     summary: str  # the header's sentence: today's runs, the next one, the sources, the alerts
+    streak_days: int  # weekdays in a row, back from today, on which every job of the week ran and none failed
     next_run: RunRow | None  # the earliest run still due at or after now, today or later
     week: list[WeekRow]  # one row per job, in the order the jobs run through the day
     days: list[DayRuns]
@@ -128,6 +129,27 @@ def week_rows(runs: list[Run], today: dt.date, tz) -> list[WeekRow]:
             for label in sorted(by_label, key=lambda label: (first_seen[label], label))]
 
 
+def streak_days(week: list[WeekRow]) -> int:
+    """Weekdays in a row, counted back from today, on which every job in the week grid ran and none failed or ran
+    late. A weekend day is skipped. Today is skipped, not counted and not a break, while any job is still due or
+    hasn't run yet; a past day with a job missing ends the streak."""
+    if not week:
+        return 0
+    days = [c.date for c in week[0].cells]
+    streak = 0
+    for i in range(len(days) - 1, -1, -1):
+        day = days[i]
+        if day.weekday() >= 5:
+            continue
+        statuses = [row.cells[i].status for row in week]
+        if i == len(days) - 1 and any(s is None or s == "due" for s in statuses):
+            continue  # today isn't over
+        if any(s is None or s in ("failed", "late") for s in statuses):
+            break
+        streak += 1
+    return streak
+
+
 def _next_run(runs: list[Run], now: dt.datetime, book_names: dict[str, str]) -> RunRow | None:
     due = sorted((r for r in runs if r.status == "due" and r.time >= now), key=lambda r: r.time)
     if not due:
@@ -185,6 +207,7 @@ def activity_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> Act
     sources = _sources(snapshot, profile, now)
     alerts = _alerts(snapshot)
     next_run = _next_run(snapshot.runs, now, book_names)
+    week = week_rows(snapshot.runs, today, tz)
     return ActivityView(as_of=now, summary=activity_summary(by_date.get(today, []), next_run, sources, alerts, tz),
-                        next_run=next_run, week=week_rows(snapshot.runs, today, tz), days=days, counts=counts,
+                        streak_days=streak_days(week), next_run=next_run, week=week, days=days, counts=counts,
                         alerts=alerts, sources=sources)

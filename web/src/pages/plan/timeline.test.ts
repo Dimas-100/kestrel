@@ -4,7 +4,7 @@ import { monthlyText, monthsBetween, nextDated, timelinePosition, yearTicks } fr
 
 const goal = (over: Partial<GoalRow>): GoalRow => ({
   id: 'g', label: 'Goal', scope_text: 'Roth IRA', measure: 'value', current: 500, target: 1000, progress_pct: 50,
-  by: '2027-12-31', months_left: 15, monthly_needed: 33.33, reached: false, overdue: false, missing_accounts: [],
+  by: '2027-12-31', months_left: 15, monthly_needed: 33.33, reached: false, reached_on: null, overdue: false, missing_accounts: [],
   unknown_reason: '', ...over,
 })
 

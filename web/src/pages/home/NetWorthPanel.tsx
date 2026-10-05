@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { baseline, RANGES, type Range, windowPoints } from '../../charts/geometry'
 import { useHeight } from '../../charts/hooks'
 import { LineChart, LineKey } from '../../charts/LineChart'
+import { Icon } from '../../components/Icon'
 import { Delta, NoHistoryNote, Panel, Seg, Stat } from '../../components/bits'
 import type { NetWorth } from '../../lib/api'
 import { compactMoney, monthLabel, money, pct, shortDate, signedMoney, splitCents } from '../../lib/format'
@@ -15,15 +16,27 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
   const [whole, cents] = splitCents(nw.total)
   // the chart fills whatever height the row gives the panel (a long account list beside it stretches the row)
   const [fillRef, fillH] = useHeight<HTMLDivElement>(196)
+  const top = Math.max(0, ...points.map((p) => p.value))
+  const showRound = nw.to_go > 0 && nw.next_round <= top * 1.25
   return (
     <Panel id="net-worth" title="Net worth" span={8} height={372}
       actions={<>
+        {nw.passed_today != null && (
+          <span className="chip" style={{ color: 'var(--good)' }}>
+            <Icon name="checkCircle" size={14} />Passed {money(nw.passed_today, false)} today
+          </span>
+        )}
         <span className="hidden xl:inline-flex items-center gap-1.5 text-xs text-ink2">
           <LineKey color="var(--ink1)" style="solid" />Net worth
         </span>
         <span className="hidden xl:inline-flex items-center gap-1.5 text-xs text-ink2">
           <LineKey color="var(--ref)" style="dotted" />Start + deposits
         </span>
+        {showRound && (
+          <span className="hidden xl:inline-flex items-center gap-1.5 text-xs text-ink2">
+            <LineKey color="var(--ref)" style="dotted" />Next: {money(nw.next_round, false)}
+          </span>
+        )}
         <Seg label="Range" options={RANGES} value={range} onChange={setRange} />
         <Seg label="View" options={['Chart', 'Table'] as const} value={view} onChange={setView} />
       </>}>
@@ -36,6 +49,12 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
           {nw.owed > 0 && (
             <div className="prose text-xs text-ink3 mt-1.5">
               you own <span className="num">{money(nw.owned)}</span> · owe <span className="num">{money(nw.owed)}</span>
+            </div>
+          )}
+          {/* the next round number, and how far: the small thing worth looking forward to (spec 2026-10-05 milestones) */}
+          {nw.to_go > 0 && (
+            <div className="prose text-xs text-ink3 mt-1">
+              <span className="num">{money(nw.to_go)}</span> to <span className="num">{money(nw.next_round, false)}</span>
             </div>
           )}
         </div>
@@ -67,6 +86,8 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
               { key: 'nw', label: 'Net worth', values: points.map((p) => p.value), color: 'var(--ink1)', style: 'solid',
                 area: true },
               { key: 'base', label: 'Start + deposits', values: base, color: 'var(--ref)', style: 'dotted', step: true },
+              ...(showRound ? [{ key: 'round', label: `Next: ${money(nw.next_round, false)}`,
+                values: points.map(() => nw.next_round), color: 'var(--ref)', style: 'dotted' as const }] : []),
             ]}
             yFormat={compactMoney} valueFormat={(v) => money(v, false)}
             xLabel={(d) => monthLabel(d, range === '1M' || range === '3M')} tipTitle={(d) => shortDate(d)} />

@@ -5,6 +5,7 @@ import { longDate, money } from '../../lib/format'
 import { planFixture, renderApp } from '../../test/renderApp'
 import { unitText } from './PlanBar'
 import { nextDated } from './timeline'
+import { monthsToReach, reachDate } from './whatif'
 
 const rows = (region: HTMLElement) => [...region.querySelectorAll('li')]
 const tableRows = (region: HTMLElement) => [...region.querySelectorAll('tbody tr')].map((r) => r.textContent ?? '')
@@ -177,5 +178,25 @@ describe('Plan', { timeout: 15_000 }, () => {
     renderApp('/')
     fireEvent.click(await screen.findByRole('link', { name: 'Plan' }))
     await screen.findByRole('heading', { level: 1, name: 'Plan' })
+  })
+
+  it('Milestones: lists what was passed, says the day a goal was reached, and tries a monthly amount', async () => {
+    const reached = goalOf({ id: 'done', label: 'Done', reached: true, progress_pct: 100, reached_on: '2026-08-15',
+      months_left: null, monthly_needed: null })
+    const passed = [{ date: '2026-09-01', label: '$150,000', kind: 'round' as const }, { date: '2026-08-15', label: 'Done', kind: 'goal' as const }]
+    renderApp('/plan', { plan: { ...planFixture, goals: [...planFixture.goals, reached], passed } })
+    const panel = await screen.findByRole('region', { name: 'Milestones' })
+    const list = within(panel).getByRole('list', { name: 'Passed' })
+    expect(rows(list).map((li) => li.textContent)).toEqual(['$150,000passed 1 Sep 2026', 'Donereached 15 Aug 2026'])
+    const first = nextDated(planFixture.goals, 1)[0]
+    const slider = within(panel).getByRole('slider', { name: `${first.label}: a month` }) as HTMLInputElement
+    expect(Number(slider.value)).toBe(Math.round(first.monthly_needed as number))
+    fireEvent.change(slider, { target: { value: String(Math.round((first.monthly_needed as number) * 2)) } })
+    const months = monthsToReach(first.current as number, first.target, Math.round((first.monthly_needed as number) * 2)) as number
+    expect(panel.textContent).toContain(`reaches ${money(first.target, false)} by ${longDate(reachDate(planFixture.as_of, months))}`)
+    fireEvent.change(slider, { target: { value: '0' } })
+    expect(panel.textContent).toContain('never at this pace')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Table' }))
+    expect(tableRows(panel).find((r) => r.includes('Done'))).toContain('Reached 15 Aug 2026')
   })
 })

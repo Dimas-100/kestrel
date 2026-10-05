@@ -53,6 +53,9 @@ export interface ValuePoint {
 export interface NetWorth {
   total: number // everything owned less everything owed
   owned: number // everything the accounts hold, before what is owed: total + owed
+  next_round: number // the next round number above the total
+  to_go: number // next_round - total
+  passed_today: number | null // a round number the history crossed today, else null
   owed: number // what the debt accounts owe, already taken off total; 0 with none
   debt_accounts: number // how many accounts that owed comes from
   today: Delta
@@ -510,6 +513,7 @@ export interface WeekRow {
 export interface ActivityView {
   as_of: string
   summary: string // the header's sentence: today's runs, the next one, the sources, the alerts
+  streak_days: number // weekdays in a row, back from today, on which every job ran and none failed
   next_run: RunRow | null // the earliest run still due at or after now, today or later
   week: WeekRow[] // one row per job, in the order the jobs run through the day
   days: DayRuns[]
@@ -881,15 +885,23 @@ export interface GoalRow {
   months_left: number | null
   monthly_needed: number | null // a straight line: for a value goal, before any market growth
   reached: boolean
+  reached_on: string | null // the first day the scope's value met the target, from history; null without
   overdue: boolean // by has passed and it isn't reached (the view's answer; a far placeholder date never is)
   missing_accounts: string[] // account id(s) this goal names that no source sent
   unknown_reason: string // why current is unknown when no account is missing ("" otherwise)
+}
+
+export interface Passed {
+  date: string
+  label: string // "$15,000" or the goal's label
+  kind: 'round' | 'goal'
 }
 
 export interface PlanView {
   as_of: string
   summary: string // the header's sentence: goals ahead and the next, targets off plan, theses needing a look
   actions: Attention[] // this month's to-do, warnings first; the link is empty (the page is the plan)
+  passed: Passed[] // round numbers the net worth crossed and goals reached, newest first
   accounts: AccountTargets[]
   unscoped: TargetRow[]
   theses: ThesisRow[]

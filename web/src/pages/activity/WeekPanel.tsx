@@ -25,9 +25,13 @@ function Cell({ cell }: { cell: WeekCell }) {
   )
 }
 
-export function WeekPanel({ week, today }: { week: WeekRow[]; today: string }) {
+export function streakText(days: number): string {
+  return days > 0 ? `Every job has run for ${days} weekday${days === 1 ? '' : 's'} in a row.` : 'The streak starts with tomorrow.'
+}
+
+export function WeekPanel({ week, streak, today }: { week: WeekRow[]; streak: number; today: string }) {
   return (
-    <Panel id="week" title="The week" subtitle={week.length > 0 ? 'Each job, each day. A column of checks is a good week.' : undefined} span={7}>
+    <Panel id="week" title="The week" subtitle={week.length > 0 ? streakText(streak) : undefined} span={7}>
       {week.length === 0 ? (
         <Empty>No runs recorded yet. They appear once a scheduled task reports in.</Empty>
       ) : (

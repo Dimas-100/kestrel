@@ -293,4 +293,16 @@ describe('words from the data', { timeout: 15_000 }, () => {
     const cmp = await screen.findByRole('region', { name: 'Trading vs your index money' })
     expect(within(cmp).getByText(/^Since 1 Jul · real money only/)).toBeTruthy()
   })
+
+  it('names the next round number and how far to it, and says so the day one is passed', async () => {
+    const { unmount } = renderApp('/')
+    const nw = await screen.findByRole('region', { name: 'Net worth' })
+    expect(nw.textContent).toContain('$31,721.76 to $200,000')
+    expect(within(nw).getByText('Next: $200,000')).toBeTruthy() // the reference line's legend entry
+    expect(within(nw).queryByText(/^Passed/)).toBeNull()
+    unmount()
+    renderApp('/', { home: { ...homeFixture, net_worth: { ...homeFixture.net_worth, passed_today: 150000 } } })
+    const again = await screen.findByRole('region', { name: 'Net worth' })
+    expect(within(again).getByText('Passed $150,000 today')).toBeTruthy()
+  })
 })

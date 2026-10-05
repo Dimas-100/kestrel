@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 from typing import Literal
 from urllib.parse import quote
 
@@ -27,6 +28,9 @@ class Delta(View):
 class NetWorth(View):
     total: float  # everything owned less everything owed: always the last of `points` when there are any
     owned: float  # everything the accounts hold, before what is owed: total + owed
+    next_round: float  # the next round number above the total (spec 2026-10-05 milestones §2.1)
+    to_go: float  # next_round - total
+    passed_today: float | None  # a round number the history crossed today (the point before was below it), else None
     owed: float  # what the debt accounts owe, already taken off `total`; 0 with none, below 0 for a card paid past zero
     debt_accounts: int  # how many accounts that owed comes from (for "Owed: $X across N accounts")
     today: Delta
@@ -290,6 +294,31 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
     return sorted(items, key=lambda a: order[a.level])
 
 
+def round_step(value: float) -> float:
+    """Half the power of ten below the figure: $5,000 for $14,215, $50,000 for $168,278, $500 for $1,421 and for
+    anything under $1,000."""
+    if value < 1000:
+        return 500.0
+    return 10 ** math.floor(math.log10(value)) / 2
+
+
+def next_round(value: float) -> float:
+    """The next multiple of the step strictly above the figure: $15,000 for $14,215, $20,000 for exactly $15,000."""
+    step = round_step(value)
+    return (math.floor(value / step) + 1) * step
+
+
+def crossed_today(points: list[ValuePoint], today: dt.date) -> float | None:
+    """The largest round number (at the latest point's step) the history crossed today: the latest point is at or
+    above it and the point before was below. None without a point before, or when the latest point isn't today's."""
+    if len(points) < 2 or points[-1].date != today:
+        return None
+    prev, last = points[-2].value, points[-1].value
+    step = round_step(last)
+    r = math.floor(last / step) * step
+    return r if r > prev and r > 0 else None
+
+
 def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeView:
     tz = profile.tz
     today = now.astimezone(tz).date()
@@ -297,8 +326,10 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
     net = net_points(snapshot)
     owned = sum(a.value for a in snapshot.accounts if a.category != "debt")
     owed = sum(a.value for a in snapshot.accounts if a.category == "debt")
+    total = round(owned - owed, 2)
     net_worth = NetWorth(
-        total=round(owned - owed, 2), owned=round(owned, 2), owed=round(owed, 2),
+        total=total, owned=round(owned, 2), owed=round(owed, 2),
+        next_round=next_round(total), to_go=round(next_round(total) - total, 2), passed_today=crossed_today(net, today),
         debt_accounts=sum(1 for a in snapshot.accounts if a.category == "debt"),
         today=_delta(net, today), month=_delta(net, today.replace(day=1)), year=_delta(net, dt.date(today.year, 1, 1)),
         year_flows=round(sum(p.net_flow for p in net[1:] if p.date >= dt.date(today.year, 1, 1)), 2),
