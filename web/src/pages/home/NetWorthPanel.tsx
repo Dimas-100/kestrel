@@ -32,9 +32,11 @@ export function NetWorthPanel({ nw }: { nw: NetWorth }) {
           <div className="text-[38px] sm:text-5xl font-semibold tracking-[-0.035em] leading-none">
             {whole}<span className="text-ink3">.{cents}</span>
           </div>
-          {/* what is owed is already taken off the figure above: say so, so it isn't read as all held */}
+          {/* what is owed is already taken off the figure above: say what is held before it, and what is owed */}
           {nw.owed > 0 && (
-            <div className="prose text-xs text-ink3 mt-1.5">net of <span className="num">{money(nw.owed)}</span> owed</div>
+            <div className="prose text-xs text-ink3 mt-1.5">
+              you own <span className="num">{money(nw.owned)}</span> · owe <span className="num">{money(nw.owed)}</span>
+            </div>
           )}
         </div>
         <div className="flex flex-wrap gap-x-7 gap-y-3 pb-1">

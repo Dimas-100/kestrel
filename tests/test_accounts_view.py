@@ -228,3 +228,14 @@ def test_transactions_newest_first_with_the_totals_in_and_out_and_none_without_a
     # the demo: its bank accounts have rows, its brokerage accounts don't
     assert account_view(demo, DEMO_PROFILE, NOW, "checking").transactions.count > 20
     assert account_view(demo, DEMO_PROFILE, NOW, "roth").transactions is None
+
+
+def test_the_list_says_what_is_owned_and_what_is_owed_beside_the_net(demo):
+    v = accounts_view(demo, DEMO_PROFILE, NOW)
+    assert v.owned == pytest.approx(v.total + v.owed)
+    assert v.owed == 640.0  # the demo's card
+    snap = Snapshot(generated_at=NOW, accounts=[account("a", 1000), Account(id="card", name="Card", category="debt",
+                                                                                 value=200, as_of=NOW)])
+    v = accounts_view(snap, Profile(), NOW)
+    assert (v.owned, v.owed, v.total) == (1000.0, 200.0, 800.0)
+

@@ -314,3 +314,14 @@ def test_until_a_real_book_has_a_history_the_trading_accounts_are_the_trading_li
     assert lines(first_day)["trading"] == ("Trading", 10.0)  # one point is not a history yet
     two_days = [ValuePoint(date=d(2026, 9, 24), value=2000), ValuePoint(date=d(2026, 9, 25), value=2100)]
     assert lines(two_days)["trading"] == ("Trading", 5.0)
+
+
+def test_net_worth_says_what_is_owned_before_what_is_owed(demo_home):
+    nw = demo_home.net_worth
+    assert nw.owned == pytest.approx(nw.total + nw.owed)
+    assert nw.owned == pytest.approx(sum(a.value for a in demo_home.accounts if a.category != "debt"))
+    held = Account(id="a", name="A", category="long_term", value=1000, as_of=NOW)
+    card = Account(id="card", name="Card", category="debt", value=200, as_of=NOW)
+    nw = home_view(_tiny([held, card], []), Profile(), NOW).net_worth
+    assert (nw.owned, nw.owed, nw.total) == (1000.0, 200.0, 800.0)
+

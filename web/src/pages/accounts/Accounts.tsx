@@ -10,9 +10,13 @@ import { GrowthPanel } from './GrowthPanel'
 
 const SHOWN = 12
 
-/** The sentence under the title, from the data: how many accounts, how much, and this year in two figures. */
+/** The sentence under the title, from the data: how many accounts, what they hold and owe (or just the total when
+ *  nothing is owed), and this year in two figures. */
 export function headline(v: AccountsView): { lead: string; moved: string | null } {
-  const lead = `${v.count} account${v.count === 1 ? '' : 's'}, ${money(v.total)} in all.`
+  const count = `${v.count} account${v.count === 1 ? '' : 's'}`
+  const lead = v.owed > 0
+    ? `${count}: you own ${money(v.owned)} and owe ${money(v.owed)}, ${money(v.total)} net.`
+    : `${count}, ${money(v.total)} in all.`
   const year = v.growth.ytd
   if (!year) return { lead, moved: null }
   const moved = year.deposits >= 0 ? `you deposited ${money(year.deposits)}` : `you withdrew ${money(-year.deposits)}`
