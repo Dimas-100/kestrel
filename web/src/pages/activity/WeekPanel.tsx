@@ -42,7 +42,9 @@ export function WeekPanel({ week, today }: { week: WeekRow[]; today: string }) {
             <tbody>
               {week.map((row) => (
                 <tr key={row.label}>
-                  <td className="font-medium whitespace-nowrap">{row.label}</td>
+                  {/* a feed's job label can be a sentence: the column stays narrow and the full label is a title */}
+                  <td className="font-medium whitespace-nowrap overflow-hidden text-ellipsis" style={{ maxWidth: 240 }}
+                    title={row.label}>{row.label}</td>
                   {row.cells.map((c) => <td key={c.date} className="r"><Cell cell={c} /></td>)}
                 </tr>
               ))}
