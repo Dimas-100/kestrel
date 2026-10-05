@@ -448,3 +448,83 @@ def test_demo_plan_matches_demo_home_off_plan_targets(demo_plan):
     plan_titles = {i.title for i in target_attention(snapshot)} | {i.title for i in thesis_attention(snapshot)}
     home_titles = {a.title for a in demo_home.attention}
     assert plan_titles and plan_titles <= home_titles
+
+
+# ---------------------------------------------------------------- the summary and this month's actions (2026-10-05)
+
+def test_summary_names_the_next_goal_and_what_needs_a_look():
+    a = account("a", 1000)
+    under = Target(id="under", account_id="a", label="A", symbols=["Y"], target=50, low=45, high=55)  # 10%: under
+    goals = [Goal(id="far", label="Far", target=100000, account_id="a", by=d(2040, 1, 1)),
+             Goal(id="near", label="Trip", target=2000, account_id="a", by=d(2027, 7, 25)),
+             Goal(id="done", label="Done", target=500, account_id="a", by=d(2027, 1, 1))]
+    theses = [Thesis(symbol="HD", health="alert", reasons=["Sales fell"]), Thesis(symbol="KO", health="watch")]
+    v = plan_view(snap(accounts=[a], holdings=[holding("a", "Y", 100)], targets=[under], goals=goals, theses=theses),
+                  Profile(), NOW)
+    assert v.summary == ("2 goals ahead. The next is Trip, 50% there, by 25 Jul 2027. 1 target is off plan. "
+                         "2 theses need a look.")
+
+
+def test_summary_when_everything_is_fine_or_undated():
+    a = account("a", 1000)
+    on = Target(id="on", account_id="a", label="B", symbols=["X"], target=10, low=5, high=15)  # 10%: on plan
+    s = snap(accounts=[a], holdings=[holding("a", "X", 100)], targets=[on])
+    assert plan_view(s, Profile(), NOW).summary == "No goals yet. Every target sits on plan."
+    undated = Goal(id="floor", label="Floor", target=5000, account_id="a")
+    s = snap(accounts=[a], holdings=[holding("a", "X", 100)], targets=[on], goals=[undated])
+    assert plan_view(s, Profile(), NOW).summary == "1 goal ahead, none dated. Every target sits on plan."
+    s = snap(accounts=[a], goals=[Goal(id="done", label="Done", target=500, account_id="a")])
+    assert plan_view(s, Profile(), NOW).summary == "Every goal is reached."
+
+
+def test_actions_say_what_to_do_this_month_warnings_first():
+    a = account("a", 1000)  # named "A"
+    under = Target(id="under", account_id="a", label="XLP", symbols=["Y"], target=20, low=18, high=22)  # 10%: $80 under
+    over = Target(id="over", account_id="a", label="XLV", symbols=["X"], target=15, low=12, high=18)  # 20%: $20 over
+    ratio = Target(id="ratio", label="Cash runway", unit="x", target=6, low=4, high=8, actual=3)  # 1.0x under
+    goals = [Goal(id="late", label="Household", target=2000, account_id="a", by=d(2026, 1, 1)),  # overdue at 50%
+             Goal(id="soon", label="Trip", target=2000, account_id="a", by=d(2027, 7, 25)),  # ten months: $100 a month
+             Goal(id="far", label="Far", target=100000, account_id="a", by=d(2040, 1, 1)),  # nothing to do yet
+             Goal(id="deposits", label="Savings this year", target=1200, account_id="a", measure="deposits",
+                  by=d(2026, 12, 31))]
+    theses = [Thesis(symbol="HD", health="alert", reasons=["Sales fell"]),
+              Thesis(symbol="KO", health="watch", reasons=["Volume is soft"]), Thesis(symbol="PG", health="ok")]
+    history = [Series(id="a", points=[ValuePoint(date=d(2026, 1, 15), value=700, net_flow=300),
+                                      ValuePoint(date=TODAY, value=1000)])]
+    s = snap(accounts=[a], holdings=[holding("a", "Y", 100), holding("a", "X", 200), holding("a", "Z", 700)],
+             targets=[under, over, ratio], goals=goals, theses=theses, account_history=history)
+    v = plan_view(s, Profile(), NOW)
+    assert [(x.level, x.title, x.detail) for x in v.actions] == [
+        ("warning", "Add $80.00 to XLP in A", "10.0% held · aim 20.0% · band 18–22%"),
+        ("warning", "Trim $20.00 from XLV in A", "20.0% held · aim 15.0% · band 12–18%"),
+        ("warning", "Cash runway is 1.0x under its band", "3.0x actual · aim 6.0x · band 4–8x"),
+        ("warning", "Review HD: thesis on alert", "Sales fell"),
+        ("warning", "Household was due 1 Jan 2026", "50% there"),
+        ("note", "Look at KO: thesis on watch", "Volume is soft"),
+        ("note", "Put about $100.00 a month toward Trip", "to reach $2,000.00 by 25 Jul 2027 · 50% there"),
+        ("note", "Put about $300.00 a month in deposits toward Savings this year",
+         "to reach $1,200.00 by 31 Dec 2026 · 25% there"),
+    ]
+    assert all(x.link == "" for x in v.actions)
+
+
+def test_a_points_gap_action_names_the_points_and_the_account():
+    zero = account("z", 0)
+    t = Target(id="t", account_id="z", label="VTI", symbols=["VTI"], target=60, low=55, high=65, actual=0)
+    v = plan_view(snap(accounts=[zero], targets=[t]), Profile(), NOW)
+    assert [(x.level, x.title) for x in v.actions] == [("warning", "VTI is 55.0 pts under its band in Z")]
+
+
+def test_nothing_to_do_is_an_empty_list_and_the_demo_has_actions():
+    a = account("a", 1000)
+    on = Target(id="on", account_id="a", label="B", symbols=["X"], target=10, low=5, high=15)
+    s = snap(accounts=[a], holdings=[holding("a", "X", 100)], targets=[on], theses=[Thesis(symbol="PG", health="ok")])
+    assert plan_view(s, Profile(), NOW).actions == []
+
+
+def test_the_demo_plan_has_a_summary_and_actions(demo_plan):
+    assert demo_plan.summary.startswith(
+        "5 goals ahead. The next is Save into savings this year, 75% there, by 31 Dec 2026.")
+    assert [x.level for x in demo_plan.actions][:3] == ["warning", "warning", "warning"]
+    assert any(t.startswith("Put about") for t in (x.title for x in demo_plan.actions))
+

@@ -1,5 +1,38 @@
 {
   "as_of": "2026-09-25T21:08:00Z",
+  "summary": "5 goals ahead. The next is Save into savings this year, 75% there, by 31 Dec 2026. 2 targets are off plan. 2 theses need a look.",
+  "actions": [
+    {
+      "level": "warning",
+      "title": "Add $1,357.86 to XLP in Roth IRA",
+      "detail": "16.0% held · aim 20.0% · band 18–22%",
+      "link": ""
+    },
+    {
+      "level": "warning",
+      "title": "Trim $2,036.71 from XLV in Roth IRA",
+      "detail": "21.0% held · aim 15.0% · band 12–18%",
+      "link": ""
+    },
+    {
+      "level": "warning",
+      "title": "Review HD: thesis on alert",
+      "detail": "Comparable sales fell for a third quarter",
+      "link": ""
+    },
+    {
+      "level": "note",
+      "title": "Look at XLE: thesis on watch",
+      "detail": "Oil fell for three months in a row",
+      "link": ""
+    },
+    {
+      "level": "note",
+      "title": "Put about $150.00 a month in deposits toward Save into savings this year",
+      "detail": "to reach $1,800.00 by 31 Dec 2026 · 75% there",
+      "link": ""
+    }
+  ],
   "accounts": [
     {
       "account_id": "roth",

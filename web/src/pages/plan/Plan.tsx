@@ -1,8 +1,10 @@
-// Is each account on plan, does every thesis still hold, and how are the goals coming along?
+// Your plan: the goals in time, what to do this month, how each account sits against its plan, and why each
+// holding is owned (spec 2026-10-05 plan page).
 import { usePlan } from '../../lib/api'
-import { GoalsPanel } from './GoalsPanel'
-import { TargetsPanel } from './TargetsPanel'
+import { AllocationPanel } from './AllocationPanel'
+import { MilestonesPanel } from './MilestonesPanel'
 import { ThesesPanel } from './ThesesPanel'
+import { ThisMonthPanel } from './ThisMonthPanel'
 
 export function Plan() {
   const plan = usePlan()
@@ -12,19 +14,12 @@ export function Plan() {
   }
   const v = plan.data
   const empty = v.accounts.length === 0 && v.unscoped.length === 0 && v.theses.length === 0 && v.goals.length === 0
-  const needing = v.counts.theses_alert + v.counts.theses_watch
   return (
     <>
       <header className="mb-5">
         <div className="label">Money</div>
         <h1 className="text-3xl font-semibold tracking-[-0.025em] mt-1.5">Plan</h1>
-        {!empty && (
-          <p className="text-ink2 mt-1.5">
-            {v.counts.off_plan === 0 ? 'Every target sits on plan.'
-              : `${v.counts.off_plan} target${v.counts.off_plan === 1 ? ' is' : 's are'} off plan.`}{' '}
-            {needing > 0 && `${needing} ${needing === 1 ? 'thesis needs' : 'theses need'} a look.`}
-          </p>
-        )}
+        {!empty && v.summary && <p className="text-ink2 mt-1.5 max-w-[70ch]">{v.summary}</p>}
       </header>
       {empty ? (
         <div className="panel text-ink2">
@@ -32,9 +27,10 @@ export function Plan() {
         </div>
       ) : (
         <div className="grid12">
-          <TargetsPanel accounts={v.accounts} unscoped={v.unscoped} />
+          <MilestonesPanel goals={v.goals} today={v.as_of.slice(0, 10)} />
+          <ThisMonthPanel actions={v.actions} />
+          <AllocationPanel accounts={v.accounts} unscoped={v.unscoped} />
           <ThesesPanel theses={v.theses} />
-          <GoalsPanel goals={v.goals} />
         </div>
       )}
     </>
