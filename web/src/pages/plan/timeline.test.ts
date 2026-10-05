@@ -30,6 +30,10 @@ describe('the goal timeline', () => {
     expect(ticks.length).toBeLessThan(18) // not one per year out to 2064
     for (let i = 1; i < ticks.length; i++) expect(ticks[i].pos - ticks[i - 1].pos).toBeGreaterThanOrEqual(0.05)
     expect(yearTicks('2026-09-25', '2026-12-31')).toEqual([]) // nothing before the first new year
+    const narrow = yearTicks('2026-09-25', '2064-05-07', 36 / 300) // a 300 px line: labels need more of it
+    expect(narrow.length).toBeLessThan(ticks.length)
+    expect(narrow[0].label).toBe('2027')
+    for (let i = 1; i < narrow.length; i++) expect(narrow[i].pos - narrow[i - 1].pos).toBeGreaterThanOrEqual(36 / 300)
   })
 
   it('the next dated goals are the nearest unreached ones, overdue first, reached and undated left out', () => {

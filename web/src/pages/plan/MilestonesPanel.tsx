@@ -16,6 +16,7 @@ const HORIZON_MONTHS = 50 * 12 // a goal further out than this (a placeholder da
 const PAD = 8
 const LINE_Y = 30
 const HEIGHT = 56
+const TICK_LABEL_PX = 36 // a four-digit year at 10 px, with air: ticks closer than this are thinned
 
 function whenText(g: GoalRow): string {
   if (g.reached) return 'Reached'
@@ -40,7 +41,7 @@ function Timeline({ goals, today }: { goals: GoalRow[]; today: string }) {
   const { index: hover, set: setHover, onKey } = useIndex(items.length)
   if (items.length === 0 || furthest <= 0) return null
   const furthestIso = dated[months.indexOf(furthest)].by
-  const ticks = yearTicks(today, furthestIso)
+  const ticks = yearTicks(today, furthestIso, TICK_LABEL_PX / Math.max(1, width - 2 * PAD))
   const x = (pos: number) => PAD + pos * (width - 2 * PAD)
   const xs = items.map((it) => x(it.pos))
   const onPointer = (event: PointerEvent<SVGSVGElement>) => {

@@ -5,7 +5,7 @@ import { money } from '../../lib/format'
 
 const DAY_MS = 86_400_000
 const MONTH_DAYS = 30.4375
-const MIN_TICK_GAP = 0.05 // of the line: ticks closer than this to the previous kept one are thinned out
+const MIN_TICK_GAP = 0.05 // of the line, at least: ticks closer than this to the previous kept one are thinned out
 
 const at = (iso: string) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).getTime()
 
@@ -22,8 +22,9 @@ export function timelinePosition(months: number, furthest: number): number {
 }
 
 /** The 1 January after today, then each year after it, each at its place on the line; a year that would sit within
- *  MIN_TICK_GAP of the previous kept tick is left out, so the far, crowded end keeps a few readable years. */
-export function yearTicks(todayIso: string, furthestIso: string): { label: string; pos: number }[] {
+ *  `minGap` (a share of the line, MIN_TICK_GAP at least: a narrow line passes a larger one so four-digit labels
+ *  never touch) of the previous kept tick is left out, so the far, crowded end keeps a few readable years. */
+export function yearTicks(todayIso: string, furthestIso: string, minGap = MIN_TICK_GAP): { label: string; pos: number }[] {
   const furthest = monthsBetween(todayIso, furthestIso)
   const firstYear = Number(todayIso.slice(0, 4)) + 1
   const lastYear = Number(furthestIso.slice(0, 4))
@@ -31,7 +32,7 @@ export function yearTicks(todayIso: string, furthestIso: string): { label: strin
   for (let year = firstYear; year <= lastYear; year++) {
     const pos = timelinePosition(monthsBetween(todayIso, `${year}-01-01`), furthest)
     if (pos >= 1) break
-    if (ticks.length === 0 || pos - ticks[ticks.length - 1].pos >= MIN_TICK_GAP) ticks.push({ label: String(year), pos })
+    if (ticks.length === 0 || pos - ticks[ticks.length - 1].pos >= Math.max(MIN_TICK_GAP, minGap)) ticks.push({ label: String(year), pos })
   }
   return ticks
 }
