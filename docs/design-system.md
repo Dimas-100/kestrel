@@ -157,6 +157,7 @@ plus the word (REAL / PAPER), so it reads in greyscale and print too.
 | **Attention item** | 32 px icon tile in the status colour, caps level label, title, one line of detail, and a link to the page that resolves it |
 | **Timeline row** | Time (mono), done/due icon, title and detail. The *now* line is a 1 px accent rule with a "NOW" label. |
 | **Progress bar** | 8 px track (`--panel2` + inset hairline) with an accent fill, and a label with "n / target" |
+| **Month calendar** | A real table with `role="grid"`: seven weekday columns, one row per week, a button per day of the month (the neighbouring months' days muted and inert). A day shows its number (mono; today ringed in the accent) and up to three events as a 14 px letter mark (E, F, I, D, O for the kind; filled when held, outlined when not) beside the symbol, then "+n". The selected day is raised (`--panel2` + inset `--line2`). One tab stop; arrows, Home/End and PageUp/PageDown walk it. Under 640 px the symbols drop and the marks sit in a row; cells stay 44 px tall. |
 | **Room-to-stop bar** | 56 × 6 px track. The fill is proportional to the distance to the stop; it is `--warn` under 8 % and `--ink3` otherwise. |
 
 ## Charts

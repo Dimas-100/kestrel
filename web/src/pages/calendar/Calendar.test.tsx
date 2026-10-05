@@ -10,6 +10,7 @@ const panel = (name: string) => {
   return title.closest('section') as HTMLElement
 }
 const findPanel = (name: string) => waitFor(() => panel(name))
+const toList = async () => fireEvent.click(await screen.findByRole('button', { name: 'List' }))
 
 describe('Calendar', { timeout: 15_000 }, () => {
   it('words matching and the https guard', () => {
@@ -30,7 +31,37 @@ describe('Calendar', { timeout: 15_000 }, () => {
     expect(eventKey(a)).not.toBe(eventKey(b))
   })
 
-  it('shows the counts by kind and both panels', async () => {
+  it('opens on the month: this month, with today selected and nothing on it', async () => {
+    renderApp('/calendar')
+    await screen.findByRole('heading', { level: 1, name: 'Calendar' })
+    expect(screen.getByRole('grid', { name: 'September 2026' })).toBeTruthy()
+    const day = await findPanel('Fri 25 Sep')
+    expect(day.textContent).toContain('Nothing on this day.')
+    expect(document.querySelector('#calendar-upcoming-title')).toBeNull()
+  })
+
+  it('selecting a day lists its events beside the grid', async () => {
+    renderApp('/calendar')
+    await screen.findByRole('grid', { name: 'September 2026' })
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mon 5 Oct, 1 event' }))
+    const day = await findPanel('Mon 5 Oct')
+    expect(day.querySelector('.panel-sub')?.textContent).toBe('1 event')
+    expect(within(day).getByText('COST')).toBeTruthy()
+    expect(within(day).getByText('Held')).toBeTruthy()
+  })
+
+  it('the kind filter narrows the grid too', async () => {
+    renderApp('/calendar')
+    await screen.findByRole('grid', { name: 'September 2026' })
+    fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dividend' }))
+    expect(screen.getByRole('button', { name: 'Tue 6 Oct, 1 event' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Mon 5 Oct, 1 event' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Mon 5 Oct' })).toBeTruthy()
+  })
+
+  it('shows the counts by kind and, as the list, both panels', async () => {
     renderApp('/calendar')
     await screen.findByRole('heading', { level: 1, name: 'Calendar' })
     expect(screen.getByText('Earnings 8')).toBeTruthy()
@@ -38,14 +69,17 @@ describe('Calendar', { timeout: 15_000 }, () => {
     expect(screen.getByText('Insider 2')).toBeTruthy()
     expect(screen.getByText('Dividend 1')).toBeTruthy()
     expect(screen.getByText('Other 0')).toBeTruthy()
+    await toList()
     const upcoming = await findPanel('Upcoming')
     expect(upcoming.textContent).toContain('COST')
     const recent = await findPanel('Recent')
     expect(recent.textContent).toContain('MSFT')
+    expect(screen.queryByRole('grid')).toBeNull()
   })
 
   it('narrows both lists to the selected kind, and back to all', async () => {
     renderApp('/calendar')
+    await toList()
     const upcoming = await findPanel('Upcoming')
     const recent = await findPanel('Recent')
     expect(within(upcoming).getAllByText('Earnings').length).toBeGreaterThan(0)
@@ -59,6 +93,7 @@ describe('Calendar', { timeout: 15_000 }, () => {
 
   it('opens a source link in a new tab, safely', async () => {
     renderApp('/calendar')
+    await toList()
     const recent = await findPanel('Recent')
     const link = within(recent).getAllByRole('link', { name: /Source/ })[0]
     expect(link.getAttribute('target')).toBe('_blank')
@@ -77,6 +112,7 @@ describe('Calendar', { timeout: 15_000 }, () => {
       recent: [],
     }
     renderApp('/calendar', { calendar: withHtml })
+    await toList()
     const upcoming = await findPanel('Upcoming')
     expect(within(upcoming).getByText('Held')).toBeTruthy()
     expect(upcoming.querySelector('b')).toBeNull()
@@ -90,6 +126,7 @@ describe('Calendar', { timeout: 15_000 }, () => {
     const empty = await screen.findByText(/^No calendar events yet\./)
     expect(empty.textContent).toContain('an investing feed')
     expect(document.querySelector('.panel-title')).toBeNull()
+    expect(screen.queryByRole('grid')).toBeNull()
   })
 
   it('says it is loading, and says so plainly when the calendar could not load', async () => {
