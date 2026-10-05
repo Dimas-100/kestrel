@@ -1,11 +1,13 @@
-// Totals for cash and debt, and the spread: the highest rate paid against the best rate earned.
+// Totals for cash and debt, and the spread: the highest rate paid against the best rate earned (spec 2026-10-05
+// reserves §2.5: the same words as Phase 5, at the foot of the page).
 import { Panel, Stat } from '../../components/bits'
 import type { ReservesView } from '../../lib/api'
 import { money, num } from '../../lib/format'
 
 export function SpreadPanel({ totals, spread }: { totals: ReservesView['totals']; spread: ReservesView['spread'] }) {
   return (
-    <Panel id="reserves-summary" title="Cash and debt" span={12}>
+    <Panel id="reserves-summary" title="Earning against owing" span={12}
+      subtitle="The totals, and the spread between the rate you pay and the rate you earn">
       <div className="flex flex-wrap gap-x-9 gap-y-3 mt-3">
         <Stat label="Cash"><span className="num">{money(totals.cash)}</span></Stat>
         <Stat label="Owed">

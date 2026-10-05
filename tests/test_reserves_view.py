@@ -3,7 +3,7 @@ import datetime as dt
 import pytest
 
 from kestrel.connectors import collect
-from kestrel.contract import Account, Snapshot
+from kestrel.contract import Account, Snapshot, Target, Transaction
 from kestrel.profile import DEMO_PROFILE, Profile
 from kestrel.views.reserves import reserves_view
 
@@ -155,3 +155,67 @@ def test_reserves_fills_from_the_collector_alone(tmp_path):
     assert debt["Example Bank Visa"].owed == 640.0 and debt["Example Bank Visa"].limit == 5000.0
     assert debt["Example Bank Visa"].utilization_pct == 12.8 and debt["Example Bank Visa"].rate_pct == 24.9
     assert {line.name: line.rate_pct for line in view.cash} == {"Example Bank Savings": 4.1}
+
+
+# ---------------------------------------------------------------- runway, flows, shares and the sentence (2026-10-05)
+
+def row(account_id, day, amount, description="x"):
+    return Transaction(account_id=account_id, date=dt.date.fromisoformat(day), amount=amount, description=description)
+
+
+def with_rows(rows, targets=(), *accounts):
+    return Snapshot(generated_at=NOW, accounts=list(accounts), transactions=list(rows), targets=list(targets))
+
+
+CASH = (account("checking", "cash", 3000), account("savings", "cash", 7000, rate_pct=4.0))
+RUNWAY_TARGET = Target(id="runway", label="Cash runway", unit="x", target=6, low=4, high=8, actual=5.0)
+ROWS = [row("checking", "2026-09-01", -1000), row("checking", "2026-09-10", 2000), row("checking", "2026-09-20", -500),
+        row("checking", "2026-09-25", -500), row("card", "2026-09-12", -80)]  # the card's charge is not cash leaving
+
+
+def test_runway_from_the_pace_money_left_the_cash_accounts_with_the_band_from_a_runway_target():
+    v = reserves_view(with_rows(ROWS, [RUNWAY_TARGET], *CASH, account("card", "debt", 100, rate_pct=20.0)), Profile(),
+                      NOW)
+    r = v.runway
+    # 2,000 out over 25 days (1 to 25 Sep, inclusive) -> 2,435.00 a month; 10,000 of cash lasts 4.1 months
+    assert (r.days, r.since, r.monthly_out, r.months) == (25, dt.date(2026, 9, 1), 2435.0, 4.1)
+    assert (r.aim, r.low, r.high) == (6.0, 4.0, 8.0)
+    assert v.summary == ("$9,900.00 in cash after debts. At the pace money has left your cash these 25 days, it would "
+                         "last about 4.1 months.")
+
+
+def test_runway_is_none_without_rows_a_short_window_or_any_money_out():
+    assert reserves_view(with_rows([], (), *CASH), Profile(), NOW).runway is None
+    short = [row("checking", "2026-09-20", -100), row("checking", "2026-09-25", -100)]  # six days: too short to say
+    assert reserves_view(with_rows(short, (), *CASH), Profile(), NOW).runway is None
+    inflow = [row("checking", "2026-08-01", 100), row("checking", "2026-09-25", 100)]
+    assert reserves_view(with_rows(inflow, (), *CASH), Profile(), NOW).runway is None
+    v = reserves_view(with_rows(ROWS, (), *CASH), Profile(), NOW)
+    assert (v.runway.aim, v.runway.low, v.runway.high) == (None, None, None)  # no runway target: no band
+    assert reserves_view(with_rows([], (), *CASH), Profile(), NOW).summary == "$10,000.00 in cash after debts."
+
+
+def test_flows_count_each_month_in_and_out_over_the_cash_accounts_only():
+    rows = [row("checking", "2026-08-05", 2000), row("checking", "2026-08-20", -700), row("savings", "2026-08-20", 150),
+            row("checking", "2026-09-10", 2000), row("checking", "2026-09-12", -300), row("card", "2026-09-12", -80)]
+    v = reserves_view(with_rows(rows, (), *CASH, account("card", "debt", 100)), Profile(), NOW)
+    assert [(f.month, f.money_in, f.money_out) for f in v.flows] == [("2026-08", 2150.0, 700.0),
+                                                                        ("2026-09", 2000.0, 300.0)]
+
+
+def test_cash_shares_and_a_debts_yearly_cost():
+    v = reserves_view(snap(*CASH, account("card", "debt", 500, rate_pct=20.0, limit=2000),
+                           account("loan", "debt", 1000), account("paid", "debt", -50, rate_pct=20.0)), Profile(), NOW)
+    assert [(c.id, c.share_pct) for c in v.cash] == [("savings", 70.0), ("checking", 30.0)]
+    assert {d.id: d.yearly_cost for d in v.debts} == {"card": 100.0, "loan": None, "paid": None}
+
+
+def test_the_demo_has_a_runway_with_its_band_and_three_months_of_flows(demo_reserves):
+    r = demo_reserves.runway
+    assert r is not None and r.months > 0 and r.days >= 80
+    assert (r.aim, r.low, r.high) == (6.0, 4.0, None)  # the demo's Cash runway target has no high end
+    assert len(demo_reserves.flows) >= 3
+    assert all(f.money_in >= 0 and f.money_out >= 0 for f in demo_reserves.flows)
+    assert demo_reserves.summary.startswith(
+        "$30,255.98 in cash after debts. At the pace money has left your cash these")
+

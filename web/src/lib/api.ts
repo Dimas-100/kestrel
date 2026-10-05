@@ -894,6 +894,7 @@ export interface CashLine {
   value: number
   rate_pct: number | null
   as_of: string
+  share_pct: number | null // of all the cash; null when there is none
 }
 
 export interface DebtLine {
@@ -905,6 +906,23 @@ export interface DebtLine {
   utilization_pct: number | null
   rate_pct: number | null
   as_of: string
+  yearly_cost: number | null // a year of interest at this balance and rate; null without a rate or a balance owed
+}
+
+export interface Runway {
+  months: number
+  monthly_out: number // what left the cash accounts over the window, scaled to a month
+  days: number // the window, from the oldest to the newest row on any cash account
+  since: string
+  aim: number | null // the band of the first ratio target whose label contains "runway"
+  low: number | null
+  high: number | null
+}
+
+export interface MonthFlow {
+  month: string // "2026-09"
+  money_in: number
+  money_out: number // as a positive amount
 }
 
 export interface Spread {
@@ -919,6 +937,9 @@ export interface Spread {
 
 export interface ReservesView {
   as_of: string
+  summary: string // the header's sentence: cash after debts, and how long it would last when the pace is known
+  runway: Runway | null
+  flows: MonthFlow[] // one per calendar month with rows on a cash account, ascending
   cash: CashLine[]
   debts: DebtLine[]
   totals: { cash: number; owed: number; net: number; utilization_pct: number | null }
