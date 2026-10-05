@@ -186,3 +186,19 @@ def test_the_streak_counts_weekdays_in_a_row_where_every_job_ran_and_none_failed
     assert activity_view(Snapshot(generated_at=NOW, runs=failed), UTC, NOW).streak_days == 2  # Thu 24, Fri 25
     assert activity_view(Snapshot(generated_at=NOW), UTC, NOW).streak_days == 0
 
+
+def test_the_streak_judges_a_job_only_from_the_day_its_history_starts_and_stops_where_history_ends():
+    def day(n, status="done", label="Morning run"):
+        return _at(-n, 9, 31, status, label)
+    week = [day(7), day(4), day(3), day(2), day(1), day(0)]
+    # a job the snapshot only knows from today (a feed that reports its latest run) doesn't break the earlier days
+    newcomer = week + [day(0, "done", "Data refresh")]
+    assert activity_view(Snapshot(generated_at=NOW, runs=newcomer), UTC, NOW).streak_days == 6
+    # a job seen since Monday that skipped Tuesday ends the streak there: Wed 23, Thu 24, Fri 25
+    gap = [day(7), day(4), day(2), day(1), day(0)] + [day(4, "done", "Evening run"), day(3, "done", "Evening run"),
+                                                      day(2, "done", "Evening run"), day(1, "done", "Evening run"),
+                                                      day(0, "done", "Evening run")]
+    assert activity_view(Snapshot(generated_at=NOW, runs=gap), UTC, NOW).streak_days == 3
+    # only today on record: the count stops where the history ends
+    assert activity_view(Snapshot(generated_at=NOW, runs=[day(0)]), UTC, NOW).streak_days == 1
+
