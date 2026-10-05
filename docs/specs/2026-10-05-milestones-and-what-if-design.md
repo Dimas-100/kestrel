@@ -47,9 +47,12 @@ design system allows a page; a reached goal's ring ends in the check and its car
 ### 2.4 The streak
 
 Activity's week panel says, in its subtitle, how many weekdays in a row every job has run: "Every job has run for 11
-weekdays in a row." Counted back from the last finished weekday across the runs the snapshot holds (a day counts
-when every job that ran that week ran that day and nothing failed); 0 is said as "The streak starts with tomorrow."
-The view supplies `streak_days`.
+weekdays in a row." Counted back from the last finished weekday across the runs the snapshot holds: a day counts
+when every job the grid knows by then ran that day and nothing failed or ran late. A job is judged only from the
+first day it appears, so a feed that reports a job's latest run alone (investing's refresh) never breaks the days
+before it, and the count stops where the history ends. 0 is said as "The streak starts with tomorrow." The view
+supplies `streak_days`. For the streak to mean anything the feeds must carry the week: webull's feed sends every run
+of the past week per job (2026-10-05), not only the latest.
 
 ## 3. What-if
 

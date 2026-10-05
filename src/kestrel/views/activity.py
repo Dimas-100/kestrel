@@ -132,19 +132,23 @@ def week_rows(runs: list[Run], today: dt.date, tz) -> list[WeekRow]:
 def streak_days(week: list[WeekRow]) -> int:
     """Weekdays in a row, counted back from today, on which every job in the week grid ran and none failed or ran
     late. A weekend day is skipped. Today is skipped, not counted and not a break, while any job is still due or
-    hasn't run yet; a past day with a job missing ends the streak."""
+    hasn't run yet. A job is judged only from the first day the grid knows it (a feed that reports a job's latest
+    run alone never breaks the days before); a past day with a known job missing ends the streak, and so does a day
+    before any job's history starts."""
     if not week:
         return 0
     days = [c.date for c in week[0].cells]
+    known_from = {row.label: next((c.date for c in row.cells if c.status is not None), None) for row in week}
     streak = 0
     for i in range(len(days) - 1, -1, -1):
         day = days[i]
         if day.weekday() >= 5:
             continue
-        statuses = [row.cells[i].status for row in week]
+        statuses = [row.cells[i].status for row in week
+                    if known_from[row.label] is not None and known_from[row.label] <= day]
         if i == len(days) - 1 and any(s is None or s == "due" for s in statuses):
             continue  # today isn't over
-        if any(s is None or s in ("failed", "late") for s in statuses):
+        if not statuses or any(s is None or s in ("failed", "late") for s in statuses):
             break
         streak += 1
     return streak
