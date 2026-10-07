@@ -67,7 +67,9 @@ describe('Strategy page, trade by trade', { timeout: 15_000 }, () => {
   it('plots yearly return against worst drop, labelled, with a table', async () => {
     renderApp('/strategies/rsi2')
     const worth = await findPanel('Is it worth it?')
-    expect(within(worth).getByText('Yearly return against the worst drop along the way')).toBeTruthy()
+    // every live point is measured over the book's own window, and the subtitle says so
+    expect(within(worth).getByText('Yearly return against the worst drop along the way · every live point since 25 Sep'))
+      .toBeTruthy()
     for (const text of ['Backtest', 'Real book', 'Long-term accounts', 'S&P 500', '+23.4%/yr · 2006–2020',
       '+19.0%/yr · 12 months']) {
       expect(within(worth).getByText(text)).toBeTruthy()
@@ -79,17 +81,22 @@ describe('Strategy page, trade by trade', { timeout: 15_000 }, () => {
     ])
   })
 
-  it('marks a book with under a year of history as early', async () => {
+  it('marks a book with under a year of history as early, and says why live points are missing', async () => {
     const points = strategyFixture.worth.points.map((p) => (p.key === 'book' ? { ...p, early: true, period: '7 months' } : p))
-    renderApp('/strategies/rsi2', withView({ ...strategyFixture, worth: { points } }))
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, worth: { ...strategyFixture.worth, points } }))
     const worth = await findPanel('Is it worth it?')
     expect(within(worth).getByText('+19.0%/yr · 7 months · early')).toBeTruthy()
+    const note = 'The real book sends no value history, so there is nothing to measure yet.'
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, worth: { points: points.slice(0, 1), window: '', note } }))
+    await waitFor(() => expect(document.body.textContent).toContain(note))
   })
 
-  it('sums up month by month against the long-term accounts', async () => {
+  it('sums up month by month against the long-term accounts over the same dates, partial months starred', async () => {
     renderApp('/strategies/rsi2')
     const monthly = await findPanel('Month by month')
-    expect(within(monthly).getByText('Real book against your long-term accounts')).toBeTruthy()
+    expect(within(monthly).getByText('Real book against your long-term accounts over the same dates · 1 partial month (*)'))
+      .toBeTruthy()
+    expect(monthly.textContent).toContain('Sep* partial') // the star, and its hidden word
     expect(monthly.textContent).toContain('Months ahead of long-term7 of 12')
     expect(monthly.textContent).toContain('Best month · Jan▲ up +6.9%')
     expect(monthly.textContent).toContain('Worst month · Apr▼ down −2.1%')
@@ -100,9 +107,14 @@ describe('Strategy page, trade by trade', { timeout: 15_000 }, () => {
   it('lists every closed trade, newest first, and sorts by return or P/L', async () => {
     renderApp('/strategies/rsi2')
     const all = await findPanel('All trades')
-    expect(within(all).getByText('Real book · 34 closed trades')).toBeTruthy()
+    expect(within(all).getByText('Real book · 34 closed trades · hand-placed and system-placed together')).toBeTruthy()
     expect(rows(all)).toHaveLength(34)
-    expect(rows(all)[0].textContent).toBe('HONreal10 Sep18 Sep8▼ down −8.01%−1.00▼ down −$225.72Stop')
+    // the newest trade: placed by the system both ways under v2.0, not scored yet
+    expect(rows(all)[0].textContent).toBe('HONreal10 Sep18 Sep8▼ down −8.01%−1.00▼ down −$225.72Stopsystemsystemv2.0—not scored')
+    const scored = rows(all).map((r) => r.textContent ?? '')
+    expect(scored.filter((t) => t.endsWith('followed the plan'))).toHaveLength(29)
+    expect(scored.filter((t) => t.includes('off-plan'))).toHaveLength(4)
+    expect(scored.filter((t) => t.includes('handhandv1.0'))).toHaveLength(27) // the hand-run weeks, kept on the book
     const closed = within(all).getByRole('columnheader', { name: 'Closed' })
     expect(closed.getAttribute('aria-sort')).toBe('descending')
     fireEvent.click(within(all).getByRole('button', { name: 'Return' }))

@@ -1,5 +1,7 @@
-"""The Strategy pages, computed from one Snapshot: how does a strategy trade, and is it behaving the way its
-backtest said it would?"""
+"""The Strategy pages, computed from one Snapshot: what is running, how it is doing, what needs you, what the next
+review needs — and, as before, how it trades and whether it is behaving the way its backtest said it would.
+
+Spec: docs/specs/2026-10-07-strategies-attention-design.md (over 2026-09-26 phase 3a)."""
 
 from __future__ import annotations
 
@@ -7,12 +9,31 @@ import datetime as dt
 import math
 from statistics import fmean
 from typing import Literal
+from urllib.parse import quote
 
-from ..contract import Bar, Book, Expected, Indicator, Money, Snapshot, Step, Trade, TradeChart, ValuePoint, WatchItem
-from ..metrics import expected_band, growth_index, max_drawdown_pct, sum_series
+from ..contract import (
+    Backtest,
+    Bar,
+    Book,
+    Criterion,
+    Decision,
+    Expected,
+    Indicator,
+    Money,
+    Position,
+    RuleVersion,
+    Run,
+    Snapshot,
+    Step,
+    Trade,
+    TradeChart,
+    ValuePoint,
+    WatchItem,
+)
+from ..metrics import expected_band, growth_index, max_drawdown_pct, opening_on, sum_series
 from ..profile import Profile
 from ._base import View
-from .home import MIN_TRADES_FOR_VERDICT, _book_rows
+from .home import MIN_TRADES_FOR_VERDICT, Attention, _book_rows
 
 BUCKET_LOW, BUCKETS = -10, 20  # 1-point buckets from -10% to +10%; returns beyond fold into the end buckets
 FUNNEL_FROM = 3  # the expected band starts at the third trade
@@ -21,9 +42,22 @@ SESSIONS = 40  # "Where the money works" looks at the last 40 sessions
 RECENT = 8  # trades listed beside the anatomy chart
 MONTHS = 12
 YEAR_DAYS, EARLY_DAYS = 365, 90  # a yearly figure needs 90 days of history; under a year it is "early"
+LIMITED_UNTIL = 30  # under this many closed trades a verdict is "limited evidence" (the plan judges over 30–50)
+STALE_SESSIONS = 3  # marks older than this many sessions are called out
+REVIEW_SOON_DAYS = 7  # a dated review within this many days is an attention item
+CYCLE_SPAN_DAYS = 4  # a cycle's evening queue and morning placement sit at most this far apart (a long weekend)
+CYCLE_ROWS = 60  # the most rows the page lists for one cycle
+KINDS = ("signal", "queued", "blocked", "placed", "filled", "expired", "cancelled", "skipped", "error")
 
 Verdict = Literal["in_band", "below", "above", "early", "none"]
 Status = Literal["ok", "above", "below", "early", "none"]
+Evidence = Literal["none", "early", "limited", "adequate"]
+EVIDENCE_WORDS = {
+    "none": "no closed trades yet",
+    "early": "too early to judge",
+    "limited": f"limited evidence; the plan judges the system over {LIMITED_UNTIL}–50",
+    "adequate": "enough to read a pattern",
+}
 
 
 class BookChip(View):
@@ -46,11 +80,15 @@ class StrategyCard(View):
     band_lo: float | None
     band_hi: float | None
     verdict: Verdict
+    evidence: Evidence  # how much the verdict rests on: the card words it with the sample
     # the primary book's closed trades at a glance, so a card that is too early to judge still says something
     win_rate: float | None  # percent of closed trades with a positive P&L
     avg_return_pct: float | None
-    pnl: float
+    pnl: float  # realized, closed trades
+    unrealized_pnl: float  # open positions at their last price
     last_closed: dt.date | None
+    attention: int  # serious and warning items on this strategy's page
+    review_text: str  # "12 of 20 trades · by 2 Nov" / "Decision review 30 Oct"
 
 
 class StrategiesView(View):
@@ -86,6 +124,8 @@ class Behaving(View):
     scorecard: list[ScoreRow]
     review_at: int | None
     other: OtherBook | None
+    evidence: Evidence
+    evidence_text: str  # "16 real trades so far — limited evidence; the plan judges the system over 30–50"
 
 
 class FunnelLine(View):
@@ -110,6 +150,11 @@ class Slots(View):
     working_pct: float | None  # the average in use as a share of the slots
     idle: int  # sessions with nothing in use
     watch: list[WatchItem]
+    # slots are not dollars: five small lots can fill every slot and a fraction of the money
+    deployed: float | None  # open positions at their last price
+    capital: float | None
+    deployed_pct: float | None  # deployed as a share of capital
+    note: str
 
 
 class RecentTrade(View):
@@ -153,13 +198,18 @@ class WorthPoint(View):
 
 class Worth(View):
     points: list[WorthPoint]
+    window: str  # the dates every live point is measured over ("since 13 Aug"), or ""
+    note: str  # why live points are missing, or ""
 
 
 class Month(View):
     month: str  # "2026-09"
     book: float | None  # the primary book's return that month, in percent
-    long_term: float | None
+    long_term: float | None  # the long-term accounts over the same dates as the book, when the book has any
     ahead: bool | None  # the book did better than the long-term accounts
+    partial: bool  # the book covered only part of the month (it started inside it, or the month is still running)
+    from_date: dt.date | None  # the dates the row measures: from the close before the first point to the last
+    to_date: dt.date | None
 
 
 class MonthFigure(View):
@@ -185,6 +235,114 @@ class TradeRow(View):
     r_multiple: float | None
     pnl: float
     exit_reason: str
+    entry_by: Literal["system", "hand"] | None
+    exit_by: Literal["system", "hand"] | None
+    rules_version: str
+    plan_followed: bool | None
+    note: str
+
+
+class ReviewProgress(View):
+    label: str
+    trades: int  # closed trades counted toward it (since `counted_since`)
+    at_trades: int | None
+    counted_since: dt.date | None
+    by: dt.date | None
+    days_left: int | None
+    due: bool
+    last_at: dt.date | None
+    last_note: str
+    criteria: list[Criterion]
+    doc: str
+    text: str  # one line: "12 of 20 trades · by 2 Nov"
+
+
+class Rules(View):
+    version: str
+    effective: dt.date | None
+    history: list[RuleVersion]  # oldest first
+    steps: list[Step]  # the flow
+    gates: list[Step]  # limits and circuit breakers
+    sizing: str
+
+
+class Performance(View):
+    book_id: str | None
+    money: Money | None
+    realized_pnl: float  # closed trades
+    unrealized_pnl: float  # open positions at their last price
+    total_pnl: float
+    capital: float | None  # what the figures are measured against
+    capital_basis: str  # what that is, in words
+    deployed: float  # open positions at their last price
+    deployed_pct: float | None
+    positions: int
+    stops_covered: int | None  # real books: positions with a stop on record; None for paper
+    stops_total: int | None
+    return_pct: float | None  # deposit-adjusted, since the history starts
+    drawdown_now_pct: float | None  # below the running peak now (<= 0)
+    drawdown_worst_pct: float | None  # the worst fall from a peak (<= 0)
+    since: dt.date | None
+    days: int | None
+    unavailable: list[str]  # a sentence per figure that can't be shown, and why
+
+
+class CycleRun(View):
+    label: str
+    status: str
+    time: dt.datetime
+    detail: str
+
+
+class CycleCount(View):
+    kind: str
+    count: int
+
+
+class Cycle(View):
+    book_id: str | None
+    session: dt.date | None  # the day the cycle ended on
+    rows: list[Decision]  # in time order
+    counts: list[CycleCount]  # per kind, in the cycle's order, only kinds present
+    runs: list[CycleRun]  # the book's latest run per label, then the next due
+    prices_as_of: dt.date | None
+    freshness: str  # "fresh", "2 sessions old", "not reported"
+    reported: bool  # the source sends this book's decisions
+
+
+class AdherenceRow(View):
+    version: str
+    effective: dt.date | None
+    summary: str
+    trades: int
+    system_entries: int
+    hand_entries: int
+    system_exits: int
+    hand_exits: int
+    followed: int
+    broken: int
+    unscored: int
+    system_run: bool  # under this version a hand entry or exit is a deviation
+
+
+class Deviation(View):
+    symbol: str
+    opened: dt.date
+    closed: dt.date
+    rules_version: str
+    what: str  # "Hand exit", "Scored off-plan: sold ahead of a print"
+
+
+class Adherence(View):
+    rows: list[AdherenceRow]  # oldest version first
+    deviations: list[Deviation]  # newest first
+    note: str
+    reported: bool  # the source says who placed its trades
+
+
+class Research(View):
+    expected: Expected | None
+    backtests: list[Backtest]  # this strategy's, newest first
 
 
 class StrategyView(View):
@@ -196,8 +354,15 @@ class StrategyView(View):
     primary: str | None  # the primary book's id
     toggle: bool  # a real and a paper book: the page offers Real | Paper
     expected: Expected | None
-    steps: list[Step]
+    steps: list[Step]  # the flow steps, as before (gates are in `rules`)
     sizing: str
+    attention: list[Attention]
+    review: ReviewProgress | None
+    rules: Rules
+    performance: Performance
+    cycle: Cycle
+    adherence: Adherence
+    research: Research
     behaving: Behaving
     funnel: Funnel
     slots: Slots
@@ -229,6 +394,21 @@ def _primary(books: list[Book], want: Money, counts: dict[str, int]) -> tuple[Bo
 def _chips(snapshot: Snapshot, books: list[Book], counts: dict[str, int]) -> list[BookChip]:
     return [BookChip(id=b.id, name=b.name, money=b.money, status=b.status, trades=counts[b.id],
                      open=sum(1 for p in snapshot.positions if p.book_id == b.id)) for b in books]
+
+
+def evidence(n: int) -> Evidence:
+    if n == 0:
+        return "none"
+    if n < MIN_TRADES_FOR_VERDICT:
+        return "early"
+    return "limited" if n < LIMITED_UNTIL else "adequate"
+
+
+def evidence_text(n: int, money: Money | None) -> str:
+    word = EVIDENCE_WORDS[evidence(n)]
+    if n == 0:
+        return word[0].upper() + word[1:]
+    return f"{n} {money or 'closed'} trade{'s' if n != 1 else ''} so far — {word}"
 
 
 def buckets(returns: list[float], distribution: list[float]) -> list[Bucket]:
@@ -343,18 +523,53 @@ def _history(snapshot: Snapshot, book_id: str) -> list[ValuePoint]:
     return list(next((s.points for s in snapshot.book_history if s.id == book_id), []))
 
 
-def _slots(snapshot: Snapshot, book: Book | None, trades: list[Trade], watch: list[WatchItem],
-           today: dt.date) -> Slots:
+def _deployed(positions: list[Position]) -> float:
+    return round(sum(p.quantity * p.last_price for p in positions), 2)
+
+
+def slots_used(trades: list[Trade], positions: list[Position], days: list[dt.date]) -> list[int]:
+    """Slots in use on each day. A lot is one (symbol, opened) — several closed slices of one fill count once; it
+    holds a slot from its open day up to, but not including, its close day (on the close day the slot is the
+    next lot's), and on the close day itself only when it opened and closed that day; an open position holds one
+    from its open day on."""
+    lots: dict[tuple[str, dt.date], dt.date | None] = {}
+    for t in trades:
+        key = (t.symbol, t.opened)
+        lots[key] = max(lots[key], t.closed) if lots.get(key) else t.closed
+    for p in positions:
+        lots[(p.symbol, p.opened)] = None  # still open: outlives any closed slice of the same lot
+    used = []
+    for d in days:
+        n = 0
+        for (_, opened), closed in lots.items():
+            if closed is None:
+                n += opened <= d
+            else:
+                n += opened <= d < closed or opened == closed == d
+        used.append(n)
+    return used
+
+
+def _slots(snapshot: Snapshot, book: Book | None, trades: list[Trade], positions: list[Position],
+           watch: list[WatchItem], today: dt.date) -> Slots:
+    deployed = _deployed(positions) if book else None
+    capital = book.capital if book else None
+    deployed_pct = round(deployed / capital * 100, 1) if deployed is not None and capital else None
+    note = ""
+    if book is not None and book.slots_total:
+        note = ("Slots are not dollars: a lot is sized by its own rule, so every slot can be in use with only part "
+                "of the money at work.")
     if book is None or book.slots_total is None:
         return Slots(book_id=book.id if book else None, total=None, days=[], used=[], avg_used=None,
-                     working_pct=None, idle=0, watch=watch)
+                     working_pct=None, idle=0, watch=watch, deployed=deployed, capital=capital,
+                     deployed_pct=deployed_pct, note=note)
     days = sorted({p.date for p in _history(snapshot, book.id)})[-SESSIONS:] or _weekdays_ending(today, SESSIONS)
-    opened = [p.opened for p in snapshot.positions if p.book_id == book.id]
-    used = [sum(1 for t in trades if t.opened <= d <= t.closed) + sum(1 for o in opened if o <= d) for d in days]
+    used = slots_used(trades, positions, days)
     avg = fmean(used)
     return Slots(book_id=book.id, total=book.slots_total, days=days, used=used, avg_used=round(avg, 1),
                  working_pct=round(avg / book.slots_total * 100, 1) if book.slots_total else None,
-                 idle=sum(1 for u in used if u == 0), watch=watch)
+                 idle=sum(1 for u in used if u == 0), watch=watch, deployed=deployed, capital=capital,
+                 deployed_pct=deployed_pct, note=note)
 
 
 def _key(book_id: str, symbol: str, opened: dt.date) -> str:
@@ -417,24 +632,42 @@ def _long_term(snapshot: Snapshot) -> list[ValuePoint]:
     return sum_series([history[a.id] for a in snapshot.accounts if a.category == "long_term" and a.id in history])
 
 
+def _day_label(day: dt.date) -> str:
+    return f"{day.day} {day.strftime('%b')}"
+
+
 def _worth(snapshot: Snapshot, profile: Profile, book: Book | None, expected: Expected | None) -> Worth:
+    """The backtest's point, and — only over the primary book's own window, so the dates match — the book, the
+    long-term accounts and the benchmark. Without 90 days of book history the live points are left out and the
+    note says so."""
     points: list[WorthPoint] = []
     if expected is not None and expected.cagr_pct is not None and expected.max_drawdown_pct is not None:
         points.append(WorthPoint(key="backtest", label="Backtest", period=expected.window, early=False,
                                  return_pct=expected.cagr_pct, drop_pct=abs(expected.max_drawdown_pct)))
+    history = _history(snapshot, book.id) if book else []
+    figure = yearly(history)
+    if book is None:
+        return Worth(points=points, window="", note="No book trades this strategy yet.")
+    if figure is None:
+        days = (history[-1].date - history[0].date).days if len(history) > 1 else 0
+        note = (f"The {book.money} book has {days} days of value history; a yearly figure needs {EARLY_DAYS}."
+                if history else f"The {book.money} book sends no value history, so there is nothing to measure yet.")
+        return Worth(points=points, window="", note=note)
+    start = history[0].date
     bench = snapshot.benchmark
     lines = [
-        ("book", f"{book.money.capitalize()} book" if book else "", _history(snapshot, book.id) if book else []),
-        ("long_term", "Long-term accounts", _long_term(snapshot)),
-        ("benchmark", bench.label if bench else profile.benchmark.label, list(bench.points) if bench else []),
+        ("book", f"{book.money.capitalize()} book", history),
+        ("long_term", "Long-term accounts", opening_on(_long_term(snapshot), start)),
+        ("benchmark", bench.label if bench else profile.benchmark.label,
+         opening_on(list(bench.points), start) if bench else []),
     ]
-    for key, label, history in lines:
-        figure = yearly(history)
-        if figure is not None:
-            ret, drop, days = figure
+    for key, label, line in lines:
+        measured = yearly(line)
+        if measured is not None:
+            ret, drop, days = measured
             points.append(WorthPoint(key=key, label=label, period=_period(days), early=days < YEAR_DAYS,
                                      return_pct=round(ret, 2), drop_pct=round(drop, 2)))
-    return Worth(points=points)
+    return Worth(points=points, window=f"since {_day_label(start)}", note="")
 
 
 def monthly_returns(points: list[ValuePoint]) -> dict[str, float]:
@@ -451,6 +684,32 @@ def monthly_returns(points: list[ValuePoint]) -> dict[str, float]:
     return out
 
 
+def monthly_spans(points: list[ValuePoint]) -> dict[str, tuple[dt.date, dt.date, dt.date]]:
+    """For each month a series covers: (the base date — the last point of the month before, or the first point —,
+    the last point of the month, the first point of the month)."""
+    out: dict[str, tuple[dt.date, dt.date, dt.date]] = {}
+    last: dt.date | None = None
+    for p in points:
+        month = p.date.strftime("%Y-%m")
+        if month not in out:
+            out[month] = (last or p.date, p.date, p.date)
+        else:
+            base, _, first = out[month]
+            out[month] = (base, p.date, first)
+        last = p.date
+    return out
+
+
+def _index_at(points: list[ValuePoint], index: list[float], day: dt.date) -> float | None:
+    """The growth index at the last point on or before `day`."""
+    value = None
+    for p, v in zip(points, index):
+        if p.date > day:
+            break
+        value = v
+    return value
+
+
 def _last_months(today: dt.date) -> list[str]:
     year, month = today.year, today.month
     out = []
@@ -460,13 +719,37 @@ def _last_months(today: dt.date) -> list[str]:
     return out[::-1]
 
 
+def _first_weekday(month: str) -> dt.date:
+    day = dt.date(int(month[:4]), int(month[5:]), 1)
+    while day.weekday() >= 5:
+        day += dt.timedelta(days=1)
+    return day
+
+
 def _monthly(snapshot: Snapshot, book: Book | None, today: dt.date) -> Monthly:
-    mine = monthly_returns(_history(snapshot, book.id)) if book else {}
-    theirs = monthly_returns(_long_term(snapshot))
+    """The book's months against the long-term accounts over the SAME dates: a book that started on the 14th is
+    compared with the long-term accounts from the 14th, and the row says it is partial."""
+    history = _history(snapshot, book.id) if book else []
+    mine = monthly_returns(history)
+    spans = monthly_spans(history)
+    theirs_points = _long_term(snapshot)
+    theirs_index = growth_index(theirs_points)
+    theirs_full = monthly_returns(theirs_points)
     months = []
     for m in _last_months(today):
-        a, b = mine.get(m), theirs.get(m)
-        months.append(Month(month=m, book=a, long_term=b, ahead=a > b if a is not None and b is not None else None))
+        a = mine.get(m)
+        partial = m == today.strftime("%Y-%m")
+        b = theirs_full.get(m)
+        from_date = to_date = None
+        if a is not None:
+            base, end, first = spans[m]
+            from_date, to_date = base, end
+            partial = partial or (history[0].date >= first and first > _first_weekday(m))
+            start_value, end_value = _index_at(theirs_points, theirs_index, base), _index_at(theirs_points,
+                                                                                               theirs_index, end)
+            b = round((end_value / start_value - 1) * 100, 2) if start_value and end_value is not None else None
+        months.append(Month(month=m, book=a, long_term=b, ahead=a > b if a is not None and b is not None else None,
+                            partial=partial, from_date=from_date, to_date=to_date))
     shown = [MonthFigure(month=m.month, value=m.book) for m in months if m.book is not None]
     return Monthly(months=months, ahead=sum(1 for m in months if m.ahead),
                    compared=sum(1 for m in months if m.ahead is not None),
@@ -474,23 +757,270 @@ def _monthly(snapshot: Snapshot, book: Book | None, today: dt.date) -> Monthly:
                    worst=min(shown, key=lambda f: f.value, default=None))
 
 
+# ---------------------------------------------------------------- the new sections (2026-10-07)
+
+def _review(strategy, trades: list[Trade], today: dt.date) -> ReviewProgress | None:
+    r = strategy.review
+    if r is None:
+        if strategy.review_at_trades is None:
+            return None
+        r_label, at, since, by, last_at, last_note, criteria, doc = (
+            "Strategy review", strategy.review_at_trades, None, None, None, "", [], "")
+    else:
+        r_label, at, since, by, last_at, last_note, criteria, doc = (
+            r.label or "Review", r.at_trades, r.counted_since, r.by, r.last_at, r.last_note, list(r.criteria), r.doc)
+    n = sum(1 for t in trades if since is None or t.closed >= since)
+    days_left = (by - today).days if by else None
+    due = (at is not None and n >= at) or (days_left is not None and days_left <= 0)
+    parts = []
+    if at is not None:
+        parts.append(f"{n} of {at} trades")
+    if by is not None:
+        parts.append(f"by {_day_label(by)}")
+    text = " · ".join(parts) if parts else r_label
+    if due:
+        text += " · due"
+    return ReviewProgress(label=r_label, trades=n, at_trades=at, counted_since=since, by=by, days_left=days_left,
+                          due=due, last_at=last_at, last_note=last_note, criteria=criteria, doc=doc, text=text)
+
+
+def _rules(strategy) -> Rules:
+    history = sorted(strategy.rules_history, key=lambda r: r.effective)
+    return Rules(version=strategy.rules_version, effective=strategy.rules_effective, history=history,
+                 steps=[s for s in strategy.steps if s.kind == "step"],
+                 gates=[s for s in strategy.steps if s.kind == "gate"], sizing=strategy.sizing)
+
+
+def _performance(snapshot: Snapshot, book: Book | None, trades: list[Trade], positions: list[Position]) -> Performance:
+    if book is None:
+        return Performance(book_id=None, money=None, realized_pnl=0.0, unrealized_pnl=0.0, total_pnl=0.0,
+                           capital=None, capital_basis="", deployed=0.0, deployed_pct=None, positions=0,
+                           stops_covered=None, stops_total=None, return_pct=None, drawdown_now_pct=None,
+                           drawdown_worst_pct=None, since=None, days=None,
+                           unavailable=["No book trades this strategy yet."])
+    realized = round(sum(t.pnl for t in trades), 2)
+    unrealized = round(sum((p.last_price - p.entry_price) * p.quantity for p in positions), 2)
+    deployed = _deployed(positions)
+    unavailable: list[str] = []
+    capital, basis = book.capital, book.capital_basis
+    if capital is None:
+        cost = round(sum(p.entry_price * p.quantity for p in positions), 2)
+        if cost > 0:
+            capital, basis = cost, "The cost of its open positions: the book sends no capital figure"
+        else:
+            unavailable.append("The book sends no capital figure, so deployed money has nothing to be measured "
+                               "against.")
+    history = _history(snapshot, book.id)
+    return_pct = now_dd = worst_dd = None
+    since = days = None
+    if len(history) >= 2:
+        idx = growth_index(history)
+        peak = max(idx)
+        return_pct = round((idx[-1] - 1) * 100, 2)
+        now_dd = round((idx[-1] / peak - 1) * 100, 2) if peak > 0 else None
+        worst_dd = round(max_drawdown_pct(idx), 2)
+        since, days = history[0].date, (history[-1].date - history[0].date).days
+    else:
+        unavailable.append(f"The {book.money} book sends no value history, so its drawdown and its return since "
+                           "the start can't be measured; the P&L above is what the trades and positions add up to.")
+    stops_covered = stops_total = None
+    if book.money == "real":
+        stops_total = len(positions)
+        stops_covered = sum(1 for p in positions if p.stop_price is not None or p.stop_resting is True)
+    return Performance(book_id=book.id, money=book.money, realized_pnl=realized, unrealized_pnl=unrealized,
+                       total_pnl=round(realized + unrealized, 2), capital=capital, capital_basis=basis,
+                       deployed=deployed, deployed_pct=round(deployed / capital * 100, 1) if capital else None,
+                       positions=len(positions), stops_covered=stops_covered, stops_total=stops_total,
+                       return_pct=return_pct, drawdown_now_pct=now_dd, drawdown_worst_pct=worst_dd, since=since,
+                       days=days, unavailable=unavailable)
+
+
+def _last_session(now: dt.datetime, tz: dt.tzinfo) -> dt.date:
+    """The last weekday whose close has passed (16:00 local), as a stand-in for the last trading session."""
+    local = now.astimezone(tz)
+    day = local.date()
+    if day.weekday() >= 5 or local.time() < dt.time(16, 0):
+        day -= dt.timedelta(days=1)
+    while day.weekday() >= 5:
+        day -= dt.timedelta(days=1)
+    return day
+
+
+def sessions_old(prices_as_of: dt.date, last_session: dt.date) -> int:
+    """Weekdays after `prices_as_of` up to and including `last_session` (0 when the marks are from it)."""
+    n, day = 0, prices_as_of
+    while day < last_session:
+        day += dt.timedelta(days=1)
+        n += day.weekday() < 5
+    return n
+
+
+def _freshness(book: Book | None, last_session: dt.date) -> str:
+    if book is None or book.prices_as_of is None:
+        return "not reported"
+    old = sessions_old(book.prices_as_of, last_session)
+    return "fresh" if old == 0 else f"{old} session{'s' if old != 1 else ''} old"
+
+
+def _cycle(snapshot: Snapshot, book: Book | None, now: dt.datetime, tz: dt.tzinfo) -> Cycle:
+    last_session = _last_session(now, tz)
+    if book is None:
+        return Cycle(book_id=None, session=None, rows=[], counts=[], runs=[], prices_as_of=None,
+                     freshness="not reported", reported=False)
+    mine = sorted((d for d in snapshot.decisions if d.book_id == book.id), key=lambda d: d.time)
+    rows: list[Decision] = []
+    session = None
+    if mine:
+        day = lambda d: d.time.astimezone(tz).date()  # noqa: E731
+        session = day(mine[-1])
+        earlier = [day(d) for d in mine if d.kind in ("signal", "queued") and day(d) < session]
+        start = session
+        if earlier and (session - earlier[-1]).days <= CYCLE_SPAN_DAYS:
+            start = earlier[-1]
+        rows = [d for d in mine if start <= day(d) <= session][-CYCLE_ROWS:]
+    counts = [CycleCount(kind=k, count=sum(1 for d in rows if d.kind == k)) for k in KINDS
+              if any(d.kind == k for d in rows)]
+    runs: list[CycleRun] = []
+    own = [r for r in snapshot.runs if r.book_id == book.id]
+    latest: dict[str, Run] = {}
+    for r in sorted((r for r in own if r.status in ("done", "failed", "late", "paused")), key=lambda r: r.time):
+        latest[r.label] = r
+    runs = [CycleRun(label=r.label, status=r.status, time=r.time, detail=r.detail)
+            for r in sorted(latest.values(), key=lambda r: r.time, reverse=True)]
+    due = sorted((r for r in own if r.status == "due"), key=lambda r: r.time)
+    if due:
+        runs.append(CycleRun(label=due[0].label, status="due", time=due[0].time, detail=due[0].detail))
+    return Cycle(book_id=book.id, session=session, rows=rows, counts=counts, runs=runs,
+                 prices_as_of=book.prices_as_of, freshness=_freshness(book, last_session), reported=bool(mine))
+
+
+def version_for(history: list[RuleVersion], opened: dt.date) -> RuleVersion | None:
+    """The rules in force on a day: the latest version effective on or before it."""
+    return next((r for r in sorted(history, key=lambda r: r.effective, reverse=True) if r.effective <= opened), None)
+
+
+BEFORE_RULES = "before written rules"
+
+
+def _adherence(strategy, trades: list[Trade]) -> Adherence:
+    history = sorted(strategy.rules_history, key=lambda r: r.effective)
+    reported = any(t.entry_by is not None for t in trades)
+    any_system = any(t.entry_by == "system" for t in trades)
+    groups: dict[str, list[Trade]] = {}
+    for t in trades:
+        v = version_for(history, t.opened)
+        groups.setdefault(v.version if v else BEFORE_RULES, []).append(t)
+    rows: list[AdherenceRow] = []
+    deviations: list[Deviation] = []
+    versions = [(BEFORE_RULES, None, "")] if BEFORE_RULES in groups else []
+    versions += [(r.version, r.effective, r.summary) for r in history]
+    for i, (version, effective, summary) in enumerate(versions):
+        mine = groups.get(version, [])
+        if not mine and effective is None:
+            continue
+        # every written version after the first is system-run, when the book has system entries at all
+        system_run = any_system and effective is not None and version != history[0].version
+        rows.append(AdherenceRow(
+            version=version, effective=effective, summary=summary, trades=len(mine),
+            system_entries=sum(t.entry_by == "system" for t in mine),
+            hand_entries=sum(t.entry_by == "hand" for t in mine),
+            system_exits=sum(t.exit_by == "system" for t in mine), hand_exits=sum(t.exit_by == "hand" for t in mine),
+            followed=sum(t.plan_followed is True for t in mine), broken=sum(t.plan_followed is False for t in mine),
+            unscored=sum(t.plan_followed is None for t in mine), system_run=system_run))
+        for t in mine:
+            what = []
+            if system_run and t.entry_by == "hand":
+                what.append("Hand entry")
+            if system_run and t.exit_by == "hand":
+                what.append("Hand exit")
+            if t.plan_followed is False:
+                what.append(f"Scored off-plan: {t.note}" if t.note else "Scored off-plan")
+            if what:
+                deviations.append(Deviation(symbol=t.symbol, opened=t.opened, closed=t.closed, rules_version=version,
+                                            what=" · ".join(what)))
+    deviations.sort(key=lambda d: (d.closed, d.opened, d.symbol), reverse=True)
+    note = ("Each trade is judged against the rules in force when it was entered. Before the system placed the "
+            "entries, a hand entry was how the rules were run; after that, a hand entry or exit is a deviation. "
+            "A scored verdict is the desk's own, never recomputed here.") if reported else \
+        "This source doesn't say who placed its trades, so adherence can't be judged."
+    return Adherence(rows=rows, deviations=deviations, note=note, reported=reported)
+
+
+def _research(snapshot: Snapshot, strategy) -> Research:
+    mine = sorted((b for b in snapshot.backtests if b.strategy_id == strategy.id), key=lambda b: b.at, reverse=True)
+    return Research(expected=strategy.expected, backtests=mine)
+
+
+def _attention(snapshot: Snapshot, strategy, books: list[Book], primary: Book | None, trades: list[Trade],
+               review: ReviewProgress | None, now: dt.datetime, tz: dt.tzinfo) -> list[Attention]:
+    page = f"/strategies/{quote(strategy.id, safe='')}"
+    ids = {b.id for b in books}
+    items: list[Attention] = []
+    for b in books:
+        if b.money != "real":
+            continue
+        for p in snapshot.positions:
+            if p.book_id == b.id and p.stop_price is None and p.stop_resting is not True:
+                items.append(Attention(level="serious", title=f"{p.symbol} has no resting stop",
+                                       detail=f"{b.name} · real — no protective stop on record",
+                                       link=f"/books/{quote(b.id, safe='')}"))
+    for a in snapshot.alerts:
+        if a.link == page or any(a.link == f"/books/{quote(b_id, safe='')}" for b_id in ids):
+            items.append(Attention(level=a.level, title=a.title, detail=a.detail, link=a.link))
+    for r in snapshot.runs:
+        if r.book_id in ids and r.status in ("late", "failed"):
+            when = r.time.astimezone(tz).strftime("%a %H:%M")
+            items.append(Attention(level="warning", title=f"{r.label} {r.status} {when}", detail=r.detail,
+                                   link="/activity"))
+    last_session = _last_session(now, tz)
+    for b in books:
+        has_positions = any(p.book_id == b.id for p in snapshot.positions)
+        if b.prices_as_of is not None and has_positions and sessions_old(b.prices_as_of, last_session) > STALE_SESSIONS:
+            items.append(Attention(level="warning", title=f"{b.name}'s marks are from {_day_label(b.prices_as_of)}",
+                                   detail=f"{sessions_old(b.prices_as_of, last_session)} sessions old · "
+                                   "the P&L and stops below rest on them", link=page))
+    if review is not None:
+        if review.due:
+            items.append(Attention(level="note", title=f"{review.label} is due", detail=review.text, link=page))
+        elif review.days_left is not None and review.days_left <= REVIEW_SOON_DAYS:
+            items.append(Attention(level="note", title=f"{review.label} in {review.days_left} days",
+                                   detail=review.text, link=page))
+    for b in books:
+        if b.status != "running":
+            items.append(Attention(level="note", title=f"{b.name} ({b.money}) is {b.status}", detail="", link=page))
+    if primary is not None and len(trades) < LIMITED_UNTIL:
+        items.append(Attention(level="note", title=evidence_text(len(trades), primary.money),
+                               detail="Verdicts on this page rest on a small sample", link=page))
+    order = {"serious": 0, "warning": 1, "note": 2}
+    return sorted(items, key=lambda a: order[a.level])
+
+
 def strategies_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> StrategiesView:
     rows = {r.id: r for r in _book_rows(snapshot)}
     counts = {b.id: rows[b.id].trades for b in snapshot.books}
+    today = now.astimezone(profile.tz).date()
     cards = []
     for s in snapshot.strategies:
         books = [b for b in snapshot.books if b.strategy_id == s.id]
         primary, _ = _primary(books, "real", counts)
         row = rows[primary.id] if primary else None
         mine = closed_trades(snapshot, primary.id) if primary else []
+        positions = [p for p in snapshot.positions if primary and p.book_id == primary.id]
+        review = _review(s, mine, today)
+        attention = _attention(snapshot, s, books, primary, mine, review, now, profile.tz)
         cards.append(StrategyCard(
             id=s.id, name=s.name, summary=s.summary, books=_chips(snapshot, books, counts),
             book=primary.money if primary else None, trades=row.trades if row else 0,
             per_trade_pct=row.per_trade_pct if row else None, band_lo=row.band_lo if row else None,
             band_hi=row.band_hi if row else None, verdict=row.verdict if row else "none",
+            evidence=evidence(len(mine)),
             win_rate=round(100 * sum(t.pnl > 0 for t in mine) / len(mine), 1) if mine else None,
             avg_return_pct=round(sum(t.return_pct for t in mine) / len(mine), 3) if mine else None,
-            pnl=round(sum(t.pnl for t in mine), 2), last_closed=mine[-1].closed if mine else None,
+            pnl=round(sum(t.pnl for t in mine), 2),
+            unrealized_pnl=round(sum((p.last_price - p.entry_price) * p.quantity for p in positions), 2),
+            last_closed=mine[-1].closed if mine else None,
+            attention=sum(1 for a in attention if a.level != "note"),
+            review_text=review.text if review else "",
         ))
     return StrategiesView(strategies=cards)
 
@@ -507,25 +1037,37 @@ def strategy_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, strate
     counts = {b_id: len(trades) for b_id, trades in closed.items()}
     primary, other = _primary(books, book, counts)
     mine = closed[primary.id] if primary else []
+    positions = [p for p in snapshot.positions if primary and p.book_id == primary.id]
     expected = strategy.expected
     lines = [FunnelLine(book_id=b.id, money=b.money, values=running_mean(closed[b.id]))
              for b in (primary, other) if b is not None and closed[b.id]]
+    review = _review(strategy, mine, today)
     return StrategyView(
         id=strategy.id, name=strategy.name, summary=strategy.summary, books=_chips(snapshot, books, counts),
         book=primary.money if primary else None, primary=primary.id if primary else None,
-        toggle={b.money for b in books} == {"real", "paper"}, expected=expected, steps=list(strategy.steps),
-        sizing=strategy.sizing,
+        toggle={b.money for b in books} == {"real", "paper"}, expected=expected,
+        steps=[s for s in strategy.steps if s.kind == "step"], sizing=strategy.sizing,
+        attention=_attention(snapshot, strategy, books, primary, mine, review, now, profile.tz),
+        review=review, rules=_rules(strategy),
+        performance=_performance(snapshot, primary, mine, positions),
+        cycle=_cycle(snapshot, primary, now, profile.tz),
+        adherence=_adherence(strategy, mine),
+        research=_research(snapshot, strategy),
         behaving=Behaving(
             trades=len(mine), buckets=buckets([t.return_pct for t in mine], expected.distribution if expected else []),
-            scorecard=_scorecard(mine, expected, primary, today), review_at=strategy.review_at_trades,
+            scorecard=_scorecard(mine, expected, primary, today),
+            review_at=review.at_trades if review else None,
             other=_other_book(other, closed[other.id] if other else []),
+            evidence=evidence(len(mine)), evidence_text=evidence_text(len(mine), primary.money if primary else None),
         ),
         funnel=_funnel(lines, expected),
-        slots=_slots(snapshot, primary, mine, list(strategy.watch), today),
+        slots=_slots(snapshot, primary, mine, positions, list(strategy.watch), today),
         anatomy=_anatomy(snapshot, primary, mine),
         worth=_worth(snapshot, profile, primary, expected),
         monthly=_monthly(snapshot, primary, today),
         trades=[TradeRow(symbol=t.symbol, money=primary.money, opened=t.opened, closed=t.closed,
                          days_held=(t.closed - t.opened).days, return_pct=t.return_pct, r_multiple=t.r_multiple,
-                         pnl=t.pnl, exit_reason=t.exit_reason) for t in mine[::-1]] if primary else [],
+                         pnl=t.pnl, exit_reason=t.exit_reason, entry_by=t.entry_by, exit_by=t.exit_by,
+                         rules_version=t.rules_version, plan_followed=t.plan_followed, note=t.note)
+                for t in mine[::-1]] if primary else [],
     )

@@ -27,7 +27,7 @@ function AnatomyPanel({ v, selected }: { v: StrategyView; selected: string | nul
   const trade = v.anatomy.recent.find((r) => r.key === selected)
   const chart = v.anatomy.charts.find((c) => c.key === selected)
   return (
-    <Panel id="anatomy" title="Trade anatomy" span={8} height={452}
+    <Panel id="anatomy" title="Trade anatomy" span={7} height={452}
       subtitle={trade && `${trade.symbol} · ${trade.money} · bought ${shortDate(trade.opened)}, sold ${shortDate(trade.closed)}`
         + ` · ${trade.exit_reason || 'closed'}`}
       actions={trade && chart && <>

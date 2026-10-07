@@ -1,13 +1,20 @@
 // One strategy: how it trades and whether it is behaving the way its backtest said it would.
 import { BookMark, Seg } from '../../components/bits'
-import { type Expected, HttpError, type Money, type StrategyView, useStrategy } from '../../lib/api'
+import { type Expected, HttpError, type Money, type StrategyView, useShell, useStrategy } from '../../lib/api'
+import { monthLabel } from '../../lib/format'
 import { Soon } from '../Soon'
 import { BookChips, MONEY_WORD } from '../strategies/Strategies'
+import { AdherencePanel } from './AdherencePanel'
 import { AnatomySection } from './Anatomy'
+import { StrategyAttentionPanel } from './AttentionPanel'
 import { BehavingPanel, ScorecardPanel } from './Behaving'
+import { CyclePanel } from './CyclePanel'
 import { FunnelPanel } from './FunnelPanel'
 import { HowItTrades } from './HowItTrades'
 import { MonthlyPanel } from './MonthlyPanel'
+import { PerformancePanel } from './PerformancePanel'
+import { ResearchPanel } from './ResearchPanel'
+import { ReviewPanel } from './ReviewPanel'
 import { SlotsPanel } from './SlotsPanel'
 import { TradesPanel } from './TradesPanel'
 import { WorthPanel } from './WorthPanel'
@@ -32,6 +39,9 @@ function Header({ v, onBook }: { v: StrategyView; onBook: (book: Money) => void 
         <div className="flex flex-wrap items-center gap-2">
           <BookChips books={v.books} />
           {v.expected && <span className="chip"><BookMark kind="expected" />{backtestText(v.expected)}</span>}
+          {v.rules.version && (
+            <span className="chip">Rules {v.rules.version}{v.rules.effective && ` · since ${monthLabel(v.rules.effective, true)}`}</span>
+          )}
         </div>
       </div>
       {v.toggle && v.book && (
@@ -46,6 +56,8 @@ function Header({ v, onBook }: { v: StrategyView; onBook: (book: Money) => void 
 
 export function Strategy({ id, book, onBook }: { id: string; book: Money; onBook: (book: Money) => void }) {
   const strategy = useStrategy(id, book)
+  const shell = useShell()
+  const tz = shell.data?.app.timezone ?? 'UTC'
   if (strategy.isPending) return <p className="text-ink3" role="status">Loading the strategy…</p>
   if (!strategy.data) {
     if (strategy.error instanceof HttpError && strategy.error.status === 404) {
@@ -58,13 +70,19 @@ export function Strategy({ id, book, onBook }: { id: string; book: Money; onBook
     <>
       <Header v={v} onBook={onBook} />
       <div className="grid12">
-        <HowItTrades steps={v.steps} sizing={v.sizing} />
-        <BehavingPanel v={v} />
+        <StrategyAttentionPanel items={v.attention} />
+        <ReviewPanel review={v.review} />
+        <PerformancePanel p={v.performance} />
+        <HowItTrades rules={v.rules} />
+        <CyclePanel c={v.cycle} tz={tz} />
         <ScorecardPanel v={v} />
+        <BehavingPanel v={v} />
         <FunnelPanel v={v} />
         <SlotsPanel v={v} />
         {/* keyed by book: switching Real | Paper starts again from that book's newest charted trade */}
         <AnatomySection key={v.primary ?? 'none'} v={v} />
+        <AdherencePanel a={v.adherence} />
+        <ResearchPanel r={v.research} tz={tz} />
         <WorthPanel v={v} />
         <MonthlyPanel v={v} />
         <TradesPanel v={v} />

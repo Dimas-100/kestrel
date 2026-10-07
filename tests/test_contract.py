@@ -295,3 +295,65 @@ def test_transactions_default_empty_round_trip_and_merge():
     assert bare.transactions[0].counterparty == "" and bare.transactions[0].category == ""
     merged = merge([snap, bare], generated_at=NOW)
     assert [t.account_id for t in merged.transactions] == ["checking", "card"]
+
+
+def test_the_strategy_facts_round_trip_and_default():
+    """2026-10-07 strategies spec §2: rules versions, a review with criteria, the expected basis, trade origin and
+    scoring, a book's capital basis and a decision cycle all load; a document without them loads unchanged."""
+    doc = minimal(
+        strategies=[{"id": "s", "name": "S", "rules_version": "v2.1", "rules_effective": "2026-10-05",
+                     "rules_history": [{"version": "v1.0", "effective": "2026-06-05", "summary": "by hand"}],
+                     "review": {"label": "System review", "at_trades": 20, "counted_since": "2026-10-02",
+                                "by": "2026-11-02", "last_at": "2026-10-02", "last_note": "rewritten",
+                                "criteria": [{"key": "pf", "label": "Plan followed", "target": ">= 90%",
+                                              "value": "100%", "status": "pass"}], "doc": "swing plan v2.1"},
+                     "steps": [{"label": "Regime", "title": "No entries risk-off", "text": "SPY under its 200-day",
+                                "kind": "gate"}],
+                     "expected": {"win_rate": 70, "avg_trade_pct": 0.84, "avg_win_pct": 2.4, "avg_loss_pct": -2.3,
+                                  "trades_per_month": 13, "sd_trade_pct": 3.1, "stage": "re-vet",
+                                  "config": "28 names", "sizing": "$6,000 lots", "costs": "none modelled",
+                                  "sample": "3,221 trades", "caveats": ["fixed lots"]}}],
+        books=[{"id": "b", "name": "B", "money": "real", "strategy_id": "s", "status": "running",
+                "started": "2026-08-13", "value": 1, "capital": 3500.0, "capital_basis": "net liq",
+                "prices_as_of": "2026-10-06"}],
+        trades=[{"book_id": "b", "symbol": "X", "opened": "2026-10-01", "closed": "2026-10-03", "entry_price": 1,
+                 "exit_price": 1.1, "quantity": 1, "pnl": 0.1, "return_pct": 10, "entry_by": "system",
+                 "exit_by": "hand", "rules_version": "v2.0", "plan_followed": False, "note": "sold ahead of a print"}],
+        decisions=[{"book_id": "b", "time": NOW.isoformat(), "kind": "blocked", "symbol": "X", "side": "buy",
+                    "detail": "slots full", "value": 6.5, "label": "RSI(2)"}],
+        backtests=[{"id": "r", "name": "R", "verdict": "pass", "at": NOW.isoformat(), "config": "c", "sizing": "s",
+                    "costs": "k", "sample": "n", "caveats": ["x"], "cagr_pct": 4.6}],
+    )
+    snap = Snapshot.model_validate(doc)
+    s, b, t, d, r = snap.strategies[0], snap.books[0], snap.trades[0], snap.decisions[0], snap.backtests[0]
+    assert (s.rules_version, s.rules_history[0].version, s.review.at_trades, s.review.criteria[0].status) == \
+        ("v2.1", "v1.0", 20, "pass")
+    assert s.steps[0].kind == "gate" and s.expected.caveats == ["fixed lots"]
+    assert (b.capital, b.capital_basis, b.prices_as_of) == (3500.0, "net liq", dt.date(2026, 10, 6))
+    assert (t.entry_by, t.exit_by, t.rules_version, t.plan_followed) == ("system", "hand", "v2.0", False)
+    assert (d.kind, d.side, d.value, d.label) == ("blocked", "buy", 6.5, "RSI(2)")
+    assert (r.cagr_pct, r.caveats) == (4.6, ["x"])
+    assert Snapshot.model_validate(doc).model_dump() == snap.model_dump()
+
+    old = Snapshot.model_validate(minimal(
+        strategies=[{"id": "s", "name": "S", "steps": [{"label": "Entry", "title": "t", "text": "x"}]}],
+        books=[{"id": "b", "name": "B", "money": "real", "strategy_id": "s", "status": "running",
+                "started": "2026-08-13", "value": 1}],
+        trades=[{"book_id": "b", "symbol": "X", "opened": "2026-10-01", "closed": "2026-10-03", "entry_price": 1,
+                 "exit_price": 1.1, "quantity": 1, "pnl": 0.1, "return_pct": 10}]))
+    assert old.strategies[0].review is None and old.strategies[0].steps[0].kind == "step"
+    assert old.books[0].capital is None and old.trades[0].plan_followed is None and old.decisions == []
+
+
+def test_a_decision_needs_a_known_kind_and_side():
+    with pytest.raises(ValidationError):
+        Snapshot.model_validate(minimal(decisions=[{"book_id": "b", "time": NOW.isoformat(), "kind": "guessed"}]))
+    with pytest.raises(ValidationError):
+        Snapshot.model_validate(minimal(decisions=[{"book_id": "b", "time": NOW.isoformat(), "kind": "queued",
+                                                    "side": "short"}]))
+
+
+def test_merge_carries_decisions():
+    a = Snapshot.model_validate(minimal(decisions=[{"book_id": "b", "time": NOW.isoformat(), "kind": "queued"}]))
+    b = Snapshot.model_validate(minimal())
+    assert len(merge([a, b], NOW).decisions) == 1

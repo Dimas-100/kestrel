@@ -5,6 +5,7 @@ import { Panel, Seg } from '../../components/bits'
 import type { StrategyView } from '../../lib/api'
 import { pct } from '../../lib/format'
 import { MONEY_WORD } from '../strategies/Strategies'
+import { sparse } from './Behaving'
 
 const VIEWS = ['Chart', 'Table'] as const
 
@@ -21,9 +22,11 @@ export function FunnelPanel({ v }: { v: StrategyView }) {
     endLabel: `${MONEY_WORD[l.money]} ${pct(l.values[l.values.length - 1], 2)}`,
   }))
   const band = f.expected != null ? { lo: f.lo, hi: f.hi, label: 'Expected range' } : undefined
+  const thin = sparse(v.behaving.evidence)
   return (
-    <Panel id="funnel" title="Average per trade, as trades add up" span={6} height={372}
-      subtitle={band ? 'If the edge is real, the line settles inside the funnel' : 'The running average of every closed trade'}
+    <Panel id="funnel" title="Average per trade, as trades add up" span={5} height={thin ? 372 : 412}
+      subtitle={thin ? `${n} trades: the funnel is still wide — early readings swing`
+        : band ? 'If the edge is real, the line settles inside the funnel' : 'The running average of every closed trade'}
       actions={n > 0 && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
       {n === 0 ? (
         <Empty>No closed trades yet.</Empty>

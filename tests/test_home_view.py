@@ -121,7 +121,7 @@ def test_the_comparison_is_year_to_date_with_three_aligned_lines(demo_home):
     assert all(len(line.values) == len(c.dates) for line in c.lines)
     assert c.lines[0].values[0] == 0.0
     assert c.gap_pts == pytest.approx(c.lines[0].return_pct - c.lines[1].return_pct, abs=0.01)
-    assert c.real_trades == 34 and c.review_at == 50
+    assert c.real_trades == 34 and c.review_at == 20
 
 
 def test_attention_is_ordered_serious_warning_note(demo_home):

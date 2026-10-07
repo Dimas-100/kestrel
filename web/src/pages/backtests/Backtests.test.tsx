@@ -15,6 +15,7 @@ function bt(over: Partial<Backtest>): Backtest {
   return {
     id: 'x', name: 'X', family: 'Fam', window: 'develop', verdict: 'pass', at: '2026-09-20T00:00:00Z',
     strategy_id: null, trades: 10, avg_trade_pct: 0.5, t_stat: 2.5, calmar: 1, max_drawdown_pct: -5, note: '',
+    cagr_pct: null, config: '', sizing: '', costs: '', sample: '', caveats: [],
     ...over,
   }
 }

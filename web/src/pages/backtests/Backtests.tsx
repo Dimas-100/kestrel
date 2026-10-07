@@ -35,6 +35,11 @@ function NoteLine({ note }: { note: string }) {
   return <div className="text-[11px] text-ink3 mt-0.5">{note}</div>
 }
 
+/** "28 names, next-open fills · $6,000 lots · no costs · 3,221 trades" — what a result rests on, or "" */
+export function basisLine(b: Backtest): string {
+  return [b.config, b.sizing, b.costs, b.sample].filter(Boolean).join(' · ')
+}
+
 /** Whether a row belongs under the all/passed/failed filter. */
 export function matchesRowFilter(verdict: BacktestVerdict, filter: RowFilter): boolean {
   if (filter === 'passed') return verdict === 'pass'
@@ -139,7 +144,13 @@ function ResultsPanel({ rows, tz }: { rows: Backtest[]; tz: string }) {
             <tbody>
               {shown.map((b) => (
                 <tr key={b.id}>
-                  <td className="font-medium">{b.name}</td>
+                  <td>
+                    <div className="font-medium">{b.name}</div>
+                    {basisLine(b) && <div className="text-[11px] text-ink3 [overflow-wrap:anywhere]">{basisLine(b)}</div>}
+                    {b.caveats.length > 0 && (
+                      <div className="text-[11px] text-ink3 [overflow-wrap:anywhere]">Caveats: {b.caveats.join('; ')}</div>
+                    )}
+                  </td>
                   <td className="text-ink2">{b.family || <Missing />}</td>
                   <td className="capitalize text-ink2">{b.window || <Missing />}</td>
                   <td><VerdictChip verdict={b.verdict} /><NoteLine note={b.note} /></td>

@@ -98,7 +98,7 @@ def test_the_scorecard_and_the_other_book_on_demo_data(demo):
     view = strategy_view(demo, DEMO_PROFILE, NOW, "rsi2", "real")
     b = view.behaving
     real = [t.return_pct for t in demo.trades if t.book_id == "rsi2-real"]
-    assert b.trades == 34 and sum(x.count for x in b.buckets) == 34 and b.review_at == 50
+    assert b.trades == 34 and sum(x.count for x in b.buckets) == 34 and b.review_at == 20
     rows = {r.key: r for r in b.scorecard}
     assert list(rows) == ["win_rate", "avg_trade", "avg_win", "avg_loss", "per_month"]
     assert [r.label for r in b.scorecard] == ["Win rate", "Average per trade", "Average win", "Average loss",

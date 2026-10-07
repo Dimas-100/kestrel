@@ -188,11 +188,17 @@ export interface StrategyCard {
   band_lo: number | null
   band_hi: number | null
   verdict: Verdict
+  evidence: Evidence
   win_rate: number | null
   avg_return_pct: number | null
   pnl: number
+  unrealized_pnl: number
   last_closed: string | null
+  attention: number
+  review_text: string
 }
+
+export type Evidence = 'none' | 'early' | 'limited' | 'adequate'
 
 export interface StrategiesView {
   strategies: StrategyCard[]
@@ -203,6 +209,22 @@ export interface Step {
   title: string
   text: string
   params: string[]
+  kind: 'step' | 'gate'
+}
+
+export interface RuleVersion {
+  version: string
+  effective: string
+  summary: string
+}
+
+export interface Criterion {
+  key: string
+  label: string
+  measure: string
+  target: string
+  value: string
+  status: 'pass' | 'fail' | 'pending' | 'info'
 }
 
 export interface Expected {
@@ -217,6 +239,12 @@ export interface Expected {
   window: string
   cagr_pct: number | null
   max_drawdown_pct: number | null
+  stage: string
+  config: string
+  sizing: string
+  costs: string
+  sample: string
+  caveats: string[]
 }
 
 export interface Bucket {
@@ -248,6 +276,8 @@ export interface Behaving {
   scorecard: ScoreRow[]
   review_at: number | null
   other: OtherBook | null
+  evidence: Evidence
+  evidence_text: string
 }
 
 export interface FunnelLine {
@@ -279,6 +309,10 @@ export interface Slots {
   working_pct: number | null
   idle: number
   watch: WatchItem[]
+  deployed: number | null
+  capital: number | null
+  deployed_pct: number | null
+  note: string
 }
 
 export interface RecentTrade {
@@ -339,6 +373,9 @@ export interface Month {
   book: number | null
   long_term: number | null
   ahead: boolean | null
+  partial: boolean
+  from_date: string | null
+  to_date: string | null
 }
 
 export interface Monthly {
@@ -359,6 +396,123 @@ export interface TradeRow {
   r_multiple: number | null
   pnl: number
   exit_reason: string
+  entry_by: 'system' | 'hand' | null
+  exit_by: 'system' | 'hand' | null
+  rules_version: string
+  plan_followed: boolean | null
+  note: string
+}
+
+export interface ReviewProgress {
+  label: string
+  trades: number
+  at_trades: number | null
+  counted_since: string | null
+  by: string | null
+  days_left: number | null
+  due: boolean
+  last_at: string | null
+  last_note: string
+  criteria: Criterion[]
+  doc: string
+  text: string
+}
+
+export interface Rules {
+  version: string
+  effective: string | null
+  history: RuleVersion[]
+  steps: Step[]
+  gates: Step[]
+  sizing: string
+}
+
+export interface Performance {
+  book_id: string | null
+  money: Money | null
+  realized_pnl: number
+  unrealized_pnl: number
+  total_pnl: number
+  capital: number | null
+  capital_basis: string
+  deployed: number
+  deployed_pct: number | null
+  positions: number
+  stops_covered: number | null
+  stops_total: number | null
+  return_pct: number | null
+  drawdown_now_pct: number | null
+  drawdown_worst_pct: number | null
+  since: string | null
+  days: number | null
+  unavailable: string[]
+}
+
+export type DecisionKind = 'signal' | 'queued' | 'blocked' | 'placed' | 'filled' | 'expired' | 'cancelled' | 'skipped'
+  | 'error'
+
+export interface Decision {
+  book_id: string
+  time: string
+  kind: DecisionKind
+  symbol: string
+  side: 'buy' | 'sell' | ''
+  detail: string
+  value: number | null
+  label: string
+}
+
+export interface CycleRun {
+  label: string
+  status: string
+  time: string
+  detail: string
+}
+
+export interface Cycle {
+  book_id: string | null
+  session: string | null
+  rows: Decision[]
+  counts: { kind: DecisionKind; count: number }[]
+  runs: CycleRun[]
+  prices_as_of: string | null
+  freshness: string
+  reported: boolean
+}
+
+export interface AdherenceRow {
+  version: string
+  effective: string | null
+  summary: string
+  trades: number
+  system_entries: number
+  hand_entries: number
+  system_exits: number
+  hand_exits: number
+  followed: number
+  broken: number
+  unscored: number
+  system_run: boolean
+}
+
+export interface Deviation {
+  symbol: string
+  opened: string
+  closed: string
+  rules_version: string
+  what: string
+}
+
+export interface Adherence {
+  rows: AdherenceRow[]
+  deviations: Deviation[]
+  note: string
+  reported: boolean
+}
+
+export interface Research {
+  expected: Expected | null
+  backtests: Backtest[]
 }
 
 export interface StrategyView {
@@ -372,11 +526,18 @@ export interface StrategyView {
   expected: Expected | null
   steps: Step[]
   sizing: string
+  attention: Attention[]
+  review: ReviewProgress | null
+  rules: Rules
+  performance: Performance
+  cycle: Cycle
+  adherence: Adherence
+  research: Research
   behaving: Behaving
   funnel: Funnel
   slots: Slots
   anatomy: Anatomy
-  worth: { points: WorthPoint[] }
+  worth: { points: WorthPoint[]; window: string; note: string }
   monthly: Monthly
   trades: TradeRow[]
 }
@@ -675,6 +836,12 @@ export interface Backtest {
   calmar: number | null
   max_drawdown_pct: number | null
   note: string
+  cagr_pct: number | null
+  config: string
+  sizing: string
+  costs: string
+  sample: string
+  caveats: string[]
 }
 
 export interface BacktestTotals {

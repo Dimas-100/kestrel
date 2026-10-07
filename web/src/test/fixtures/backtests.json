@@ -30,7 +30,13 @@
         "t_stat": 2.24,
         "calmar": 2.03,
         "max_drawdown_pct": -6.7,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "pass",
@@ -54,7 +60,13 @@
         "t_stat": 2.59,
         "calmar": 1.36,
         "max_drawdown_pct": -8.0,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "pass"
@@ -77,7 +89,13 @@
         "t_stat": 2.13,
         "calmar": 1.01,
         "max_drawdown_pct": -15.5,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "pass"
@@ -100,7 +118,13 @@
         "t_stat": 4.02,
         "calmar": 1.53,
         "max_drawdown_pct": -5.6,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "pass",
@@ -124,7 +148,13 @@
         "t_stat": 2.5,
         "calmar": 1.02,
         "max_drawdown_pct": -9.3,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "pass",
@@ -148,7 +178,13 @@
         "t_stat": 3.59,
         "calmar": 1.88,
         "max_drawdown_pct": -5.3,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "pass",
@@ -172,7 +208,18 @@
         "t_stat": 2.6,
         "calmar": 1.4,
         "max_drawdown_pct": -8.2,
-        "note": ""
+        "note": "",
+        "cagr_pct": 12.5,
+        "config": "9 sector funds; IBS < 0.2 at the close in, own IBS > 0.8 out; fills at the close",
+        "sizing": "A $3,200 book, 4 slots, each lot equity at cost ÷ 4",
+        "costs": "1¢ a side (about 5 bp)",
+        "sample": "188 trades, 2021–2024, after a develop window of 2000–2020",
+        "caveats": [
+          "Chosen from six develop configurations: a real pass with an inflated false-positive rate",
+          "Two partial years in the confirm window, one of them weak",
+          "Buys and sells at the official close; the runner reads a few minutes before it",
+          "A lot exits only on its own strength: a fund in a long slide can hold a slot for weeks"
+        ]
       },
       "verdicts": {
         "develop": "pass",
@@ -196,7 +243,16 @@
         "t_stat": 3.4,
         "calmar": 2.0,
         "max_drawdown_pct": -11.7,
-        "note": ""
+        "note": "",
+        "cagr_pct": 23.4,
+        "config": "15 large US stocks above their 200-day average; RSI(2) < 10 in, > 70 out; next-open fills",
+        "sizing": "$6,000 fixed lots, 6 slots, in a $100,000 book",
+        "costs": "None modelled: commission-free; the next-open fill is the live model",
+        "sample": "240 trades, 2006–2020",
+        "caveats": [
+          "Fixed $6,000 lots keep about a fifth of the book working; the live book sizes at the account ÷ 6",
+          "Today's names tested back to 2006: survivors by construction"
+        ]
       },
       "verdicts": {
         "develop": "pass",
@@ -220,7 +276,13 @@
         "t_stat": null,
         "calmar": null,
         "max_drawdown_pct": null,
-        "note": "running"
+        "note": "running",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "pending"
@@ -243,7 +305,13 @@
         "t_stat": -1.34,
         "calmar": -0.04,
         "max_drawdown_pct": -26.8,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "fail"
@@ -266,7 +334,13 @@
         "t_stat": -0.21,
         "calmar": -0.31,
         "max_drawdown_pct": -28.3,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "fail"
@@ -289,7 +363,13 @@
         "t_stat": 1.33,
         "calmar": 0.39,
         "max_drawdown_pct": -19.0,
-        "note": ""
+        "note": "",
+        "cagr_pct": null,
+        "config": "",
+        "sizing": "",
+        "costs": "",
+        "sample": "",
+        "caveats": []
       },
       "verdicts": {
         "develop": "fail"
@@ -311,7 +391,13 @@
       "t_stat": null,
       "calmar": null,
       "max_drawdown_pct": null,
-      "note": "running"
+      "note": "running",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-h-develop",
@@ -326,7 +412,13 @@
       "t_stat": null,
       "calmar": null,
       "max_drawdown_pct": null,
-      "note": "running"
+      "note": "running",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-h-confirm",
@@ -341,7 +433,13 @@
       "t_stat": null,
       "calmar": null,
       "max_drawdown_pct": null,
-      "note": "running"
+      "note": "running",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-g-develop",
@@ -356,7 +454,13 @@
       "t_stat": -1.01,
       "calmar": -0.28,
       "max_drawdown_pct": -17.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-f-develop",
@@ -371,7 +475,13 @@
       "t_stat": 0.3,
       "calmar": 0.19,
       "max_drawdown_pct": -20.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-e-develop",
@@ -386,7 +496,13 @@
       "t_stat": -0.84,
       "calmar": -0.43,
       "max_drawdown_pct": -33.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-d-develop",
@@ -401,7 +517,13 @@
       "t_stat": -0.85,
       "calmar": -0.56,
       "max_drawdown_pct": -30.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-c-develop",
@@ -416,7 +538,13 @@
       "t_stat": -1.0,
       "calmar": -0.26,
       "max_drawdown_pct": -19.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-b-develop",
@@ -431,7 +559,13 @@
       "t_stat": 1.8,
       "calmar": 0.62,
       "max_drawdown_pct": -10.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "weekly-reversal-a-develop",
@@ -446,7 +580,13 @@
       "t_stat": -1.22,
       "calmar": -0.22,
       "max_drawdown_pct": -12.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-i-develop",
@@ -461,7 +601,13 @@
       "t_stat": -0.52,
       "calmar": -0.29,
       "max_drawdown_pct": -7.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-h-develop",
@@ -476,7 +622,13 @@
       "t_stat": -1.33,
       "calmar": -0.22,
       "max_drawdown_pct": -20.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-g-develop",
@@ -491,7 +643,13 @@
       "t_stat": -1.15,
       "calmar": -0.66,
       "max_drawdown_pct": -19.9,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-f-develop",
@@ -506,7 +664,13 @@
       "t_stat": 2.59,
       "calmar": 1.36,
       "max_drawdown_pct": -8.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-e-develop",
@@ -521,7 +685,13 @@
       "t_stat": -0.75,
       "calmar": -0.33,
       "max_drawdown_pct": -17.1,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-d-develop",
@@ -536,7 +706,13 @@
       "t_stat": 1.92,
       "calmar": 0.07,
       "max_drawdown_pct": -8.4,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-c-develop",
@@ -551,7 +727,13 @@
       "t_stat": -1.3,
       "calmar": -0.35,
       "max_drawdown_pct": -35.1,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-b-develop",
@@ -566,7 +748,13 @@
       "t_stat": -1.31,
       "calmar": -0.38,
       "max_drawdown_pct": -29.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "turn-of-the-month-a-develop",
@@ -581,7 +769,13 @@
       "t_stat": 0.98,
       "calmar": 0.26,
       "max_drawdown_pct": -33.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-i-develop",
@@ -596,7 +790,13 @@
       "t_stat": -1.79,
       "calmar": -0.56,
       "max_drawdown_pct": -24.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-h-develop",
@@ -611,7 +811,13 @@
       "t_stat": 0.78,
       "calmar": 0.23,
       "max_drawdown_pct": -11.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-g-develop",
@@ -626,7 +832,13 @@
       "t_stat": -0.44,
       "calmar": -0.37,
       "max_drawdown_pct": -37.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-f-develop",
@@ -641,7 +853,13 @@
       "t_stat": -0.63,
       "calmar": -0.13,
       "max_drawdown_pct": -22.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-e-develop",
@@ -656,7 +874,13 @@
       "t_stat": 0.2,
       "calmar": 0.27,
       "max_drawdown_pct": -13.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-d-develop",
@@ -671,7 +895,13 @@
       "t_stat": 1.12,
       "calmar": 0.69,
       "max_drawdown_pct": -16.4,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-c-develop",
@@ -686,7 +916,13 @@
       "t_stat": 2.13,
       "calmar": 1.01,
       "max_drawdown_pct": -15.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-b-develop",
@@ -701,7 +937,13 @@
       "t_stat": -0.55,
       "calmar": -0.56,
       "max_drawdown_pct": -12.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "pairs-spread-a-develop",
@@ -716,7 +958,13 @@
       "t_stat": -0.79,
       "calmar": -0.28,
       "max_drawdown_pct": -26.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-i-develop",
@@ -731,7 +979,13 @@
       "t_stat": -1.34,
       "calmar": -0.04,
       "max_drawdown_pct": -26.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-h-develop",
@@ -746,7 +1000,13 @@
       "t_stat": -0.47,
       "calmar": -0.26,
       "max_drawdown_pct": -30.1,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-g-develop",
@@ -761,7 +1021,13 @@
       "t_stat": -0.19,
       "calmar": -0.44,
       "max_drawdown_pct": -15.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-f-develop",
@@ -776,7 +1042,13 @@
       "t_stat": 0.85,
       "calmar": 0.24,
       "max_drawdown_pct": -20.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-e-develop",
@@ -791,7 +1063,13 @@
       "t_stat": 1.41,
       "calmar": 0.53,
       "max_drawdown_pct": -22.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-d-develop",
@@ -806,7 +1084,13 @@
       "t_stat": -1.84,
       "calmar": -0.61,
       "max_drawdown_pct": -20.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-c-develop",
@@ -821,7 +1105,13 @@
       "t_stat": -1.84,
       "calmar": -0.05,
       "max_drawdown_pct": -12.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-b-develop",
@@ -836,7 +1126,13 @@
       "t_stat": -1.8,
       "calmar": -0.31,
       "max_drawdown_pct": -6.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "volatility-squeeze-a-develop",
@@ -851,7 +1147,13 @@
       "t_stat": 0.2,
       "calmar": 0.69,
       "max_drawdown_pct": -36.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-i-develop",
@@ -866,7 +1168,13 @@
       "t_stat": -0.57,
       "calmar": -0.1,
       "max_drawdown_pct": -14.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-h-develop",
@@ -881,7 +1189,13 @@
       "t_stat": 2.83,
       "calmar": 0.7,
       "max_drawdown_pct": -16.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-g-develop",
@@ -896,7 +1210,13 @@
       "t_stat": 0.86,
       "calmar": 0.62,
       "max_drawdown_pct": -27.9,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-e-confirm",
@@ -911,7 +1231,13 @@
       "t_stat": 2.24,
       "calmar": 2.03,
       "max_drawdown_pct": -6.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-f-develop",
@@ -926,7 +1252,13 @@
       "t_stat": 0.56,
       "calmar": 0.2,
       "max_drawdown_pct": -8.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-e-develop",
@@ -941,7 +1273,13 @@
       "t_stat": 2.28,
       "calmar": 0.82,
       "max_drawdown_pct": -16.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-d-develop",
@@ -956,7 +1294,13 @@
       "t_stat": 1.18,
       "calmar": 0.12,
       "max_drawdown_pct": -20.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-c-develop",
@@ -971,7 +1315,13 @@
       "t_stat": -0.23,
       "calmar": -0.32,
       "max_drawdown_pct": -7.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-b-develop",
@@ -986,7 +1336,13 @@
       "t_stat": 1.05,
       "calmar": 0.12,
       "max_drawdown_pct": -16.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "momentum-rank-a-develop",
@@ -1001,7 +1357,13 @@
       "t_stat": 0.89,
       "calmar": 0.18,
       "max_drawdown_pct": -20.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-i-develop",
@@ -1016,7 +1378,13 @@
       "t_stat": -0.7,
       "calmar": -0.57,
       "max_drawdown_pct": -32.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-h-confirm",
@@ -1031,7 +1399,13 @@
       "t_stat": null,
       "calmar": null,
       "max_drawdown_pct": null,
-      "note": "refused: too few trades in the develop window to judge"
+      "note": "refused: too few trades in the develop window to judge",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-h-develop",
@@ -1046,7 +1420,13 @@
       "t_stat": 4.02,
       "calmar": 1.53,
       "max_drawdown_pct": -5.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-g-develop",
@@ -1061,7 +1441,13 @@
       "t_stat": -1.32,
       "calmar": -0.27,
       "max_drawdown_pct": -10.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-f-develop",
@@ -1076,7 +1462,13 @@
       "t_stat": -0.17,
       "calmar": -0.29,
       "max_drawdown_pct": -6.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-e-develop",
@@ -1091,7 +1483,13 @@
       "t_stat": -0.89,
       "calmar": -0.17,
       "max_drawdown_pct": -33.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-d-develop",
@@ -1106,7 +1504,13 @@
       "t_stat": -0.75,
       "calmar": -0.67,
       "max_drawdown_pct": -17.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-c-develop",
@@ -1121,7 +1525,13 @@
       "t_stat": -0.26,
       "calmar": -0.15,
       "max_drawdown_pct": -11.1,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-b-develop",
@@ -1136,7 +1546,13 @@
       "t_stat": -0.23,
       "calmar": -0.43,
       "max_drawdown_pct": -24.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "overnight-hold-a-develop",
@@ -1151,7 +1567,13 @@
       "t_stat": -0.35,
       "calmar": -0.29,
       "max_drawdown_pct": -29.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-i-develop",
@@ -1166,7 +1588,13 @@
       "t_stat": -0.21,
       "calmar": -0.31,
       "max_drawdown_pct": -28.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-h-develop",
@@ -1181,7 +1609,13 @@
       "t_stat": -0.64,
       "calmar": -0.6,
       "max_drawdown_pct": -23.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-g-develop",
@@ -1196,7 +1630,13 @@
       "t_stat": 0.93,
       "calmar": 0.7,
       "max_drawdown_pct": -14.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-f-develop",
@@ -1211,7 +1651,13 @@
       "t_stat": -0.26,
       "calmar": -0.38,
       "max_drawdown_pct": -35.4,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-e-develop",
@@ -1226,7 +1672,13 @@
       "t_stat": -0.17,
       "calmar": -0.17,
       "max_drawdown_pct": -36.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-d-develop",
@@ -1241,7 +1693,13 @@
       "t_stat": -0.61,
       "calmar": -0.03,
       "max_drawdown_pct": -7.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-c-develop",
@@ -1256,7 +1714,13 @@
       "t_stat": 1.62,
       "calmar": 0.04,
       "max_drawdown_pct": -21.1,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-b-develop",
@@ -1271,7 +1735,13 @@
       "t_stat": -0.78,
       "calmar": -0.45,
       "max_drawdown_pct": -33.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "breakout-a-develop",
@@ -1286,7 +1756,13 @@
       "t_stat": -0.93,
       "calmar": -0.19,
       "max_drawdown_pct": -14.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-h-confirm",
@@ -1301,7 +1777,13 @@
       "t_stat": 2.5,
       "calmar": 1.02,
       "max_drawdown_pct": -9.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-i-confirm",
@@ -1316,7 +1798,13 @@
       "t_stat": -0.46,
       "calmar": -0.44,
       "max_drawdown_pct": -19.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-i-develop",
@@ -1331,7 +1819,13 @@
       "t_stat": 3.95,
       "calmar": 2.12,
       "max_drawdown_pct": -16.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-h-develop",
@@ -1346,7 +1840,13 @@
       "t_stat": 4.09,
       "calmar": 1.33,
       "max_drawdown_pct": -10.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-g-develop",
@@ -1361,7 +1861,13 @@
       "t_stat": -0.64,
       "calmar": -0.25,
       "max_drawdown_pct": -7.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-f-develop",
@@ -1376,7 +1882,13 @@
       "t_stat": 1.04,
       "calmar": 0.09,
       "max_drawdown_pct": -11.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-e-develop",
@@ -1391,7 +1903,13 @@
       "t_stat": 1.58,
       "calmar": 0.46,
       "max_drawdown_pct": -16.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-d-develop",
@@ -1406,7 +1924,13 @@
       "t_stat": -1.23,
       "calmar": -0.25,
       "max_drawdown_pct": -35.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-c-develop",
@@ -1421,7 +1945,13 @@
       "t_stat": -1.67,
       "calmar": -0.32,
       "max_drawdown_pct": -15.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-b-develop",
@@ -1436,7 +1966,13 @@
       "t_stat": 1.51,
       "calmar": 0.51,
       "max_drawdown_pct": -17.4,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "trend-pullback-a-develop",
@@ -1451,7 +1987,13 @@
       "t_stat": -0.55,
       "calmar": -0.11,
       "max_drawdown_pct": -28.4,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-i-develop",
@@ -1466,7 +2008,13 @@
       "t_stat": 0.8,
       "calmar": 0.38,
       "max_drawdown_pct": -36.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-h-develop",
@@ -1481,7 +2029,13 @@
       "t_stat": -1.43,
       "calmar": -0.63,
       "max_drawdown_pct": -7.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-g-develop",
@@ -1496,7 +2050,13 @@
       "t_stat": -0.55,
       "calmar": -0.66,
       "max_drawdown_pct": -16.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-f-develop",
@@ -1511,7 +2071,13 @@
       "t_stat": -0.87,
       "calmar": -0.47,
       "max_drawdown_pct": -7.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-e-develop",
@@ -1526,7 +2092,13 @@
       "t_stat": -1.56,
       "calmar": -0.61,
       "max_drawdown_pct": -36.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-c-confirm",
@@ -1541,7 +2113,13 @@
       "t_stat": -0.3,
       "calmar": -0.19,
       "max_drawdown_pct": -29.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-d-develop",
@@ -1556,7 +2134,13 @@
       "t_stat": -1.36,
       "calmar": -0.04,
       "max_drawdown_pct": -14.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-c-develop",
@@ -1571,7 +2155,13 @@
       "t_stat": 3.59,
       "calmar": 1.88,
       "max_drawdown_pct": -5.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-b-develop",
@@ -1586,7 +2176,13 @@
       "t_stat": 1.79,
       "calmar": 0.14,
       "max_drawdown_pct": -11.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "gap-fade-a-develop",
@@ -1601,7 +2197,13 @@
       "t_stat": 1.16,
       "calmar": 0.48,
       "max_drawdown_pct": -31.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-i-develop",
@@ -1616,7 +2218,13 @@
       "t_stat": 1.33,
       "calmar": 0.39,
       "max_drawdown_pct": -19.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-h-develop",
@@ -1631,7 +2239,13 @@
       "t_stat": -0.93,
       "calmar": -0.37,
       "max_drawdown_pct": -10.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-g-develop",
@@ -1646,7 +2260,13 @@
       "t_stat": 0.56,
       "calmar": 0.41,
       "max_drawdown_pct": -21.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-f-develop",
@@ -1661,7 +2281,13 @@
       "t_stat": -0.06,
       "calmar": -0.08,
       "max_drawdown_pct": -24.9,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-e-develop",
@@ -1676,7 +2302,13 @@
       "t_stat": -0.87,
       "calmar": -0.69,
       "max_drawdown_pct": -10.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-d-develop",
@@ -1691,7 +2323,13 @@
       "t_stat": -0.16,
       "calmar": -0.57,
       "max_drawdown_pct": -14.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-c-develop",
@@ -1706,7 +2344,13 @@
       "t_stat": 0.12,
       "calmar": 0.62,
       "max_drawdown_pct": -21.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-b-develop",
@@ -1721,7 +2365,13 @@
       "t_stat": 0.49,
       "calmar": 0.48,
       "max_drawdown_pct": -15.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "opening-range-a-develop",
@@ -1736,7 +2386,13 @@
       "t_stat": -1.69,
       "calmar": -0.3,
       "max_drawdown_pct": -34.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-i-confirm",
@@ -1751,7 +2407,13 @@
       "t_stat": null,
       "calmar": null,
       "max_drawdown_pct": null,
-      "note": "refused: the confirm window is already spent for this family"
+      "note": "refused: the confirm window is already spent for this family",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-i-develop",
@@ -1766,7 +2428,13 @@
       "t_stat": 3.67,
       "calmar": 0.84,
       "max_drawdown_pct": -12.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-h-develop",
@@ -1781,7 +2449,13 @@
       "t_stat": -0.84,
       "calmar": -0.69,
       "max_drawdown_pct": -29.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-f-confirm",
@@ -1796,7 +2470,13 @@
       "t_stat": -0.1,
       "calmar": -0.62,
       "max_drawdown_pct": -25.4,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-g-develop",
@@ -1811,7 +2491,13 @@
       "t_stat": 1.85,
       "calmar": 0.16,
       "max_drawdown_pct": -17.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-f-develop",
@@ -1826,7 +2512,13 @@
       "t_stat": 2.69,
       "calmar": 2.06,
       "max_drawdown_pct": -14.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-e-develop",
@@ -1841,7 +2533,13 @@
       "t_stat": 0.53,
       "calmar": 0.54,
       "max_drawdown_pct": -24.3,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-d-develop",
@@ -1856,7 +2554,13 @@
       "t_stat": -1.58,
       "calmar": -0.14,
       "max_drawdown_pct": -34.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-b-confirm",
@@ -1871,7 +2575,18 @@
       "t_stat": 2.6,
       "calmar": 1.4,
       "max_drawdown_pct": -8.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": 12.5,
+      "config": "9 sector funds; IBS < 0.2 at the close in, own IBS > 0.8 out; fills at the close",
+      "sizing": "A $3,200 book, 4 slots, each lot equity at cost ÷ 4",
+      "costs": "1¢ a side (about 5 bp)",
+      "sample": "188 trades, 2021–2024, after a develop window of 2000–2020",
+      "caveats": [
+        "Chosen from six develop configurations: a real pass with an inflated false-positive rate",
+        "Two partial years in the confirm window, one of them weak",
+        "Buys and sells at the official close; the runner reads a few minutes before it",
+        "A lot exits only on its own strength: a fund in a long slide can hold a slot for weeks"
+      ]
     },
     {
       "id": "close-strength-c-develop",
@@ -1886,7 +2601,13 @@
       "t_stat": -1.37,
       "calmar": -0.6,
       "max_drawdown_pct": -16.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-b-develop",
@@ -1901,7 +2622,13 @@
       "t_stat": 2.14,
       "calmar": 0.64,
       "max_drawdown_pct": -11.2,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "close-strength-a-develop",
@@ -1916,7 +2643,13 @@
       "t_stat": 0.11,
       "calmar": 0.06,
       "max_drawdown_pct": -32.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-i-develop",
@@ -1931,7 +2664,13 @@
       "t_stat": -0.42,
       "calmar": -0.49,
       "max_drawdown_pct": -37.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-g-confirm",
@@ -1946,7 +2685,13 @@
       "t_stat": 0.63,
       "calmar": 0.16,
       "max_drawdown_pct": -10.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-h-develop",
@@ -1961,7 +2706,13 @@
       "t_stat": -0.55,
       "calmar": -0.28,
       "max_drawdown_pct": -18.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-g-develop",
@@ -1976,7 +2727,13 @@
       "t_stat": 3.78,
       "calmar": 1.2,
       "max_drawdown_pct": -14.0,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-e-confirm",
@@ -1991,7 +2748,13 @@
       "t_stat": -1.57,
       "calmar": -0.33,
       "max_drawdown_pct": -13.9,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-f-develop",
@@ -2006,7 +2769,13 @@
       "t_stat": -0.66,
       "calmar": -0.47,
       "max_drawdown_pct": -13.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-e-develop",
@@ -2021,7 +2790,13 @@
       "t_stat": 3.76,
       "calmar": 1.12,
       "max_drawdown_pct": -12.9,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-b-confirm",
@@ -2036,7 +2811,16 @@
       "t_stat": 3.4,
       "calmar": 2.0,
       "max_drawdown_pct": -11.7,
-      "note": ""
+      "note": "",
+      "cagr_pct": 23.4,
+      "config": "15 large US stocks above their 200-day average; RSI(2) < 10 in, > 70 out; next-open fills",
+      "sizing": "$6,000 fixed lots, 6 slots, in a $100,000 book",
+      "costs": "None modelled: commission-free; the next-open fill is the live model",
+      "sample": "240 trades, 2006–2020",
+      "caveats": [
+        "Fixed $6,000 lots keep about a fifth of the book working; the live book sizes at the account ÷ 6",
+        "Today's names tested back to 2006: survivors by construction"
+      ]
     },
     {
       "id": "dip-buy-d-develop",
@@ -2051,7 +2835,13 @@
       "t_stat": -0.54,
       "calmar": -0.62,
       "max_drawdown_pct": -19.8,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-c-develop",
@@ -2066,7 +2856,13 @@
       "t_stat": 0.79,
       "calmar": 0.22,
       "max_drawdown_pct": -16.5,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-b-develop",
@@ -2081,7 +2877,13 @@
       "t_stat": 2.83,
       "calmar": 1.74,
       "max_drawdown_pct": -5.6,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     },
     {
       "id": "dip-buy-a-develop",
@@ -2096,7 +2898,13 @@
       "t_stat": 1.42,
       "calmar": 0.63,
       "max_drawdown_pct": -29.9,
-      "note": ""
+      "note": "",
+      "cagr_pct": null,
+      "config": "",
+      "sizing": "",
+      "costs": "",
+      "sample": "",
+      "caveats": []
     }
   ]
 }
