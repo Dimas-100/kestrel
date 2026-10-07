@@ -72,8 +72,8 @@ describe('Strategy page', { timeout: 15_000 }, () => {
   it('draws the rule as numbered steps with its parameters and the sizing', async () => {
     renderApp('/strategies/rsi2')
     const how = await findPanel('How it trades')
-    expect(within(how).getByText('The whole rule, in four steps')).toBeTruthy()
-    const steps = within(how).getAllByRole('listitem')
+    expect(within(how).getByText('The whole rule, in four steps · 4 gates')).toBeTruthy()
+    const steps = within(within(how).getAllByRole('list')[0]).getAllByRole('listitem')
     expect(steps).toHaveLength(4)
     expect(steps[0].textContent).toContain('01')
     expect(steps[2].textContent).toContain('A stop rests at the broker')
@@ -82,7 +82,8 @@ describe('Strategy page', { timeout: 15_000 }, () => {
   })
 
   it('says so when a strategy has not described its rules', async () => {
-    renderApp('/strategies/rsi2', withView({ ...strategyFixture, steps: [], sizing: '' }))
+    const rules = { ...strategyFixture.rules, steps: [], gates: [], sizing: '', version: '', history: [] }
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, steps: [], sizing: '', rules }))
     const how = await findPanel('How it trades')
     expect(within(how).getByText('This strategy hasn’t described its rules.')).toBeTruthy()
   })
@@ -111,9 +112,7 @@ describe('Strategy page', { timeout: 15_000 }, () => {
       'Average loss−2.51%−2.28%as expected',
       'Trades per month2.83.1as expected',
     ])
-    expect(within(card).getByText('34 / 50 trades')).toBeTruthy()
-    expect(within(card).getByRole('progressbar', { name: 'Until the strategy review' })
-      .getAttribute('aria-valuenow')).toBe('34')
+    expect(within(card).getByText('34 real trades so far — enough to read a pattern')).toBeTruthy()
     expect(card.textContent).toContain('Paper, same rules: 71 trades · +0.83% · 69.0% wins')
   })
 
@@ -158,9 +157,10 @@ describe('Strategy page', { timeout: 15_000 }, () => {
     renderApp('/strategies/rsi2')
     const slots = await findPanel('Where the money works')
     expect(within(slots).getByText('Real book · slots in use, last 40 sessions · 5 slots')).toBeTruthy()
-    expect(slots.textContent).toContain('Average in use0.8 of 5')
-    expect(slots.textContent).toContain('Money working17%')
-    expect(slots.textContent).toContain('Idle sessions12 of 40')
+    expect(slots.textContent).toContain('Slots in use0.7 of 5 on average · 15%')
+    expect(slots.textContent).toContain('Money deployed$12,004 · 65% of $18,468') // slots are not dollars
+    expect(slots.textContent).toContain('Idle sessions17 of 40')
+    expect(within(slots).getByText(/^Slots are not dollars/)).toBeTruthy()
     expect(slots.textContent).toContain('Close to a signalKORSI(2) 12.4ABTRSI(2) 16.8UNPRSI(2) 19.1')
   })
 
@@ -179,9 +179,13 @@ describe('Strategy page', { timeout: 15_000 }, () => {
         buckets: strategyFixture.behaving.buckets.map((b) => ({ ...b, count: 0, share: 0 })) },
       funnel: { ...strategyFixture.funnel, lines: [], lo: [], hi: [] },
       slots: { ...strategyFixture.slots, book_id: null, total: null, days: [], used: [] },
+      performance: { ...strategyFixture.performance, book_id: null, unavailable: ['No book trades this strategy yet.'] },
+      cycle: { ...strategyFixture.cycle, book_id: null, rows: [], counts: [], runs: [], reported: false },
     }
     renderApp('/strategies/rsi2', withView(empty))
     await screen.findByRole('heading', { level: 1, name: 'Mean reversion' })
+    expect(within(panel('How the money is doing')).getByText('No book trades this strategy yet.')).toBeTruthy()
+    expect(within(panel('Last decision cycle')).getByText('No book trades this strategy yet.')).toBeTruthy()
     expect(within(panel('Average per trade, as trades add up')).getByText('No closed trades yet.')).toBeTruthy()
     expect(within(panel('Where the money works')).getByText('No book trades this strategy yet.')).toBeTruthy()
     expect(within(panel('Is it behaving?')).getByText('No book trades this strategy yet.')).toBeTruthy()
@@ -189,11 +193,12 @@ describe('Strategy page', { timeout: 15_000 }, () => {
     expect(within(panel('Month by month')).getByText('No book trades this strategy yet.')).toBeTruthy()
   })
 
-  it('caps the cards at four and says so when there are more steps', async () => {
-    const steps = [...strategyFixture.steps, { label: 'Extra', title: 'Extra step', text: 'One more.', params: [] }]
-    renderApp('/strategies/rsi2', withView({ ...strategyFixture, steps }))
+  it('lays out every step a strategy describes, not only the first four', async () => {
+    const extra = { label: 'Extra', title: 'Extra step', text: 'One more.', params: [], kind: 'step' as const }
+    const rules = { ...strategyFixture.rules, steps: [...strategyFixture.rules.steps, extra] }
+    renderApp('/strategies/rsi2', withView({ ...strategyFixture, rules }))
     const how = await findPanel('How it trades')
-    expect(within(how).getByText('The first four of its 5 steps')).toBeTruthy()
-    expect(within(how).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(how).getByText('The whole rule, in five steps · 4 gates')).toBeTruthy()
+    expect(within(within(how).getAllByRole('list')[0]).getAllByRole('listitem')).toHaveLength(5)
   })
 })

@@ -17,17 +17,19 @@ describe('Strategies', { timeout: 15_000 }, () => {
     expect(rsi2.getByRole('heading', { name: 'Mean reversion' })).toBeTruthy()
     expect(rsi2.getByText('Real · running · 4 open')).toBeTruthy()
     expect(rsi2.getByText('Paper · running · 5 open')).toBeTruthy()
-    expect(cards[0].textContent).toContain('In band · ▲ up +0.79%')
+    expect(cards[0].textContent).toContain('In band · 34 trades · ▲ up +0.79%')
     expect(rsi2.getByText('Per trade vs expected · real book')).toBeTruthy()
-    expect(rsi2.getByText('34 closed trades')).toBeTruthy()
+    expect(cards[0].textContent).toContain('1 needs you')
+    expect(cards[0].textContent).toContain(`Review: ${strategiesFixture.strategies[0].review_text}`)
+    expect(cards[0].textContent).toContain('Realized▲ up +$741.20Unrealized▲ up +$86.20')
     expect(rsi2.getByRole('link', { name: 'Open Mean reversion' }).getAttribute('href')).toBe('/strategies/rsi2')
   })
 
   it('words the verdict the way Home does', () => {
     const [rsi2, ibs, leader] = strategiesFixture.strategies
     expect(verdictText(ibs)).toBe('Too early · 7 trades')
-    expect(verdictText(leader)).toBe('Below band')
-    expect(verdictText(rsi2)).toBe('In band')
+    expect(verdictText(leader)).toBe('Below band · 11 trades, limited evidence')
+    expect(verdictText(rsi2)).toBe('In band · 34 trades')
     expect(verdictText({ ...ibs, verdict: 'none', trades: 0 })).toBe('No closed trades yet')
     expect(verdictText({ ...ibs, verdict: 'none', trades: 3 })).toBe('No backtest to compare with')
     expect(chipText(rsi2.books[1])).toBe('Paper · running · 5 open')

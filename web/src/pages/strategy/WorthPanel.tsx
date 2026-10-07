@@ -20,9 +20,12 @@ export function WorthPanel({ v }: { v: StrategyView }) {
     key: p.key, label: p.label, period: p.period, x: p.drop_pct, y: p.return_pct, ...look(p, v.book),
     sub: `${pct(p.return_pct, 1)}/yr · ${p.period}${p.early ? ' · early' : ''}`,
   }))
+  const w = v.worth
   return (
-    <Panel id="worth" title="Is it worth it?" subtitle="Yearly return against the worst drop along the way" span={7}
-      height={380} actions={points.length > 0 && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
+    <Panel id="worth" title="Is it worth it?" span={7} height={380}
+      subtitle={`Yearly return against the worst drop along the way${w.window ? ` · every live point ${w.window}` : ''}`}
+      actions={points.length > 0 && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
+      {w.note && <p className="text-xs text-ink2 mt-2">{w.note}</p>}
       <div className="mt-auto pt-3">
         {view === 'Chart' || points.length === 0
           ? <Scatter points={points} ariaLabel="Yearly return against worst drop" />

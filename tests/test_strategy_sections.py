@@ -57,14 +57,40 @@ def week(start, n):
     return [start + dt.timedelta(days=i) for i in range(n)]
 
 
-def test_slots_count_a_trade_through_its_close_and_a_position_to_the_last_session():
+def test_slots_free_on_the_close_day_so_a_same_day_close_and_open_count_one():
+    """2026-10-07 spec §3.7: HD closes Tuesday at the open and LOW fills in its slot that morning — one slot, not
+    two; KO opens Thursday as LOW closes — one again. A trade that opens and closes the same day still counts."""
     days = week(D(2026, 9, 21), 5)  # Monday to Friday
     history = [Series(id="a", points=[ValuePoint(date=d, value=1000) for d in days])]
-    trades = [trade(days[0], days[1]), trade(days[1], days[3], symbol="LOW")]
+    trades = [trade(days[0], days[1]), trade(days[1], days[3], symbol="LOW"), trade(days[4], days[4], symbol="PG")]
     pos = Position(book_id="a", symbol="KO", quantity=1, entry_price=10, last_price=10, opened=days[3])
     slots = view(book_history=history, trades=trades, positions=[pos]).slots
-    assert slots.days == days and slots.used == [1, 2, 1, 2, 1]
-    assert (slots.total, slots.avg_used, slots.working_pct, slots.idle) == (3, 1.4, 46.7, 0)
+    assert slots.days == days and slots.used == [1, 1, 1, 1, 2]
+    assert (slots.total, slots.avg_used, slots.working_pct, slots.idle) == (3, 1.2, 40.0, 0)
+    assert slots.note.startswith("Slots are not dollars")
+
+
+def test_two_slices_of_one_fill_hold_one_slot_and_an_open_remainder_keeps_it():
+    """A partially filled exit leaves two closed trades and an open position with the same symbol and open day: the
+    lot held one slot all along, and still does."""
+    days = week(D(2026, 9, 21), 5)
+    history = [Series(id="a", points=[ValuePoint(date=d, value=1000) for d in days])]
+    trades = [trade(days[0], days[2]), trade(days[0], days[3])]  # both HD, both opened Monday
+    pos = Position(book_id="a", symbol="HD", quantity=1, entry_price=10, last_price=12, opened=days[0])
+    slots = view(book_history=history, trades=trades, positions=[pos]).slots
+    assert slots.used == [1, 1, 1, 1, 1]
+
+
+def test_slots_say_how_much_money_is_deployed_against_the_books_capital():
+    days = week(D(2026, 9, 21), 5)
+    history = [Series(id="a", points=[ValuePoint(date=d, value=1000) for d in days])]
+    pos = [Position(book_id="a", symbol="HD", quantity=2, entry_price=100, last_price=110, opened=days[0]),
+           Position(book_id="a", symbol="KO", quantity=3, entry_price=50, last_price=40, opened=days[1])]
+    b = Book(id="a", name="Test", money="real", strategy_id="s", status="running", started=days[0], value=340,
+             slots_total=5, capital=1000.0, capital_basis="the account")
+    slots = view(books=[b], book_history=history, positions=pos).slots
+    assert (slots.used[-1], slots.working_pct) == (2, 36.0)  # two of five slots (1.8 on average) ...
+    assert (slots.deployed, slots.capital, slots.deployed_pct) == (340.0, 1000.0, 34.0)  # ... a third of the money
 
 
 def test_slots_fall_back_to_weekdays_without_history_and_count_idle_sessions():
@@ -151,12 +177,32 @@ def test_worth_adds_the_backtest_long_term_accounts_and_benchmark_when_they_exis
                         sd_trade_pct=2, window="2006–2020", cagr_pct=23.4, max_drawdown_pct=-11.7)
     lt = line(D(2021, 9, 25), 1826, 160)
     accounts = [Account(id="ira", name="IRA", category="long_term", value=160, as_of=NOW)]
-    points = view(books=[], expected=expected, accounts=accounts, account_history=[Series(id="ira", points=lt)],
-                  benchmark=Benchmark(symbol="SPY", label="S&P 500", points=lt)).worth.points
-    assert [(p.key, p.label, p.period) for p in points] == [
-        ("backtest", "Backtest", "2006–2020"), ("long_term", "Long-term accounts", "5 years"),
-        ("benchmark", "S&P 500", "5 years")]
-    assert (points[0].return_pct, points[0].drop_pct) == (23.4, 11.7)
+    mine = line(D(2025, 9, 25), 365, 110)  # the book: its last 12 months
+    worth = view(books=[book()], book_history=[Series(id="a", points=mine)], expected=expected, accounts=accounts,
+                 account_history=[Series(id="ira", points=lt)],
+                 benchmark=Benchmark(symbol="SPY", label="S&P 500", points=lt)).worth
+    # the long-term accounts and the benchmark are measured over the book's own window, so the dates match
+    assert [(p.key, p.label, p.period) for p in worth.points] == [
+        ("backtest", "Backtest", "2006–2020"), ("book", "Real book", "12 months"),
+        ("long_term", "Long-term accounts", "12 months"), ("benchmark", "S&P 500", "12 months")]
+    assert (worth.points[0].return_pct, worth.points[0].drop_pct) == (23.4, 11.7)
+    assert worth.window == "since 25 Sep" and worth.note == ""
+    lt_year = 160 / 148 - 1  # a straight line from 100 to 160 over 5 years: its last year grows 148 → 160
+    assert worth.points[2].return_pct == pytest.approx(lt_year * 100, abs=0.2)
+
+
+def test_worth_without_book_history_shows_the_backtest_alone_and_says_why():
+    expected = Expected(win_rate=60, avg_trade_pct=1, avg_win_pct=2, avg_loss_pct=-1, trades_per_month=2,
+                        sd_trade_pct=2, window="2006–2020", cagr_pct=23.4, max_drawdown_pct=-11.7)
+    lt = line(D(2021, 9, 25), 1826, 160)
+    accounts = [Account(id="ira", name="IRA", category="long_term", value=160, as_of=NOW)]
+    worth = view(expected=expected, accounts=accounts, account_history=[Series(id="ira", points=lt)],
+                 benchmark=Benchmark(symbol="SPY", label="S&P 500", points=lt)).worth
+    assert [p.key for p in worth.points] == ["backtest"]
+    assert worth.note == "The real book sends no value history, so there is nothing to measure yet."
+    short = view(book_history=[Series(id="a", points=line(D(2026, 8, 1), 60, 104))]).worth
+    assert short.points == [] and short.note == "The real book has 60 days of value history; a yearly figure needs 90."
+    assert view(books=[]).worth.note == "No book trades this strategy yet."
 
 
 def test_the_demo_worth_points(demo):

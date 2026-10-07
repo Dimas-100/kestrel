@@ -83,10 +83,46 @@ class Transaction(Model):
 
 
 class Step(Model):
-    label: str  # "Universe", "Entry", "Protect", "Exit"
+    label: str  # "Universe", "Entry", "Protect", "Exit"; for a gate: "Regime", "Daily loss", "Caps"
     title: str
     text: str
     params: list[str] = []
+    kind: Literal["step", "gate"] = "step"  # a gate is a limit or circuit breaker, listed apart from the flow
+
+
+class RuleVersion(Model):
+    """One version of a strategy's written rules: a trade is judged against the version in force when it was
+    entered (the latest `effective` on or before its open)."""
+
+    version: str  # "v2.1"
+    effective: dt.date
+    summary: str = ""  # what changed, one line
+
+
+class Criterion(Model):
+    """One thing a review scores, with its latest reading."""
+
+    key: str
+    label: str
+    measure: str = ""  # how it is measured
+    target: str = ""  # the pass bar
+    value: str = ""  # the latest reading, as text
+    status: Literal["pass", "fail", "pending", "info"] = "pending"
+
+
+class Review(Model):
+    """When a strategy's rules are next reviewed, and what the review needs. Due after `at_trades` closed trades
+    counted from `counted_since` (the book's start when None), or by `by`, whichever comes first; either may be
+    missing."""
+
+    label: str = ""  # "System review", "Decision review"
+    at_trades: int | None = None
+    counted_since: dt.date | None = None
+    by: dt.date | None = None
+    last_at: dt.date | None = None
+    last_note: str = ""
+    criteria: list[Criterion] = []
+    doc: str = ""  # the document the review follows, by name (never a path)
 
 
 class Expected(Model):
@@ -101,6 +137,14 @@ class Expected(Model):
     window: str = ""
     cagr_pct: float | None = None  # the backtest's yearly return
     max_drawdown_pct: float | None = None  # the backtest's worst drop, negative
+    # what the figures rest on, in words: the research stage, the configuration tested, how it was sized, the
+    # costs modelled, the sample, and the caveats that travel with it
+    stage: str = ""
+    config: str = ""
+    sizing: str = ""
+    costs: str = ""
+    sample: str = ""
+    caveats: list[str] = []
 
 
 class WatchItem(Model):
@@ -119,8 +163,12 @@ class Strategy(Model):
     steps: list[Step] = []
     sizing: str = ""
     expected: Expected | None = None
-    review_at_trades: int | None = None
+    review_at_trades: int | None = None  # kept for feeds written before `review`
     watch: list[WatchItem] = []
+    rules_version: str = ""  # the rules in force now
+    rules_effective: dt.date | None = None
+    rules_history: list[RuleVersion] = []
+    review: Review | None = None
 
 
 class Book(Model):
@@ -134,6 +182,9 @@ class Book(Model):
     value: float
     slots_total: int | None = None
     next_run: AwareDatetime | None = None
+    capital: float | None = None  # what the book's returns and "deployed" are measured against
+    capital_basis: str = ""  # what that is, in words ("the account's net liq, deposits taken out")
+    prices_as_of: dt.date | None = None  # the latest close its positions are marked at
 
 
 class Position(Model):
@@ -162,6 +213,27 @@ class Trade(Model):
     return_pct: float
     r_multiple: float | None = None
     exit_reason: str = ""
+    entry_by: Literal["system", "hand"] | None = None  # who placed the entry; None: the source doesn't know
+    exit_by: Literal["system", "hand"] | None = None
+    rules_version: str = ""  # the rules in force when it was entered (a Strategy.rules_history version)
+    # the desk's own scoring of the trade against those rules; None: not scored. kestrel shows it, never recomputes it
+    plan_followed: bool | None = None
+    note: str = ""
+
+
+class Decision(Model):
+    """One step of a book's decision cycle, as its runner recorded it: a signal read, an order queued, a gate
+    refusing one (`blocked`, with why in `detail`), an order placed, a fill, an expiry, a cancellation, a skipped
+    session or an error."""
+
+    book_id: str
+    time: AwareDatetime
+    kind: Literal["signal", "queued", "blocked", "placed", "filled", "expired", "cancelled", "skipped", "error"]
+    symbol: str = ""
+    side: Literal["buy", "sell", ""] = ""
+    detail: str = ""
+    value: float | None = None  # the indicator reading behind it
+    label: str = ""  # what `value` measures: "RSI(2)", "IBS"
 
 
 class Bar(Model):
@@ -323,6 +395,13 @@ class Backtest(Model):
     calmar: float | None = None
     max_drawdown_pct: float | None = None  # negative
     note: str = ""
+    cagr_pct: float | None = None
+    # what the result rests on, in words (`window` names the research stage)
+    config: str = ""
+    sizing: str = ""
+    costs: str = ""
+    sample: str = ""
+    caveats: list[str] = []
 
 
 def check_version(value: str) -> str:
@@ -346,6 +425,7 @@ class Snapshot(Model):
     trades: list[Trade] = []
     trade_charts: list[TradeChart] = []
     strategies: list[Strategy] = []
+    decisions: list[Decision] = []
     runs: list[Run] = []
     alerts: list[Alert] = []
     benchmark: Benchmark | None = None
@@ -364,7 +444,7 @@ class Snapshot(Model):
 
 _LIST_FIELDS = (
     "sources", "accounts", "holdings", "account_history", "transactions", "books", "book_history",
-    "positions", "trades", "trade_charts", "strategies", "runs", "alerts",
+    "positions", "trades", "trade_charts", "strategies", "decisions", "runs", "alerts",
     "targets", "theses", "events", "goals", "exposures", "backtests",
 )
 

@@ -22,10 +22,12 @@ export function MonthlyPanel({ v }: { v: StrategyView }) {
   const m = v.monthly
   const money = v.book ?? 'real'
   const word = MONEY_WORD[money]
+  const partial = m.months.filter((x) => x.partial && x.book != null).length
   return (
     <Panel id="monthly" title="Month by month"
-      subtitle={v.primary == null ? undefined : `${word} book against your long-term accounts`} span={5}
-      height={380} actions={v.primary != null && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
+      subtitle={v.primary == null ? undefined
+        : `${word} book against your long-term accounts over the same dates${partial ? ` · ${partial} partial month${partial === 1 ? '' : 's'} (*)` : ''}`}
+      span={5} height={380} actions={v.primary != null && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
       {v.primary == null ? (
         <Empty>No book trades this strategy yet.</Empty>
       ) : (

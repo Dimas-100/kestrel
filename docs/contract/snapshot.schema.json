@@ -226,6 +226,46 @@
           "default": "",
           "title": "Note",
           "type": "string"
+        },
+        "cagr_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cagr Pct"
+        },
+        "config": {
+          "default": "",
+          "title": "Config",
+          "type": "string"
+        },
+        "sizing": {
+          "default": "",
+          "title": "Sizing",
+          "type": "string"
+        },
+        "costs": {
+          "default": "",
+          "title": "Costs",
+          "type": "string"
+        },
+        "sample": {
+          "default": "",
+          "title": "Sample",
+          "type": "string"
+        },
+        "caveats": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Caveats",
+          "type": "array"
         }
       },
       "required": [
@@ -373,6 +413,36 @@
           ],
           "default": null,
           "title": "Next Run"
+        },
+        "capital": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Capital"
+        },
+        "capital_basis": {
+          "default": "",
+          "title": "Capital Basis",
+          "type": "string"
+        },
+        "prices_as_of": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prices As Of"
         }
       },
       "required": [
@@ -385,6 +455,124 @@
         "value"
       ],
       "title": "Book",
+      "type": "object"
+    },
+    "Criterion": {
+      "description": "One thing a review scores, with its latest reading.",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "measure": {
+          "default": "",
+          "title": "Measure",
+          "type": "string"
+        },
+        "target": {
+          "default": "",
+          "title": "Target",
+          "type": "string"
+        },
+        "value": {
+          "default": "",
+          "title": "Value",
+          "type": "string"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pass",
+            "fail",
+            "pending",
+            "info"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label"
+      ],
+      "title": "Criterion",
+      "type": "object"
+    },
+    "Decision": {
+      "description": "One step of a book's decision cycle, as its runner recorded it: a signal read, an order queued, a gate\nrefusing one (`blocked`, with why in `detail`), an order placed, a fill, an expiry, a cancellation, a skipped\nsession or an error.",
+      "properties": {
+        "book_id": {
+          "title": "Book Id",
+          "type": "string"
+        },
+        "time": {
+          "format": "date-time",
+          "title": "Time",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "signal",
+            "queued",
+            "blocked",
+            "placed",
+            "filled",
+            "expired",
+            "cancelled",
+            "skipped",
+            "error"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "symbol": {
+          "default": "",
+          "title": "Symbol",
+          "type": "string"
+        },
+        "side": {
+          "default": "",
+          "enum": [
+            "buy",
+            "sell",
+            ""
+          ],
+          "title": "Side",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "book_id",
+        "time",
+        "kind"
+      ],
+      "title": "Decision",
       "type": "object"
     },
     "Event": {
@@ -502,6 +690,39 @@
           ],
           "default": null,
           "title": "Max Drawdown Pct"
+        },
+        "stage": {
+          "default": "",
+          "title": "Stage",
+          "type": "string"
+        },
+        "config": {
+          "default": "",
+          "title": "Config",
+          "type": "string"
+        },
+        "sizing": {
+          "default": "",
+          "title": "Sizing",
+          "type": "string"
+        },
+        "costs": {
+          "default": "",
+          "title": "Costs",
+          "type": "string"
+        },
+        "sample": {
+          "default": "",
+          "title": "Sample",
+          "type": "string"
+        },
+        "caveats": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Caveats",
+          "type": "array"
         }
       },
       "required": [
@@ -824,6 +1045,112 @@
       "title": "Position",
       "type": "object"
     },
+    "Review": {
+      "description": "When a strategy's rules are next reviewed, and what the review needs. Due after `at_trades` closed trades\ncounted from `counted_since` (the book's start when None), or by `by`, whichever comes first; either may be\nmissing.",
+      "properties": {
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "at_trades": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At Trades"
+        },
+        "counted_since": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Counted Since"
+        },
+        "by": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "By"
+        },
+        "last_at": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last At"
+        },
+        "last_note": {
+          "default": "",
+          "title": "Last Note",
+          "type": "string"
+        },
+        "criteria": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Criterion"
+          },
+          "title": "Criteria",
+          "type": "array"
+        },
+        "doc": {
+          "default": "",
+          "title": "Doc",
+          "type": "string"
+        }
+      },
+      "title": "Review",
+      "type": "object"
+    },
+    "RuleVersion": {
+      "description": "One version of a strategy's written rules: a trade is judged against the version in force when it was\nentered (the latest `effective` on or before its open).",
+      "properties": {
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "effective": {
+          "format": "date",
+          "title": "Effective",
+          "type": "string"
+        },
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "effective"
+      ],
+      "title": "RuleVersion",
+      "type": "object"
+    },
     "Run": {
       "properties": {
         "time": {
@@ -965,6 +1292,15 @@
           },
           "title": "Params",
           "type": "array"
+        },
+        "kind": {
+          "default": "step",
+          "enum": [
+            "step",
+            "gate"
+          ],
+          "title": "Kind",
+          "type": "string"
         }
       },
       "required": [
@@ -1033,6 +1369,43 @@
           },
           "title": "Watch",
           "type": "array"
+        },
+        "rules_version": {
+          "default": "",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "rules_effective": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rules Effective"
+        },
+        "rules_history": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleVersion"
+          },
+          "title": "Rules History",
+          "type": "array"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Review"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -1288,6 +1661,60 @@
         "exit_reason": {
           "default": "",
           "title": "Exit Reason",
+          "type": "string"
+        },
+        "entry_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "system",
+                "hand"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entry By"
+        },
+        "exit_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "system",
+                "hand"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit By"
+        },
+        "rules_version": {
+          "default": "",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "plan_followed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plan Followed"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
           "type": "string"
         }
       },
@@ -1564,6 +1991,14 @@
         "$ref": "#/$defs/Strategy"
       },
       "title": "Strategies",
+      "type": "array"
+    },
+    "decisions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Decision"
+      },
+      "title": "Decisions",
       "type": "array"
     },
     "runs": {

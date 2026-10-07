@@ -269,7 +269,7 @@ describe('words from the data', { timeout: 15_000 }, () => {
   it('writes the verdict with its sample-size caveat', () => {
     const v = verdict(homeFixture.comparison)
     expect(v?.headline).toMatch(/^Trading is ahead by 2\.9 pts this year, with a shallower worst drop/)
-    expect(v?.caveat).toBe('34 real trades so far — early evidence. The strategy is reviewed at 50.')
+    expect(v?.caveat).toBe('34 real trades so far.') // past the 20-trade review bar: no early-evidence caveat
     expect(verdict({ ...homeFixture.comparison, gap_pts: null })).toBeNull()
     const lt = homeFixture.comparison.lines.find((l) => l.key === 'long_term')!
     const level = homeFixture.comparison.lines.map((l) => (l.key === 'trading'

@@ -56,6 +56,30 @@ plain "not reported" state for that part and everything else still works.
   really does mean no stop. With `stop_price` empty and `stop_resting` true, kestrel shows "resting (level not
   reported)" instead of flagging the position — never inferred, only set when a source actually knows.
 
+### What the Strategy pages need to say what runs, how it performs and what the next review needs (2026-10-07)
+
+- `Step.kind`: `step` (the flow: universe, entry, protect, exit) or `gate` (a limit or circuit breaker: the regime
+  gate, a daily loss halt, caps). Gates are listed under the flow as "Gates and limits".
+- `Strategy.rules_version`, `rules_effective` and `rules_history` (`version`, `effective`, `summary`): the written
+  rules in force now and before. Every adherence figure judges a trade against the version in force when it was
+  entered (the latest `effective` on or before its `opened`).
+- `Strategy.review`: when the rules are next reviewed and what the review needs — `label`, `at_trades` counted
+  from `counted_since` (the book's start when missing), or `by` a date, whichever first; `last_at` and
+  `last_note`; `criteria` (`key`, `label`, `measure`, `target`, `value` as text, `status` pass / fail / pending /
+  info); `doc`, the document's name. `review_at_trades` still works for a feed written before this.
+- `Expected.stage`, `config`, `sizing`, `costs`, `sample` and `caveats`, and the same on each `Backtest` (whose
+  `window` already names the stage) plus `Backtest.cagr_pct`: what a research figure rests on, shown beside it.
+- `Trade.entry_by` and `exit_by` (`system` or `hand`; missing when the source can't tell), `rules_version`,
+  `plan_followed` (the desk's own scoring: `true`, `false`, or missing for not scored — kestrel shows it and never
+  recomputes it) and `note`.
+- `Book.capital` and `capital_basis`: the money the book's returns and its "deployed" share are measured against,
+  and what that is in words ("the account's net liq, deposits taken out"). `Book.prices_as_of`: the latest close
+  its positions are marked at, so a page can say how fresh the marks are.
+- `decisions`: a book's decision cycle as its runner recorded it — `book_id`, `time`, `kind` (`signal`, `queued`,
+  `blocked`, `placed`, `filled`, `expired`, `cancelled`, `skipped`, `error`), `symbol`, `side` (`buy`, `sell` or
+  empty), `detail` (for `blocked`, why), `value` and `label` (the indicator reading behind it). The Strategy page
+  shows the latest session's rows under "Last decision cycle".
+
 ## Cash, debt, plan and research
 
 Six more blocks — `targets`, `theses`, `events`, `goals`, `exposures` and `backtests` — and a `debt` category. Each

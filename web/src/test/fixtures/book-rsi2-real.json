@@ -1493,7 +1493,12 @@
       "pnl": -225.72,
       "return_pct": -8.01,
       "r_multiple": -1.0,
-      "exit_reason": "stop"
+      "exit_reason": "stop",
+      "entry_by": "system",
+      "exit_by": "system",
+      "rules_version": "v2.0",
+      "plan_followed": null,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1506,7 +1511,12 @@
       "pnl": 99.54,
       "return_pct": 3.48,
       "r_multiple": 0.43,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "system",
+      "exit_by": "system",
+      "rules_version": "v2.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1519,7 +1529,12 @@
       "pnl": -18.4,
       "return_pct": -0.63,
       "r_multiple": -0.08,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "system",
+      "exit_by": "system",
+      "rules_version": "v2.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1532,7 +1547,12 @@
       "pnl": -44.01,
       "return_pct": -1.53,
       "r_multiple": -0.19,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "system",
+      "exit_by": "system",
+      "rules_version": "v2.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1545,7 +1565,12 @@
       "pnl": 22.66,
       "return_pct": 0.77,
       "r_multiple": 0.1,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "system",
+      "exit_by": "system",
+      "rules_version": "v2.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1558,7 +1583,12 @@
       "pnl": 66.56,
       "return_pct": 2.43,
       "r_multiple": 0.3,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "system",
+      "exit_by": "system",
+      "rules_version": "v2.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1571,7 +1601,12 @@
       "pnl": 80.7,
       "return_pct": 2.94,
       "r_multiple": 0.37,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "system",
+      "exit_by": "hand",
+      "rules_version": "v2.0",
+      "plan_followed": false,
+      "note": "Sold by hand ahead of a print"
     },
     {
       "book_id": "rsi2-real",
@@ -1584,7 +1619,12 @@
       "pnl": 42.36,
       "return_pct": 1.47,
       "r_multiple": 0.18,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": false,
+      "note": "Held through a print"
     },
     {
       "book_id": "rsi2-real",
@@ -1597,7 +1637,12 @@
       "pnl": 70.0,
       "return_pct": 2.54,
       "r_multiple": 0.32,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1610,7 +1655,12 @@
       "pnl": 80.82,
       "return_pct": 2.77,
       "r_multiple": 0.35,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1623,7 +1673,12 @@
       "pnl": 76.3,
       "return_pct": 2.78,
       "r_multiple": 0.35,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1636,7 +1691,12 @@
       "pnl": 71.76,
       "return_pct": 2.66,
       "r_multiple": 0.33,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1649,7 +1709,12 @@
       "pnl": 54.75,
       "return_pct": 1.88,
       "r_multiple": 0.24,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1662,7 +1727,12 @@
       "pnl": -69.12,
       "return_pct": -2.32,
       "r_multiple": -0.29,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1675,7 +1745,12 @@
       "pnl": 81.74,
       "return_pct": 2.72,
       "r_multiple": 0.34,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1688,7 +1763,12 @@
       "pnl": 87.42,
       "return_pct": 3.36,
       "r_multiple": 0.42,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1701,7 +1781,12 @@
       "pnl": 71.4,
       "return_pct": 2.4,
       "r_multiple": 0.3,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": false,
+      "note": "Held through a print"
     },
     {
       "book_id": "rsi2-real",
@@ -1714,7 +1799,12 @@
       "pnl": -236.74,
       "return_pct": -8.09,
       "r_multiple": -1.01,
-      "exit_reason": "stop"
+      "exit_reason": "stop",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1727,7 +1817,12 @@
       "pnl": -18.69,
       "return_pct": -0.67,
       "r_multiple": -0.08,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1740,7 +1835,12 @@
       "pnl": 89.03,
       "return_pct": 3.02,
       "r_multiple": 0.38,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1753,7 +1853,12 @@
       "pnl": -63.42,
       "return_pct": -2.25,
       "r_multiple": -0.28,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1766,7 +1871,12 @@
       "pnl": 103.2,
       "return_pct": 3.46,
       "r_multiple": 0.43,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1779,7 +1889,12 @@
       "pnl": 65.94,
       "return_pct": 2.46,
       "r_multiple": 0.31,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1792,7 +1907,12 @@
       "pnl": 72.96,
       "return_pct": 2.76,
       "r_multiple": 0.34,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1805,7 +1925,12 @@
       "pnl": 49.77,
       "return_pct": 1.83,
       "r_multiple": 0.23,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1818,7 +1943,12 @@
       "pnl": 51.81,
       "return_pct": 1.81,
       "r_multiple": 0.23,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": false,
+      "note": "Held through a print"
     },
     {
       "book_id": "rsi2-real",
@@ -1831,7 +1961,12 @@
       "pnl": 90.7,
       "return_pct": 3.32,
       "r_multiple": 0.41,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1844,7 +1979,12 @@
       "pnl": 111.45,
       "return_pct": 3.79,
       "r_multiple": 0.47,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1857,7 +1997,12 @@
       "pnl": -50.54,
       "return_pct": -1.93,
       "r_multiple": -0.24,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1870,7 +2015,12 @@
       "pnl": 63.9,
       "return_pct": 2.33,
       "r_multiple": 0.29,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1883,7 +2033,12 @@
       "pnl": -36.08,
       "return_pct": -1.21,
       "r_multiple": -0.15,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1896,7 +2051,12 @@
       "pnl": -21.6,
       "return_pct": -0.75,
       "r_multiple": -0.09,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1909,7 +2069,12 @@
       "pnl": -18.07,
       "return_pct": -0.62,
       "r_multiple": -0.08,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     },
     {
       "book_id": "rsi2-real",
@@ -1922,7 +2087,12 @@
       "pnl": -61.18,
       "return_pct": -2.11,
       "r_multiple": -0.26,
-      "exit_reason": "signal"
+      "exit_reason": "signal",
+      "entry_by": "hand",
+      "exit_by": "hand",
+      "rules_version": "v1.0",
+      "plan_followed": true,
+      "note": ""
     }
   ],
   "runs": [

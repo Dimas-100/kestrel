@@ -18,6 +18,8 @@ from ..contract import (
     Bar,
     Benchmark,
     Book,
+    Criterion,
+    Decision,
     Event,
     Expected,
     Exposure,
@@ -26,6 +28,8 @@ from ..contract import (
     Indicator,
     IndicatorLine,
     Position,
+    Review,
+    RuleVersion,
     Run,
     Series,
     Snapshot,
@@ -174,6 +178,23 @@ REFUSED = {1: "refused: the confirm window is already spent for this family",
            6: "refused: too few trades in the develop window to judge"}
 # the confirmed passes that became the demo's strategies, with the figures their strategy page quotes
 LIVE = {0: ("rsi2", 240, 0.84, 3.4, 2.0, -11.7), 1: ("ibs", 188, 0.41, 2.6, 1.4, -8.2)}
+# what each confirmed pass rests on: the configuration, sizing, costs, sample and the caveats that travel with it
+LIVE_BASIS = {
+    "rsi2": {"config": "15 large US stocks above their 200-day average; RSI(2) < 10 in, > 70 out; next-open fills",
+             "sizing": "$6,000 fixed lots, 6 slots, in a $100,000 book", "costs": "None modelled: commission-free; "
+             "the next-open fill is the live model", "sample": "240 trades, 2006–2020", "cagr_pct": 23.4,
+             "caveats": ["Fixed $6,000 lots keep about a fifth of the book working; the live book sizes at the "
+                         "account ÷ 6", "Today's names tested back to 2006: survivors by construction"]},
+    "ibs": {"config": "9 sector funds; IBS < 0.2 at the close in, own IBS > 0.8 out; fills at the close",
+            "sizing": "A $3,200 book, 4 slots, each lot equity at cost ÷ 4", "costs": "1¢ a side (about 5 bp)",
+            "sample": "188 trades, 2021–2024, after a develop window of 2000–2020", "cagr_pct": 12.5,
+            "caveats": ["Chosen from six develop configurations: a real pass with an inflated false-positive rate",
+                        "Two partial years in the confirm window, one of them weak",
+                        "Buys and sells at the official close; the runner reads a few minutes before it",
+                        "A lot exits only on its own strength: a fund in a long slide can hold a slot for weeks"]},
+}
+# Sessions old a mark can be before a page says so; the demo marks everything at the last session
+REVIEW_TRADES = 20
 
 
 def weekdays_ending(end: date, count: int) -> list[date]:
@@ -499,33 +520,84 @@ def _backtests(now: datetime, seed: int) -> list[Backtest]:
                 strategy_id, trades, avg, t, calmar, drop = live
                 live = None  # the family's first confirmed pass is the one that runs
                 out.append(Backtest(**confirm, at=at + timedelta(days=rng.randint(2, 6)), strategy_id=strategy_id,
-                                    trades=trades, avg_trade_pct=avg, t_stat=t, calmar=calmar, max_drawdown_pct=drop))
+                                    trades=trades, avg_trade_pct=avg, t_stat=t, calmar=calmar, max_drawdown_pct=drop,
+                                    **LIVE_BASIS[strategy_id]))
             else:
                 out.append(Backtest(**confirm, at=at + timedelta(days=rng.randint(2, 6)),
                                     **_measured(rng, outcome, "confirm")))
     return sorted(out, key=lambda b: (b.at, b.id))
 
 
-STRATEGIES = [
+def _rsi2_rules(days: list[date]) -> tuple[list[RuleVersion], date]:
+    """The real book's written rules, dated against the demo's calendar: by hand first, then the system, then a
+    sizing change. The second is the day the system took over the entries."""
+    system_from = days[-60]
+    return [
+        RuleVersion(version="v1.0", effective=days[0] - timedelta(days=5),
+                    summary="The RSI(2) rules run by hand each evening: entries and exits placed by Alex"),
+        RuleVersion(version="v2.0", effective=system_from,
+                    summary="The rules written down as the system runs them; the runner queues, the autopilot places; "
+                    "held through earnings"),
+        RuleVersion(version="v2.1", effective=days[-5],
+                    summary="Sizing floats with the account: a lot is the account value ÷ 6, at most $1,000 an order"),
+    ], system_from
+
+
+def _strategies(days: list[date], ibs_days: list[date]) -> list[Strategy]:
+    rules, system_from = _rsi2_rules(days)
+    review_from = days[-20]  # the last review, four weeks ago; the next is due after 20 trades or in 45 days
+    return [
     Strategy(
         id="rsi2", name="Mean reversion", summary="Buys large, liquid stocks after a sharp short-term drop inside an "
         "uptrend, and sells into the bounce — usually within a week.",
         steps=[
             Step(label="Universe", title="Large US stocks", text="Only while the stock sits above its 200-day average",
                  params=["200-day filter"]),
-            Step(label="Entry", title="Buy after a sharp drop", text="RSI(2) closes under 10 → buy at the next open",
-                 params=["RSI(2) < 10", "next open"]),
+            Step(label="Entry", title="Buy after a sharp drop",
+                 text="RSI(2) closes under 10 → a buy limit 1% over the close, good for the next session; the lowest "
+                 "RSI first when signals outnumber slots",
+                 params=["RSI(2) < 10", "limit = close × 1.01", "next session"]),
             Step(label="Protect", title="A stop rests at the broker", text="8% under the buy price — never lowered",
                  params=["−8% stop", "GTC"]),
             Step(label="Exit", title="Sell into the bounce",
-                 text="RSI(2) closes over 70 → sell at the next open, or the stop fills",
-                 params=["RSI(2) > 70", "or stop"]),
+                 text="RSI(2) closes over 70 → sold at the next open, underwater too; the stop or a −8% / +20% "
+                 "backstop otherwise. No time stop; held through earnings",
+                 params=["RSI(2) > 70", "next open", "or stop"]),
+            Step(kind="gate", label="Regime", title="No new entries risk-off",
+                 text="While SPY is under its 200-day average no entry is placed; exits and stops still run",
+                 params=["SPY < 200-day"]),
+            Step(kind="gate", label="Daily loss", title="Buying stops after a $40 day",
+                 text="Once the day's realized loss reaches $40 no new buy is placed until tomorrow",
+                 params=["−$40 halt"]),
+            Step(kind="gate", label="Caps", title="Five lots, $1,000 an order",
+                 text="At most 5 open lots, $1,000 per order, 10 orders and 6 decisions a day",
+                 params=["5 lots", "$1,000 / order", "10 orders / day"]),
+            Step(kind="gate", label="Kill file", title="One file halts all new risk",
+                 text="A kill file, placed from the phone too, stops every new order; open lots keep their stops",
+                 params=["kill file"]),
         ],
         sizing="Each position is the account value ÷ 6, at most 5 open.",
         expected=Expected(win_rate=66, avg_trade_pct=0.84, avg_win_pct=2.45, avg_loss_pct=-2.28, trades_per_month=3.1,
                           sd_trade_pct=3.0, distribution=RSI2_DISTRIBUTION, source="backtest", window="2006–2020",
-                          cagr_pct=23.4, max_drawdown_pct=-11.7),
-        review_at_trades=50,
+                          max_drawdown_pct=-11.7, stage="confirm, production configuration",
+                          **LIVE_BASIS["rsi2"]),
+        review_at_trades=REVIEW_TRADES,
+        rules_version=rules[-1].version, rules_effective=rules[-1].effective, rules_history=rules,
+        review=Review(label="System review", at_trades=REVIEW_TRADES, counted_since=review_from,
+                      by=review_from + timedelta(days=45), last_at=review_from,
+                      last_note="The rules were written down as v2.0. 16 trades scored, 15 followed the plan: too few "
+                      "for a verdict on the edge.",
+                      doc="Swing plan v2.1 §9",
+                      criteria=[
+                          Criterion(key="followed", label="Plan followed", measure="Scored trades since the review",
+                                    target="≥ 90%", value="100% of 8", status="pass"),
+                          Criterion(key="system", label="Entries placed by the system",
+                                    measure="System entries ÷ entries", target="100%", value="100%", status="pass"),
+                          Criterion(key="expectancy", label="Expectancy", measure="Average return per trade",
+                                    target="Read against +0.84% over 30–50 trades", value="+0.79%", status="info"),
+                          Criterion(key="drawdown", label="Worst drop", measure="From the book's peak",
+                                    target="Halt everything at −15%", value="−2.1%", status="pass"),
+                      ]),
         watch=[WatchItem(symbol="KO", label="RSI(2)", value=12.4), WatchItem(symbol="ABT", label="RSI(2)", value=16.8),
                WatchItem(symbol="UNP", label="RSI(2)", value=19.1)],
     ),
@@ -533,9 +605,54 @@ STRATEGIES = [
         id="ibs", name="ETF close strength",
         summary="Buys a sector fund that closes near the bottom of its day's range and holds until it closes near "
         "the top.",
+        steps=[
+            Step(label="Universe", title="Nine sector funds", text="Broad sector funds, none of them in the stock book",
+                 params=["9 funds"]),
+            Step(label="Entry", title="Buy a weak close",
+                 text="IBS under 0.2 a few minutes before the close → a marketable limit at the close, deepest first "
+                 "into free slots", params=["IBS < 0.2", "at the close"]),
+            Step(label="Exit", title="Sell a strong close", text="Held until the fund's own IBS closes over 0.8",
+                 params=["IBS > 0.8"]),
+            Step(kind="gate", label="Slots", title="Four slots, whole shares",
+                 text="A lot is equity at cost ÷ 4; a buy that can't afford a share is skipped",
+                 params=["4 slots"]),
+            Step(kind="gate", label="Session", title="One run a day, 15:50–16:00",
+                 text="Outside the window nothing is placed; an early-close day is skipped entirely",
+                 params=["15:56", "no early closes"]),
+        ],
+        sizing="Each lot is the book's equity at cost ÷ 4, whole shares.",
         expected=Expected(win_rate=62, avg_trade_pct=0.35, avg_win_pct=1.3, avg_loss_pct=-1.2, trades_per_month=6.0,
-                          sd_trade_pct=1.6, source="backtest", window="2000–2020"),
-        review_at_trades=30,
+                          sd_trade_pct=1.6, source="backtest", window="2000–2020", stage="develop",
+                          **LIVE_BASIS["ibs"] | {"cagr_pct": None}),
+        review_at_trades=None,
+        rules_version="paper v1", rules_effective=ibs_days[0],
+        rules_history=[RuleVersion(version="paper v1", effective=ibs_days[0],
+                                   summary="The confirmed candidate, run on paper in the sandbox")],
+        review=Review(label="Decision review", counted_since=ibs_days[0], by=days[-1] + timedelta(days=18),
+                      doc="IBS paper evaluation plan",
+                      last_note="Ready to write the real-money spec when rows 1–5 pass; the edge evidence stays "
+                      "the backtest",
+                      criteria=[
+                          Criterion(key="ops", label="Runs every session", measure="Sessions with a summary row",
+                                    target="≤ 1 miss in 20", value="12 of 12", status="pass"),
+                          Criterion(key="gate", label="Paper gate", measure="Lifetime sessions and round trips",
+                                    target="≥ 20 sessions, ≥ 10 round trips", value="12 sessions, 7 round trips",
+                                    status="pending"),
+                          Criterion(key="fidelity", label="Live signal matches research",
+                                    measure="15:55 reading vs the official close, classified",
+                                    target="≥ 80% agreement", value="86% of 21", status="pass"),
+                          Criterion(key="runner", label="Runner agrees with the snapshot",
+                                    measure="Median gap between the two IBS readings", target="≤ 0.05",
+                                    value="0.03", status="pass"),
+                          Criterion(key="cost", label="Real orders would be cheap",
+                                    measure="Median half-spread at 15:55", target="≤ 3 bp", value="4.1 bp",
+                                    status="fail"),
+                          Criterion(key="drift", label="Decision-to-close drift", measure="|15:55 last − close|",
+                                    target="Reported", value="6 bp median", status="info"),
+                          Criterion(key="shadow", label="Cost-honest shadow book",
+                                    measure="Buy the ask, sell the bid", target="Reported", value="7 trades, +12 bp",
+                                    status="info"),
+                      ]),
     ),
     Strategy(
         id="leader", name="Opening leader", summary="Buys the strongest name of the first fifteen minutes and is flat "
@@ -550,7 +667,92 @@ STRATEGIES = [
                           sd_trade_pct=35.0, source="backtest", window="2015–2020"),
         review_at_trades=30,
     ),
-]
+    ]
+
+
+def _judged(trades: list[Trade], rules: list[RuleVersion], system_from: date | None, seed: str) -> list[Trade]:
+    """Each trade with who placed it, the rules in force when it was entered and the desk's scoring. Before
+    `system_from` entries and exits were by hand (the rules of the time); from it on the system placed them, but
+    for one hand exit (a deviation) and the newest trade, not scored yet. With no `system_from` the origin isn't
+    reported. Every ninth hand trade broke its plan."""
+    rng = random.Random(seed)
+    out = []
+    ordered = sorted(trades, key=lambda t: (t.closed, t.opened, t.symbol))
+    newest = ordered[-1] if ordered else None
+    deviation = next((t for t in ordered if system_from and t.opened >= system_from and t is not newest), None)
+    for k, t in enumerate(ordered):
+        version = next((r.version for r in reversed(rules) if r.effective <= t.opened), "")
+        if system_from is None:
+            out.append(t)
+            continue
+        by_hand = t.opened < system_from
+        broke = by_hand and k % 9 == 8
+        fields = {"entry_by": "hand" if by_hand else "system", "exit_by": "hand" if by_hand else "system",
+                  "rules_version": version, "plan_followed": not broke,
+                  "note": "Held through a print" if broke else ""}
+        if t is deviation:
+            fields.update(exit_by="hand", plan_followed=False, note="Sold by hand ahead of a print")
+        elif t is newest:
+            fields.update(plan_followed=None)
+        rng.random()  # keeps the seed's draw order stable if a rule above changes
+        out.append(t.model_copy(update=fields))
+    return out
+
+
+def _decisions(days: list[date], tz: ZoneInfo, positions: list[Position]) -> list[Decision]:
+    """The last session's decision cycle for the real RSI2 book and the IBS book, as their runners would record it:
+    signals read the evening before, the gate's answers, what was placed at the open, what filled and what expired."""
+    last, prior = days[-1], days[-2]
+    at = lambda day, hh, mm: datetime.combine(day, time(hh, mm), tzinfo=tz)  # noqa: E731
+    rsi2 = [
+        Decision(book_id="rsi2-real", time=at(prior, 17, 30), kind="signal", symbol="MSFT", side="buy", value=6.5,
+                 label="RSI(2)", detail="Closed under 10"),
+        Decision(book_id="rsi2-real", time=at(prior, 17, 30), kind="signal", symbol="ORCL", side="buy", value=8.9,
+                 label="RSI(2)", detail="Closed under 10"),
+        Decision(book_id="rsi2-real", time=at(prior, 17, 30), kind="queued", symbol="MSFT", side="buy", value=6.5,
+                 label="RSI(2)", detail="Buy 6 limit 513.28, good for the next session"),
+        Decision(book_id="rsi2-real", time=at(prior, 17, 30), kind="queued", symbol="ORCL", side="buy", value=8.9,
+                 label="RSI(2)", detail="Buy 12 limit 246.10, good for the next session"),
+        Decision(book_id="rsi2-real", time=at(prior, 17, 45), kind="blocked", symbol="ORCL", side="buy",
+                 detail="Caps: 5 lots would be open with MSFT; held for the morning run"),
+        Decision(book_id="rsi2-real", time=at(last, 9, 31), kind="placed", symbol="MSFT", side="buy",
+                 detail="Limit 513.28 at the open"),
+        Decision(book_id="rsi2-real", time=at(last, 9, 31), kind="filled", symbol="MSFT", side="buy",
+                 detail="6 at 508.20; stop 467.54 placed"),
+        Decision(book_id="rsi2-real", time=at(last, 9, 31), kind="blocked", symbol="ORCL", side="buy",
+                 detail="Caps: 5 lots already open"),
+        Decision(book_id="rsi2-real", time=at(last, 16, 0), kind="expired", symbol="ORCL", side="buy",
+                 detail="Unfilled by the close; re-checked this evening"),
+    ]
+    for p in positions:
+        if p.book_id == "rsi2-real":
+            reading = {"CAT": 36.3, "JPM": 54.8, "MSFT": 12.1}.get(p.symbol, 61.0)
+            rsi2.append(Decision(book_id="rsi2-real", time=at(last, 9, 31), kind="blocked", symbol=p.symbol,
+                                 side="sell", value=reading, label="RSI(2)",
+                                 detail=f"Exit waits: RSI(2) {reading} ≤ 70"))
+    ibs = [
+        Decision(book_id="ibs-paper", time=at(last, 15, 56), kind="signal", symbol="XLF", side="buy",
+                 value=0.12, label="IBS", detail="Closed in the bottom fifth of its range"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 56), kind="signal", symbol="XLE", side="sell", value=0.84,
+                 label="IBS", detail="Held lot closed strong"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 56), kind="signal", symbol="XLU", side="buy", value=0.18,
+                 label="IBS", detail="Closed in the bottom fifth of its range"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 56), kind="queued", symbol="XLE", side="sell",
+                 detail="Sell 11 limit 88.16"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 56), kind="placed", symbol="XLE", side="sell",
+                 detail="Limit 88.16, day"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 57), kind="filled", symbol="XLE", side="sell",
+                 detail="11 at 88.19"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 57), kind="queued", symbol="XLF", side="buy", value=0.12,
+                 label="IBS", detail="Buy 17 limit 51.25, deepest first"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 57), kind="blocked", symbol="XLU", side="buy", value=0.18,
+                 label="IBS", detail="Slots full"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 57), kind="placed", symbol="XLF", side="buy",
+                 detail="Limit 51.25, day"),
+        Decision(book_id="ibs-paper", time=at(last, 15, 58), kind="filled", symbol="XLF", side="buy",
+                 detail="17 at 51.20"),
+    ]
+    return [*rsi2, *ibs]
 
 
 class DemoConnector:
@@ -655,14 +857,18 @@ class DemoConnector:
                              note="Months of spending the cash accounts cover")
 
         at = lambda hh, mm: _next_weekday_at(local, time(hh, mm))  # noqa: E731
+        marked = days[-1]  # every book marks its positions at the last session's close
         books = [
             Book(id="rsi2-real", name="Mean reversion", money="real", strategy_id="rsi2", account_id="trading",
                  status="running", started=days[0] - timedelta(days=5), value=trading[-1], slots_total=5,
-                 next_run=at(9, 31)),
+                 next_run=at(9, 31), capital=trading[-1], prices_as_of=marked,
+                 capital_basis="The trading account's value; deposits are taken out of the return"),
             Book(id="rsi2-paper", name="Mean reversion", money="paper", strategy_id="rsi2", status="running",
-                 started=days[0] - timedelta(days=60), value=paper[-1], slots_total=6, next_run=at(17, 30)),
+                 started=days[0] - timedelta(days=60), value=paper[-1], slots_total=6, next_run=at(17, 30),
+                 capital=100000.0, capital_basis="The simulator's $100,000 starting cash", prices_as_of=marked),
             Book(id="ibs-paper", name="ETF close strength", money="paper", strategy_id="ibs", status="running",
-                 started=ibs_days[0], value=ibs[-1], slots_total=4, next_run=at(15, 56)),
+                 started=ibs_days[0], value=ibs[-1], slots_total=4, next_run=at(15, 56), capital=3200.0,
+                 capital_basis="The $3,200 virtual book, at cost", prices_as_of=marked),
             Book(id="leader-paper", name="Opening leader", money="paper", strategy_id="leader", status="running",
                  started=leader_days[0], value=leader[-1], slots_total=1, next_run=at(9, 25)),
             Book(id="verticals-paper", name="Options verticals", money="paper", strategy_id="verticals",
@@ -675,11 +881,18 @@ class DemoConnector:
             Series(id="leader-paper", points=_points(leader_days, leader, zero[:10])),
             Series(id="verticals-paper", points=_points(days, options, zero)),
         ]
+        rules, system_from = _rsi2_rules(days)
+        paper_rules = [RuleVersion(version="paper", effective=days[0] - timedelta(days=60),
+                                   summary="The same rules in the simulator, placed by the runner")]
+        ibs_rules = [RuleVersion(version="paper v1", effective=ibs_days[0], summary="Run on paper in the sandbox")]
         trades = (
-            _trades(rng, "rsi2-real", days, 34, win_p=0.72, win_mu=2.4, loss_mu=-1.4, stop_every=17, stop_pct=8.0)
-            + _trades(rng, "rsi2-paper", days, 71, win_p=0.72, win_mu=2.4, loss_mu=-1.4, stop_every=17, stop_pct=8.0,
-                      lot=18000.0)
-            + _trades(rng, "ibs-paper", ibs_days, 7, win_p=0.6, win_mu=1.2, loss_mu=-0.9, lot=800.0, pool=FUNDS)
+            _judged(_trades(rng, "rsi2-real", days, 34, win_p=0.72, win_mu=2.4, loss_mu=-1.4, stop_every=17,
+                            stop_pct=8.0), rules, system_from, f"{self.seed}:judged:rsi2-real")
+            + _judged(_trades(rng, "rsi2-paper", days, 71, win_p=0.72, win_mu=2.4, loss_mu=-1.4, stop_every=17,
+                              stop_pct=8.0, lot=18000.0), paper_rules, paper_rules[0].effective,
+                      f"{self.seed}:judged:rsi2-paper")
+            + _judged(_trades(rng, "ibs-paper", ibs_days, 7, win_p=0.6, win_mu=1.2, loss_mu=-0.9, lot=800.0,
+                              pool=FUNDS), ibs_rules, ibs_rules[0].effective, f"{self.seed}:judged:ibs-paper")
             + _trades(rng, "leader-paper", leader_days, 11, win_p=0.3, win_mu=1.0, loss_mu=-1.6, hold=(0, 0),
                       lot=24000.0)
             + _trades(rng, "verticals-paper", days[:paused_at], 13, win_p=0.35, win_mu=30.0, loss_mu=-35.0, lot=600.0)
@@ -698,7 +911,7 @@ class DemoConnector:
             transactions=transactions,
             books=books, book_history=book_history, positions=positions, trades=trades,
             trade_charts=[chart for book in books for chart in _charts(book, trades, days, self.seed)],
-            strategies=STRATEGIES,
+            strategies=_strategies(days, ibs_days), decisions=_decisions(days, self.tz, positions),
             runs=self._runs(local), benchmark=Benchmark(symbol="SPY", label="S&P 500", points=_points(days, spx, zero)),
             targets=[*TARGETS, cash_runway], theses=_theses(holdings, positions, local.date()),
             events=_events(local.date()), goals=_goals(local.date()), exposures=_exposures(holdings),

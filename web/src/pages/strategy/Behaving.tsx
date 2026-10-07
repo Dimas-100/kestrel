@@ -9,15 +9,20 @@ import { MONEY_WORD } from '../strategies/Strategies'
 
 const VIEWS = ['Chart', 'Table'] as const
 
+/** Under 30 trades a histogram is a sketch: the panel says so and draws it smaller. */
+export const sparse = (evidence: StrategyView['behaving']['evidence']) => evidence === 'early' || evidence === 'limited'
+
 export function BehavingPanel({ v }: { v: StrategyView }) {
   const [view, setView] = useState<(typeof VIEWS)[number]>('Chart')
   const money = v.book ?? 'real'
   const word = MONEY_WORD[money]
   const backtest = v.behaving.buckets.some((b) => b.expected != null)
+  const thin = sparse(v.behaving.evidence)
   return (
-    <Panel id="behaving" title="Is it behaving?" span={8} height={412}
+    <Panel id="behaving" title="Is it behaving?" span={7} height={thin ? 372 : 412}
       subtitle={v.primary == null ? undefined
-        : `Where each ${money} trade landed${backtest ? ', against the spread of outcomes in the backtest' : ''}`}
+        : thin ? `${v.behaving.evidence_text} — a sketch, not a verdict`
+          : `Where each ${money} trade landed${backtest ? ', against the spread of outcomes in the backtest' : ''}`}
       actions={v.primary != null && <>
         <span className="inline-flex items-center gap-1.5 text-xs text-ink2 whitespace-nowrap">
           <BookMark kind={money} color="var(--s2)" />{word} trades ({v.behaving.trades})
@@ -40,6 +45,7 @@ export function BehavingPanel({ v }: { v: StrategyView }) {
           </div>
           <p className="text-xs text-ink3 mt-2">
             Return per trade, in 1-point buckets. Bars show the share of trades in each bucket.
+            {thin && ' Too few trades to read a shape yet.'}
           </p>
         </>
       )}
@@ -75,9 +81,8 @@ export function ScorecardPanel({ v }: { v: StrategyView }) {
   const b = v.behaving
   const word = MONEY_WORD[v.book ?? 'real']
   const early = b.scorecard.some((r) => r.status === 'early')
-  const done = b.review_at ? Math.min(100, (b.trades / b.review_at) * 100) : 0
   return (
-    <Panel id="scorecard" title="Scorecard" span={4} height={412}
+    <Panel id="scorecard" title="Scorecard" span={5} height={452}
       subtitle={v.primary == null ? undefined : v.expected ? `${word} book against the backtest` : `${word} book`}>
       {v.primary == null ? (
         <Empty>No book trades this strategy yet.</Empty>
@@ -103,19 +108,9 @@ export function ScorecardPanel({ v }: { v: StrategyView }) {
             </tbody>
           </table>
           {!v.expected && <p className="text-xs text-ink3 mt-3">No backtest to compare with.</p>}
-          {b.review_at != null && (
-            <div className="mt-4">
-              <div className="flex justify-between text-xs">
-                <span className="text-ink2">Until the strategy review</span>
-                <span className="num">{b.trades} / {b.review_at} trades</span>
-              </div>
-              <div role="progressbar" aria-label="Until the strategy review" aria-valuemin={0} aria-valuemax={b.review_at}
-                aria-valuenow={Math.min(b.trades, b.review_at)} className="relative h-2 rounded mt-2 overflow-hidden bg-panel2"
-                style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>
-                <span className="absolute inset-y-0 left-0 rounded" style={{ width: `${done}%`, background: 'var(--acc)' }} />
-              </div>
-            </div>
-          )}
+          <p className="text-xs mt-3" style={{ color: sparse(b.evidence) || b.evidence === 'none' ? 'var(--ink2)' : 'var(--ink3)' }}>
+            {b.evidence_text}
+          </p>
           {b.other && (
             <div className="mt-auto border-t border-line pt-3.5 flex items-center gap-2.5 text-xs text-ink2">
               <BookMark kind={b.other.money} color="var(--s2)" />

@@ -23,11 +23,12 @@ export function BookChips({ books }: { books: BookChip[] }) {
   )
 }
 
-/** The verdict in Home's words, with the sample size when it is too early to judge. */
+/** The verdict in Home's words, with the sample size: a band verdict on under 30 trades says "limited evidence". */
 export function verdictText(s: StrategyCard): string {
   if (s.verdict === 'early') return `${VERDICT.early} · ${s.trades} trades`
   if (s.verdict === 'none') return s.trades === 0 ? 'No closed trades yet' : 'No backtest to compare with'
-  return VERDICT[s.verdict]
+  if (s.evidence === 'limited') return `${VERDICT[s.verdict]} · ${s.trades} trades, limited evidence`
+  return `${VERDICT[s.verdict]} · ${s.trades} trades`
 }
 
 /** A glyph for the card, read from the strategy's name: a feed names its strategies in words, not icon ids. */
@@ -78,12 +79,20 @@ function Card({ s }: { s: StrategyCard }) {
             {s.avg_return_pct == null ? <span className="num">—</span>
               : <Delta value={s.avg_return_pct}>{pct(s.avg_return_pct, 2)}</Delta>}
           </Stat>
-          <Stat label="P&L"><Delta value={s.pnl}>{signedMoney(s.pnl)}</Delta></Stat>
+          <Stat label="Realized"><Delta value={s.pnl}>{signedMoney(s.pnl)}</Delta></Stat>
+          <Stat label="Unrealized"><Delta value={s.unrealized_pnl}>{signedMoney(s.unrealized_pnl)}</Delta></Stat>
           {s.last_closed && <Stat label="Last closed"><span className="num">{shortDate(s.last_closed)}</span></Stat>}
         </div>
       )}
-      <div className="mt-auto flex items-center justify-between border-t border-line pt-3 text-xs">
-        <span className="text-ink3">{s.trades} closed trades</span>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line pt-3 text-xs">
+        <span className="text-ink3">
+          {s.attention > 0 && (
+            <span className="inline-flex items-center gap-1 mr-3" style={{ color: 'var(--warn)' }}>
+              <Icon name="alert" size={12} />{s.attention} need{s.attention === 1 ? 's' : ''} you
+            </span>
+          )}
+          {s.review_text ? `Review: ${s.review_text}` : `${s.trades} closed trades`}
+        </span>
         <Link to="/strategies/$strategyId" params={{ strategyId: s.id }} aria-label={`Open ${s.name}`}
           className="inline-flex items-center gap-1" style={{ color: 'var(--acc-ink)' }}>
           Open<Icon name="arrow" size={13} />

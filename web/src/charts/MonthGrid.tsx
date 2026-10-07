@@ -15,6 +15,17 @@ export interface MonthCell {
   book: number | null
   long_term: number | null
   ahead: boolean | null
+  partial?: boolean // the book covered only part of the month: labelled with a star
+  from_date?: string | null
+  to_date?: string | null
+}
+
+/** "Sep 2026" · "Sep 2026 · partial, 14 Sep to 25 Sep" */
+export function monthTitle(m: MonthCell): string {
+  const name = monthName(m.month)
+  if (!m.partial) return name
+  const span = m.from_date && m.to_date ? `, ${monthLabel(m.from_date, true)} to ${monthLabel(m.to_date, true)}` : ''
+  return `${name} · partial${span}`
 }
 
 const LABEL_W = 76
@@ -83,7 +94,10 @@ export function MonthGrid({ months, bookLabel, money, ariaLabel }: {
           ))}
           <div />
           {months.map((x) => (
-            <div key={x.month} className="text-ink3 text-center" style={{ fontSize: 10 }}>{monthLabel(`${x.month}-01`)}</div>
+            <div key={x.month} className="text-ink3 text-center" style={{ fontSize: 10 }}>
+              {monthLabel(`${x.month}-01`)}{x.partial && x.book != null && <span aria-hidden="true">*</span>}
+              {x.partial && x.book != null && <span className="sr-only"> partial</span>}
+            </div>
           ))}
           <div className="flex items-center gap-1.5 text-xs text-ink2 whitespace-nowrap">
             <BookMark kind={money} color="var(--s2)" size={9} />{bookLabel}
@@ -105,7 +119,7 @@ export function MonthGrid({ months, bookLabel, money, ariaLabel }: {
         </div>
       </div>
       {m != null && hover != null && (
-        <Tip left={clampTip(LABEL_W + (hover + 0.5) * col - scrollX, width)} top={-8} title={monthName(m.month)} rows={[
+        <Tip left={clampTip(LABEL_W + (hover + 0.5) * col - scrollX, width)} top={-8} title={monthTitle(m)} rows={[
           [bookLabel, m.book == null ? '—' : pct(m.book, 1)],
           ['Long-term', m.long_term == null ? '—' : pct(m.long_term, 1)],
           ['Ahead?', aheadText(m.ahead)],
@@ -125,7 +139,7 @@ export function MonthTable({ months, bookLabel }: { months: MonthCell[]; bookLab
         <tbody>
           {months.map((m) => (
             <tr key={m.month}>
-              <td>{monthName(m.month)}</td>
+              <td>{monthTitle(m)}</td>
               <td className="r num">{m.book == null ? '—' : pct(m.book, 1)}</td>
               <td className="r num">{m.long_term == null ? '—' : pct(m.long_term, 1)}</td>
               <td>{aheadText(m.ahead)}</td>
