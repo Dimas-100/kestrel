@@ -1142,6 +1142,16 @@
           "default": "",
           "title": "Summary",
           "type": "string"
+        },
+        "placed_by": {
+          "default": "",
+          "enum": [
+            "hand",
+            "system",
+            ""
+          ],
+          "title": "Placed By",
+          "type": "string"
         }
       },
       "required": [

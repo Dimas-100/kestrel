@@ -61,35 +61,52 @@ function figure(row: ScoreRow, value: number | null): string {
 }
 
 const STATUS: Record<'ok' | 'above' | 'below', { icon: 'check' | 'alert'; color: string; text: string }> = {
-  ok: { icon: 'check', color: 'var(--good)', text: 'as expected' },
-  above: { icon: 'alert', color: 'var(--warn)', text: 'higher than expected' },
-  below: { icon: 'alert', color: 'var(--warn)', text: 'lower than expected' },
+  ok: { icon: 'check', color: 'var(--good)', text: 'within the band' },
+  above: { icon: 'alert', color: 'var(--warn)', text: 'above the band' },
+  below: { icon: 'alert', color: 'var(--warn)', text: 'below the band' },
 }
 
-function Status({ status }: { status: ScoreRow['status'] }) {
-  if (status === 'none') return null
-  if (status === 'early') return <span className="text-2xs text-ink3 whitespace-nowrap">too early</span>
-  const look = STATUS[status]
+/** "within the band on 16 trades, limited evidence" — a row's verdict never stands without its count */
+export function statusText(row: ScoreRow, limited: boolean): string {
+  if (row.status === 'none' || row.status === 'early') return ''
+  return `${STATUS[row.status].text} on ${row.n} trade${row.n === 1 ? '' : 's'}${limited ? ', limited evidence' : ''}`
+}
+
+function Status({ row, limited }: { row: ScoreRow; limited: boolean }) {
+  if (row.status === 'none') return null
+  if (row.status === 'early') return <span className="text-2xs text-ink3 whitespace-nowrap">too early · {row.n}</span>
+  const look = STATUS[row.status]
   return (
-    <span className="inline-flex" style={{ color: look.color }}>
-      <Icon name={look.icon} size={15} /><span className="sr-only">{look.text}</span>
+    <span className="inline-flex items-center gap-1" style={{ color: limited ? 'var(--ink3)' : look.color }}
+      title={statusText(row, limited)}>
+      <Icon name={look.icon} size={15} /><span className="num text-2xs">{row.n}</span>
+      <span className="sr-only">{statusText(row, limited)}</span>
     </span>
   )
+}
+
+/** "band −0.6% to +2.3%" in the row's unit, or "" */
+export function bandText(row: ScoreRow): string {
+  if (row.band_lo == null || row.band_hi == null) return ''
+  const f = (v: number) => (row.key === 'win_rate' ? `${num(v, 1)}%` : row.key === 'per_month' ? num(v, 1) : pct(v, 2))
+  return `band ${f(row.band_lo)} to ${f(row.band_hi)}`
 }
 
 export function ScorecardPanel({ v }: { v: StrategyView }) {
   const b = v.behaving
   const word = MONEY_WORD[v.book ?? 'real']
   const early = b.scorecard.some((r) => r.status === 'early')
+  const limited = sparse(b.evidence)
   return (
     <Panel id="scorecard" title="Scorecard" span={5} height={452}
-      subtitle={v.primary == null ? undefined : v.expected ? `${word} book against the backtest` : `${word} book`}>
+      subtitle={v.primary == null ? undefined
+        : `${word} book${v.expected ? ' against the backtest' : ''} · ${b.trades} closed trade${b.trades === 1 ? '' : 's'}`}>
       {v.primary == null ? (
         <Empty>No book trades this strategy yet.</Empty>
       ) : (
         <>
           <table className="tbl mt-3" style={{ '--row': '40px', tableLayout: 'fixed' } as CSSProperties}>
-            <colgroup><col /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: early ? 58 : 28 }} /></colgroup>
+            <colgroup><col /><col style={{ width: 74 }} /><col style={{ width: 74 }} /><col style={{ width: early ? 70 : 44 }} /></colgroup>
             <thead>
               <tr>
                 <th>Measure</th><th className="r">{word}</th><th className="r">Expected</th>
@@ -99,10 +116,13 @@ export function ScorecardPanel({ v }: { v: StrategyView }) {
             <tbody>
               {b.scorecard.map((row) => (
                 <tr key={row.key}>
-                  <td className="text-sm text-ink2">{row.label}</td>
+                  <td>
+                    <div className="text-sm text-ink2">{row.label}</div>
+                    {bandText(row) && <div className="text-[10px] text-ink3 num">{bandText(row)}</div>}
+                  </td>
                   <td className="r"><span className="num font-medium">{figure(row, row.actual)}</span></td>
                   <td className="r"><span className="num text-ink3">{figure(row, row.expected)}</span></td>
-                  <td className="r" style={{ paddingRight: 0 }}><Status status={row.status} /></td>
+                  <td className="r" style={{ paddingRight: 0 }}><Status row={row} limited={limited} /></td>
                 </tr>
               ))}
             </tbody>

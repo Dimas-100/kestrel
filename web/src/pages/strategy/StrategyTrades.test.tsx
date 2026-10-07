@@ -68,8 +68,8 @@ describe('Strategy page, trade by trade', { timeout: 15_000 }, () => {
     renderApp('/strategies/rsi2')
     const worth = await findPanel('Is it worth it?')
     // every live point is measured over the book's own window, and the subtitle says so
-    expect(within(worth).getByText('Yearly return against the worst drop along the way · every live point since 25 Sep'))
-      .toBeTruthy()
+    expect(within(worth).getByText('Yearly return against the worst drop along the way · every live point measured over '
+      + '25 Sep to 25 Sep; the backtest over its own window')).toBeTruthy()
     for (const text of ['Backtest', 'Real book', 'Long-term accounts', 'S&P 500', '+23.4%/yr · 2006–2020',
       '+19.0%/yr · 12 months']) {
       expect(within(worth).getByText(text)).toBeTruthy()

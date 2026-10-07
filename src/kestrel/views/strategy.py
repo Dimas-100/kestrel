@@ -108,6 +108,9 @@ class ScoreRow(View):
     actual: float | None
     expected: float | None
     status: Status  # "above" / "below": outside the band for that measure; "early": under 10 closed trades
+    n: int  # the closed trades the actual rests on (the wins alone for the average win, the losses for the loss)
+    band_lo: float | None  # the band the status was judged against, in the row's own unit
+    band_hi: float | None
 
 
 class OtherBook(View):
@@ -198,7 +201,7 @@ class WorthPoint(View):
 
 class Worth(View):
     points: list[WorthPoint]
-    window: str  # the dates every live point is measured over ("since 13 Aug"), or ""
+    window: str  # the dates every live point is measured over ("13 Aug to 6 Oct"), or ""
     note: str  # why live points are missing, or ""
 
 
@@ -428,7 +431,7 @@ def _within_half(expected: float) -> tuple[float, float]:
 
 
 def _row(key, label, actual: float | None, expected: float | None, band: tuple[float, float] | None,
-         n: int, compare: float | None = None) -> ScoreRow:
+         n: int, compare: float | None = None, count: int | None = None) -> ScoreRow:
     """`compare` is the unrounded value to test against the band, when it differs from the rounded `actual` shown
     in the row — a value that rounds to the edge must not read as inside it (Home compares the same unrounded
     mean, so the two pages never disagree at the edge)."""
@@ -441,7 +444,10 @@ def _row(key, label, actual: float | None, expected: float | None, band: tuple[f
         status = "none"
     else:
         status = "below" if value < band[0] else "above" if value > band[1] else "ok"
-    return ScoreRow(key=key, label=label, actual=actual, expected=expected, status=status)
+    return ScoreRow(key=key, label=label, actual=actual, expected=expected, status=status,
+                    n=n if count is None else count,
+                    band_lo=round(band[0], 2) if band and expected is not None else None,
+                    band_hi=round(band[1], 2) if band and expected is not None else None)
 
 
 def _scorecard(trades: list[Trade], expected: Expected | None, book: Book | None, today: dt.date) -> list[ScoreRow]:
@@ -468,9 +474,9 @@ def _scorecard(trades: list[Trade], expected: Expected | None, book: Book | None
         _row("avg_trade", "Average per trade", avg_trade, e.avg_trade_pct if e else None, avg_band, n,
              compare=avg_trade_raw),
         _row("avg_win", "Average win", avg_win, e.avg_win_pct if e else None,
-             _within_half(e.avg_win_pct) if e else None, n),
+             _within_half(e.avg_win_pct) if e else None, n, count=len(wins)),
         _row("avg_loss", "Average loss", avg_loss, e.avg_loss_pct if e else None,
-             _within_half(e.avg_loss_pct) if e else None, n),
+             _within_half(e.avg_loss_pct) if e else None, n, count=len(losses)),
         _row("per_month", "Trades per month", per_month, e.trades_per_month if e else None,
              _within_half(e.trades_per_month) if e else None, n),
     ]
@@ -653,13 +659,13 @@ def _worth(snapshot: Snapshot, profile: Profile, book: Book | None, expected: Ex
         note = (f"The {book.money} book has {days} days of value history; a yearly figure needs {EARLY_DAYS}."
                 if history else f"The {book.money} book sends no value history, so there is nothing to measure yet.")
         return Worth(points=points, window="", note=note)
-    start = history[0].date
+    start, end = history[0].date, history[-1].date
     bench = snapshot.benchmark
     lines = [
         ("book", f"{book.money.capitalize()} book", history),
-        ("long_term", "Long-term accounts", opening_on(_long_term(snapshot), start)),
+        ("long_term", "Long-term accounts", _clip(_long_term(snapshot), start, end)),
         ("benchmark", bench.label if bench else profile.benchmark.label,
-         opening_on(list(bench.points), start) if bench else []),
+         _clip(list(bench.points), start, end) if bench else []),
     ]
     for key, label, line in lines:
         measured = yearly(line)
@@ -667,7 +673,13 @@ def _worth(snapshot: Snapshot, profile: Profile, book: Book | None, expected: Ex
             ret, drop, days = measured
             points.append(WorthPoint(key=key, label=label, period=_period(days), early=days < YEAR_DAYS,
                                      return_pct=round(ret, 2), drop_pct=round(drop, 2)))
-    return Worth(points=points, window=f"since {_day_label(start)}", note="")
+    return Worth(points=points, window=f"{_day_label(start)} to {_day_label(end)}", note="")
+
+
+def _clip(points: list[ValuePoint], start: dt.date, end: dt.date) -> list[ValuePoint]:
+    """A series over exactly [start, end]: opening on `start` with the value held then, ending at the last point on
+    or before `end` -- so two series measured together share both endpoints."""
+    return [p for p in opening_on(points, start) if p.date <= end]
 
 
 def monthly_returns(points: list[ValuePoint]) -> dict[str, float]:
@@ -856,10 +868,12 @@ def sessions_old(prices_as_of: dt.date, last_session: dt.date) -> int:
 
 
 def _freshness(book: Book | None, last_session: dt.date) -> str:
+    """How old the book's marks are, judged by its OLDEST position mark (`prices_as_of` is the date every position
+    can be trusted to; a stale one names its own date in its note)."""
     if book is None or book.prices_as_of is None:
         return "not reported"
     old = sessions_old(book.prices_as_of, last_session)
-    return "fresh" if old == 0 else f"{old} session{'s' if old != 1 else ''} old"
+    return "fresh" if old == 0 else f"oldest mark {old} session{'s' if old != 1 else ''} old"
 
 
 def _cycle(snapshot: Snapshot, book: Book | None, now: dt.datetime, tz: dt.tzinfo) -> Cycle:
@@ -918,8 +932,12 @@ def _adherence(strategy, trades: list[Trade]) -> Adherence:
         mine = groups.get(version, [])
         if not mine and effective is None:
             continue
-        # every written version after the first is system-run, when the book has system entries at all
-        system_run = any_system and effective is not None and version != history[0].version
+        known = next((r.placed_by for r in history if r.version == version), "")
+        if known:
+            system_run = known == "system"
+        else:   # the source doesn't say: every written version after the first is system-run, when the book has
+            # system entries at all
+            system_run = any_system and effective is not None and version != history[0].version
         rows.append(AdherenceRow(
             version=version, effective=effective, summary=summary, trades=len(mine),
             system_entries=sum(t.entry_by == "system" for t in mine),

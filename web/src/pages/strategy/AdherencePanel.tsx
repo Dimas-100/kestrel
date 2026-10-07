@@ -34,7 +34,7 @@ export function AdherencePanel({ a }: { a: Adherence }) {
                 {rows.map((r) => (
                   <tr key={r.version}>
                     <td>
-                      <div className="text-sm font-medium">{r.version}{r.system_run && <span className="text-ink3 font-normal"> · system-run</span>}</div>
+                      <div className="text-sm font-medium">{r.version}<span className="text-ink3 font-normal"> · {r.system_run ? 'system-run' : 'run by hand'}</span></div>
                       {r.summary && <div className="text-[11px] text-ink3 [overflow-wrap:anywhere]">{r.summary}</div>}
                     </td>
                     <td className="num text-xs text-ink2 whitespace-nowrap">{r.effective ? monthLabel(r.effective, true) : <Missing />}</td>

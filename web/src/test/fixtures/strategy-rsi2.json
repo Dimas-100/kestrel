@@ -172,17 +172,20 @@
       {
         "version": "v1.0",
         "effective": "2025-09-20",
-        "summary": "The RSI(2) rules run by hand each evening: entries and exits placed by Alex"
+        "summary": "The RSI(2) rules run by hand each evening: entries and exits placed by Alex",
+        "placed_by": "hand"
       },
       {
         "version": "v2.0",
         "effective": "2026-07-06",
-        "summary": "The rules written down as the system runs them; the runner queues, the autopilot places; held through earnings"
+        "summary": "The rules written down as the system runs them; the runner queues, the autopilot places; held through earnings",
+        "placed_by": "system"
       },
       {
         "version": "v2.1",
         "effective": "2026-09-21",
-        "summary": "Sizing floats with the account: a lot is the account value ÷ 6, at most $1,000 an order"
+        "summary": "Sizing floats with the account: a lot is the account value ÷ 6, at most $1,000 an order",
+        "placed_by": "system"
       }
     ],
     "steps": [
@@ -754,35 +757,50 @@
         "label": "Win rate",
         "actual": 64.7,
         "expected": 66.0,
-        "status": "ok"
+        "status": "ok",
+        "n": 34,
+        "band_lo": 50.08,
+        "band_hi": 81.92
       },
       {
         "key": "avg_trade",
         "label": "Average per trade",
         "actual": 0.79,
         "expected": 0.84,
-        "status": "ok"
+        "status": "ok",
+        "n": 34,
+        "band_lo": -0.17,
+        "band_hi": 1.85
       },
       {
         "key": "avg_win",
         "label": "Average win",
         "actual": 2.59,
         "expected": 2.45,
-        "status": "ok"
+        "status": "ok",
+        "n": 22,
+        "band_lo": 1.23,
+        "band_hi": 3.68
       },
       {
         "key": "avg_loss",
         "label": "Average loss",
         "actual": -2.51,
         "expected": -2.28,
-        "status": "ok"
+        "status": "ok",
+        "n": 12,
+        "band_lo": -3.42,
+        "band_hi": -1.14
       },
       {
         "key": "per_month",
         "label": "Trades per month",
         "actual": 2.8,
         "expected": 3.1,
-        "status": "ok"
+        "status": "ok",
+        "n": 34,
+        "band_lo": 1.55,
+        "band_hi": 4.65
       }
     ],
     "review_at": 20,
@@ -3437,7 +3455,7 @@
         "drop_pct": 11.54
       }
     ],
-    "window": "since 25 Sep",
+    "window": "25 Sep to 25 Sep",
     "note": ""
   },
   "monthly": {

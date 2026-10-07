@@ -216,6 +216,7 @@ export interface RuleVersion {
   version: string
   effective: string
   summary: string
+  placed_by: 'hand' | 'system' | ''
 }
 
 export interface Criterion {
@@ -260,6 +261,9 @@ export interface ScoreRow {
   actual: number | null
   expected: number | null
   status: 'ok' | 'above' | 'below' | 'early' | 'none'
+  n: number
+  band_lo: number | null
+  band_hi: number | null
 }
 
 export interface OtherBook {

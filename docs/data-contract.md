@@ -60,9 +60,11 @@ plain "not reported" state for that part and everything else still works.
 
 - `Step.kind`: `step` (the flow: universe, entry, protect, exit) or `gate` (a limit or circuit breaker: the regime
   gate, a daily loss halt, caps). Gates are listed under the flow as "Gates and limits".
-- `Strategy.rules_version`, `rules_effective` and `rules_history` (`version`, `effective`, `summary`): the written
-  rules in force now and before. Every adherence figure judges a trade against the version in force when it was
-  entered (the latest `effective` on or before its `opened`).
+- `Strategy.rules_version`, `rules_effective` and `rules_history` (`version`, `effective`, `summary`, `placed_by`):
+  the written rules in force now and before. Every adherence figure judges a trade against the version in force
+  when it was entered (the latest `effective` on or before its `opened`). `placed_by` says who placed the trades
+  under a version: under a `hand` version a hand entry was the rule; under a `system` one it is a deviation. Left
+  empty, kestrel treats every version after the first as system-run.
 - `Strategy.review`: when the rules are next reviewed and what the review needs — `label`, `at_trades` counted
   from `counted_since` (the book's start when missing), or `by` a date, whichever first; `last_at` and
   `last_note`; `criteria` (`key`, `label`, `measure`, `target`, `value` as text, `status` pass / fail / pending /

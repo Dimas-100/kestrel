@@ -533,12 +533,12 @@ def _rsi2_rules(days: list[date]) -> tuple[list[RuleVersion], date]:
     sizing change. The second is the day the system took over the entries."""
     system_from = days[-60]
     return [
-        RuleVersion(version="v1.0", effective=days[0] - timedelta(days=5),
+        RuleVersion(version="v1.0", effective=days[0] - timedelta(days=5), placed_by="hand",
                     summary="The RSI(2) rules run by hand each evening: entries and exits placed by Alex"),
-        RuleVersion(version="v2.0", effective=system_from,
+        RuleVersion(version="v2.0", effective=system_from, placed_by="system",
                     summary="The rules written down as the system runs them; the runner queues, the autopilot places; "
                     "held through earnings"),
-        RuleVersion(version="v2.1", effective=days[-5],
+        RuleVersion(version="v2.1", effective=days[-5], placed_by="system",
                     summary="Sizing floats with the account: a lot is the account value ÷ 6, at most $1,000 an order"),
     ], system_from
 
