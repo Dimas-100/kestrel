@@ -138,23 +138,26 @@ describe('Home', { timeout: 15_000 }, () => {
     expect(pnlCell.style.whiteSpace).toBe('nowrap')
   })
 
-  it('flags a real position with a genuinely missing stop: the shield icon and "No stop"', async () => {
-    // stop_resting=true (MSFT in the fixture) must not be the only shape this page ever sees a real position in:
-    // both "not reported at all" (null) and an explicit "false" are a real missing stop and must still alarm
+  it('tells a real position whose source says there is no stop from one with nothing on record', async () => {
+    // the view's flag drives the words: "No stop" (serious) only when the source says there is none; "not on
+    // record" (a warning) when nothing is reported; "signal exit" for a strategy that never rests one
     const base = homeFixture.positions.find((p) => p.money === 'real')!
-    const noStopUnreported = { ...base, symbol: 'XOM', stop_price: null, stop_resting: null, room_pct: null }
-    const noStopFalse = { ...base, symbol: 'CVX', stop_price: null, stop_resting: false, room_pct: null }
-    const resting = { ...base, symbol: 'MSFT', stop_price: null, stop_resting: true, room_pct: null }
-    renderApp('/', { home: { ...homeFixture, positions: [noStopUnreported, noStopFalse, resting] } })
+    const unknown = { ...base, symbol: 'XOM', stop_price: null, stop_resting: null, room_pct: null, flag: 'unknown_stop' as const }
+    const none = { ...base, symbol: 'CVX', stop_price: null, stop_resting: false, room_pct: null, flag: 'no_stop' as const }
+    const resting = { ...base, symbol: 'MSFT', stop_price: null, stop_resting: true, room_pct: null, flag: null }
+    const signal = { ...base, symbol: 'XLF', money: 'paper' as const, stop_price: null, stop_resting: null, room_pct: null,
+      flag: 'signal_exit' as const }
+    renderApp('/', { home: { ...homeFixture, positions: [unknown, none, resting, signal] } })
     const positions = await screen.findByRole('region', { name: 'Open positions' })
     const rowFor = (symbol: string) =>
       within(positions).getAllByRole('row').find((r) => r.textContent?.includes(symbol)) as HTMLElement
-    for (const symbol of ['XOM', 'CVX']) {
-      const row = rowFor(symbol)
-      expect(within(row).getByText('No stop')).toBeTruthy()
-      expect(row.querySelector('svg')).toBeTruthy() // the shield icon: never colour alone
-      expect(within(row).queryByText('resting (level not reported)')).toBeNull()
-    }
+    const cvx = rowFor('CVX')
+    expect(within(cvx).getByText('No stop')).toBeTruthy()
+    expect(cvx.querySelector('svg')).toBeTruthy() // the shield icon: never colour alone
+    const xom = rowFor('XOM')
+    expect(within(xom).getByText('not on record')).toBeTruthy()
+    expect(within(xom).queryByText('No stop')).toBeNull()
+    expect(within(rowFor('XLF')).getByText('signal exit')).toBeTruthy()
     const restingRow = rowFor('MSFT')
     expect(within(restingRow).getByText('resting (level not reported)')).toBeTruthy()
     expect(within(restingRow).queryByText('No stop')).toBeNull()

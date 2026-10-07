@@ -222,8 +222,14 @@ def test_a_real_position_with_no_stop_links_to_its_own_book():
     pos = Position(book_id="swing/real", symbol="KLAC", quantity=1, entry_price=512.4, last_price=518.07,
                    opened=dt.date(2026, 9, 24))
     item, = home_view(_tiny([], [], books=[book], positions=[pos]), Profile(), NOW).attention
-    assert (item.level, item.title) == ("serious", "KLAC has no resting stop")
+    # nothing on record is a warning; only a source that says there is NO stop is serious
+    assert (item.level, item.title) == ("warning", "KLAC's stop isn't on record")
     assert item.link == "/books/swing%2Freal"  # the book's own page, its id escaped so it stays one path segment
+    none = Position(book_id="swing/real", symbol="KLAC", quantity=1, entry_price=512.4, last_price=518.07,
+                    stop_resting=False, opened=dt.date(2026, 9, 24))
+    item, = home_view(_tiny([], [], books=[book], positions=[none]), Profile(), NOW).attention
+    assert (item.level, item.title) == ("serious", "KLAC has no resting stop")
+    assert home_view(_tiny([], [], books=[book], positions=[none]), Profile(), NOW).positions[0].flag == "no_stop"
 
 
 def test_a_paper_position_without_a_stop_is_not_an_alarm():

@@ -1,12 +1,12 @@
 import { Empty } from '../../charts/marks'
-import { Missing, Panel, Stat } from '../../components/bits'
+import { Delta, Missing, Panel, Stat } from '../../components/bits'
 import { Icon } from '../../components/Icon'
 import type { BookView } from '../../lib/api'
-import { money, num, pct } from '../../lib/format'
+import { num, pct, signedMoney } from '../../lib/format'
 import { BandBar, VERDICT } from '../home/BooksPanel'
 
-/** Trades, win rate, average trade/win/loss, total P/L, best and worst, and the expected band when the strategy
- *  has one — the same verdict Home and the Books list show for this book. */
+/** Trades, win rate, average trade/win/loss, realized, unrealized and combined P/L, best and worst, and the
+ *  expected band when the strategy has one — the same verdict Home and the Books list show for this book. */
 export function ScorecardPanel({ v }: { v: BookView }) {
   const s = v.scorecard
   const band = s.band_lo != null && s.band_hi != null && s.avg_trade_pct != null
@@ -23,7 +23,9 @@ export function ScorecardPanel({ v }: { v: BookView }) {
             <Stat label="Avg trade">{s.avg_trade_pct == null ? <Missing /> : pct(s.avg_trade_pct, 2)}</Stat>
             <Stat label="Avg win">{s.avg_win_pct == null ? <Missing /> : pct(s.avg_win_pct, 2)}</Stat>
             <Stat label="Avg loss">{s.avg_loss_pct == null ? <Missing /> : pct(s.avg_loss_pct, 2)}</Stat>
-            <Stat label="Total P/L">{money(s.total_pnl)}</Stat>
+            <Stat label="Realized P/L" sub="closed trades"><Delta value={s.total_pnl}>{signedMoney(s.total_pnl)}</Delta></Stat>
+            <Stat label="Unrealized P/L" sub="open positions"><Delta value={s.unrealized_pnl}>{signedMoney(s.unrealized_pnl)}</Delta></Stat>
+            <Stat label="Combined P/L" sub="realized + open"><Delta value={s.combined_pnl}>{signedMoney(s.combined_pnl)}</Delta></Stat>
             <Stat label="Best trade">{s.best_pct == null ? <Missing /> : pct(s.best_pct, 2)}</Stat>
             <Stat label="Worst trade">{s.worst_pct == null ? <Missing /> : pct(s.worst_pct, 2)}</Stat>
           </div>

@@ -74,6 +74,10 @@ plain "not reported" state for that part and everything else still works.
 - `Trade.entry_by` and `exit_by` (`system` or `hand`; missing when the source can't tell), `rules_version`,
   `plan_followed` (the desk's own scoring: `true`, `false`, or missing for not scored — kestrel shows it and never
   recomputes it) and `note`.
+- `Strategy.protection`: how an open lot is protected — `stop` (a resting stop is expected on every lot, so a lot
+  without one on record is called out), `signal` (exits on a signal by design; no resting stop is expected), or
+  empty (not said: a rule with a `Protect` step reads as `stop`, otherwise a missing stop is shown as "not on
+  record", never as missing). Only a source that sets `Position.stop_resting` to `false` is read as "no stop".
 - `Book.capital` and `capital_basis`: the money the book's returns and its "deployed" share are measured against,
   and what that is in words ("the account's net liq, deposits taken out"). `Book.prices_as_of`: the latest close
   its positions are marked at, so a page can say how fresh the marks are.

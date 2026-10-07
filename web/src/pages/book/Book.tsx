@@ -1,8 +1,10 @@
 // One book: its equity against the benchmark, drawdown, scorecard, open positions, trades and runs.
 import { Link } from '@tanstack/react-router'
 import { MoneyBadge } from '../../components/bits'
+import { Icon } from '../../components/Icon'
 import { type BookView, HttpError, useBook, useShell } from '../../lib/api'
 import { shortDate, sinceLabel, timeHM } from '../../lib/format'
+import { LOOK } from '../home/AttentionPanel'
 import { Soon } from '../Soon'
 import { EquityPanel } from './EquityPanel'
 import { PositionsPanel } from './PositionsPanel'
@@ -33,6 +35,20 @@ function Header({ v, tz, now }: { v: BookView; tz: string; now: string }) {
             : 'No run scheduled'}
         </div>
       </div>
+      {v.attention.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-1.5" aria-label="Needs you on this book">
+          {v.attention.map((a, i) => {
+            const look = LOOK[a.level]
+            return (
+              <li key={`${a.title}-${i}`} className="flex items-start gap-2 text-sm">
+                <Icon name={look.icon} size={15} style={{ color: look.color, flex: 'none', marginTop: 2 }} />
+                <span><span className="label mr-2" style={{ color: look.color }}>{look.word}</span>{a.title}
+                  {a.detail && <span className="text-ink3"> · {a.detail}</span>}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </header>
   )
 }

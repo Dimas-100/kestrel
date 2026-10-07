@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bookFixture, renderApp } from '../../test/renderApp'
 
@@ -31,30 +31,74 @@ describe('Book', { timeout: 15_000 }, () => {
     expect(screen.getAllByText(`${bookFixture.trades.length} closed trades`)).toHaveLength(2) // scorecard + trades table
   })
 
-  it('flags a position with a genuinely missing stop: the shield icon and "No stop"', async () => {
-    // stop_resting=true (MSFT in the fixture) must not be the only shape this page ever sees a position in: both
-    // "not reported at all" (null) and an explicit "false" are a real missing stop and must still be flagged
+  it('tells a missing stop from one not on record and from a signal exit, with the source notes under the table', async () => {
     const base = bookFixture.positions[0] // MSFT: stop_price null, stop_resting true, flag null
-    const noStopUnreported = { ...base, symbol: 'XOM', stop_price: null, stop_resting: null, flag: 'no_stop' as const,
-      room_pct: null }
-    const noStopFalse = { ...base, symbol: 'CVX', stop_price: null, stop_resting: false, flag: 'no_stop' as const,
-      room_pct: null }
+    const unknown = { ...base, symbol: 'XOM', stop_price: null, stop_resting: null, flag: 'unknown_stop' as const,
+      room_pct: null, note: 'no recent price in the store: marked at the entry price' }
+    const none = { ...base, symbol: 'CVX', stop_price: null, stop_resting: false, flag: 'no_stop' as const, room_pct: null }
     const resting = { ...base, symbol: 'MSFT', stop_price: null, stop_resting: true, flag: null, room_pct: null }
-    renderApp('/books/rsi2-real', {
-      book: [{ id: 'rsi2-real', view: { ...bookFixture, positions: [noStopUnreported, noStopFalse, resting] } }],
-    })
+    const signal = { ...base, symbol: 'XLF', stop_price: null, stop_resting: null, flag: 'signal_exit' as const, room_pct: null }
+    const view = { ...bookFixture, positions: [unknown, none, resting, signal],
+      notes: ['no recent price in the store: marked at the entry price'], freshness: 'oldest mark 2 sessions old' }
+    renderApp('/books/rsi2-real', { book: [{ id: 'rsi2-real', view }] })
     const positions = await screen.findByRole('region', { name: 'Open positions' })
     const rowFor = (symbol: string) =>
       within(positions).getAllByRole('row').find((r) => r.textContent?.includes(symbol)) as HTMLElement
-    for (const symbol of ['XOM', 'CVX']) {
-      const row = rowFor(symbol)
-      expect(within(row).getByText('No stop')).toBeTruthy()
-      expect(row.querySelector('svg')).toBeTruthy() // the shield icon: never colour alone
-      expect(within(row).queryByText('resting (level not reported)')).toBeNull()
-    }
+    const cvx = rowFor('CVX')
+    expect(within(cvx).getByText('No stop')).toBeTruthy()
+    expect(cvx.querySelector('svg')).toBeTruthy() // the shield icon: never colour alone
+    expect(within(rowFor('XOM')).getByText('not on record')).toBeTruthy()
+    expect(within(rowFor('XLF')).getByText('signal exit')).toBeTruthy()
     const restingRow = rowFor('MSFT')
     expect(within(restingRow).getByText('resting (level not reported)')).toBeTruthy()
     expect(within(restingRow).queryByText('No stop')).toBeNull()
+    // the marks' date and freshness, the protection rule, and the source's own note reach the page
+    expect(within(positions).getByText(/^4 open · a resting stop on every lot · marks from 25 Sep \(oldest mark 2 sessions old\)$/))
+      .toBeTruthy()
+    expect(within(positions).getByText('no recent price in the store: marked at the entry price')).toBeTruthy()
+  })
+
+  it('shows realized, unrealized and combined P/L, and what the return is measured on', async () => {
+    renderApp('/books/rsi2-real')
+    const scorecard = (await screen.findByRole('heading', { name: 'Scorecard' })).closest('section') as HTMLElement
+    expect(scorecard.textContent).toContain('Realized P/L▲ up +$741.20closed trades')
+    expect(scorecard.textContent).toContain('Unrealized P/L▲ up +$86.20open positions')
+    expect(scorecard.textContent).toContain('Combined P/L▲ up +$827.40realized + open')
+    const equity = screen.getByRole('heading', { name: 'Equity' }).closest('section') as HTMLElement
+    expect(within(equity).getByText(/measured on The trading account's value; deposits are taken out of the return$/))
+      .toBeTruthy()
+  })
+
+  it('names the benchmark, says when its history starts later, and offers a table view', async () => {
+    const e = bookFixture.equity
+    const later = { ...e, benchmark: e.benchmark.map((b, i) => (i < 3 ? null : b)), benchmark_from: e.dates[3] }
+    renderApp('/books/rsi2-real', { book: [{ id: 'rsi2-real', view: { ...bookFixture, equity: later } }] })
+    const equity = (await screen.findByRole('heading', { name: 'Equity' })).closest('section') as HTMLElement
+    expect(within(equity).getByText('S&P 500')).toBeTruthy() // the legend names it
+    expect(within(equity).getByText(/^S&P 500 is drawn from 30 Sep, where its history starts/)).toBeTruthy()
+    expect(within(equity).getByRole('img', { name: "The book's return since it started, against S&P 500" })).toBeTruthy()
+    fireEvent.click(within(equity).getByRole('button', { name: 'Table' }))
+    const rows = within(equity).getAllByRole('row')
+    expect(rows[0].textContent).toBe('DayBookS&P 500Drawdown')
+    expect(rows).toHaveLength(e.dates.length + 1)
+    expect(rows[rows.length - 1].textContent).toContain('—') // the first day: the benchmark hasn't started
+  })
+
+  it('says so when there is no benchmark over the book\'s dates', async () => {
+    const e = { ...bookFixture.equity, benchmark: bookFixture.equity.benchmark.map(() => null), benchmark_from: null }
+    renderApp('/books/rsi2-real', { book: [{ id: 'rsi2-real', view: { ...bookFixture, equity: e } }] })
+    const equity = (await screen.findByRole('heading', { name: 'Equity' })).closest('section') as HTMLElement
+    expect(within(equity).getByText('No benchmark history over these dates.')).toBeTruthy()
+    expect(within(equity).queryByText('S&P 500')).toBeNull()
+  })
+
+  it('lists what needs you on this book under the header', async () => {
+    renderApp('/books/rsi2-real')
+    await screen.findByRole('heading', { level: 1, name: 'Mean reversion' })
+    const list = screen.getByRole('list', { name: 'Needs you on this book' })
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'WarningEvening run failed Mon 17:45 · The broker timed out; the retry at 18:15 ran',
+    ])
   })
 
   it('shows the win rate as a rate, never with a sign', async () => {

@@ -286,6 +286,7 @@
     "positions": 4,
     "stops_covered": 4,
     "stops_total": 4,
+    "protection": "stop",
     "return_pct": 18.96,
     "drawdown_now_pct": -3.81,
     "drawdown_worst_pct": -5.62,

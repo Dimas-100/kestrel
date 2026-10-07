@@ -84,8 +84,8 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                   <td className="r num">{num(p.quantity, 0)}</td>
                   <td className="r num">{num(p.entry_price)}</td>
                   <td className="r num">{num(p.last_price)}</td>
-                  <td className="r num">
-                    {p.stop_price != null ? num(p.stop_price)
+                  <td className="r">
+                    {p.stop_price != null ? <span className="num">{num(p.stop_price)}</span>
                       // no whitespace-nowrap here: this is the one label long enough to want the column's own
                       // width, and letting it wrap two lines (the row is tall enough) keeps the table from
                       // needing to scroll to show the columns after it, such as P/L
@@ -106,12 +106,16 @@ export function PositionsPanel({ positions }: { positions: PositionRow[] }) {
                       </div>
                     ) : p.stop_resting ? (
                       <span className="text-xs text-ink3">—</span>
-                    ) : p.money === 'real' ? (
+                    ) : p.flag === 'no_stop' ? (
                       <span className="flex items-center gap-1.5 text-xs">
                         <Icon name="shield" size={14} style={{ color: 'var(--serious)' }} />No stop
                       </span>
+                    ) : p.flag === 'unknown_stop' && p.money === 'real' ? (
+                      <span className="flex items-center gap-1.5 text-xs" title="no protective stop reported; it may rest unreported">
+                        <Icon name="info" size={14} style={{ color: 'var(--warn)' }} />not on record
+                      </span>
                     ) : (
-                      <span className="text-xs text-ink3">{p.note || '—'}</span>
+                      <span className="text-xs text-ink3">{p.flag === 'signal_exit' ? 'signal exit' : p.note || '—'}</span>
                     )}
                   </td>
                   <td className="r" style={{ whiteSpace: 'nowrap' }}><Delta value={p.pnl}>{signedMoney(p.pnl)}</Delta></td>

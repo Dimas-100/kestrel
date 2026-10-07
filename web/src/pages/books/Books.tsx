@@ -29,6 +29,12 @@ export function Spark({ values, up }: { values: number[]; up: boolean }) {
   )
 }
 
+/** The capital basis, cut to its first clause for the list ("The whole Webull cash account's net liq…") */
+export function basisShort(basis: string): string {
+  const first = basis.split(/[;.]/)[0].trim()
+  return first.length > 60 ? `${first.slice(0, 57)}…` : first
+}
+
 function Row({ b, tz, now }: { b: BooksRow; tz: string; now: string }) {
   return (
     <tr>
@@ -51,8 +57,14 @@ function Row({ b, tz, now }: { b: BooksRow; tz: string; now: string }) {
           {b.status}
         </div>
       </td>
-      <td className="r num">{money(b.value)}</td>
-      <td className="r">{b.since_pct == null ? <Missing /> : <Delta value={b.since_pct} digits={1}>{pct(b.since_pct)}</Delta>}</td>
+      <td className="r num">{b.equity == null ? <Missing /> : money(b.equity)}</td>
+      <td className="r num">{money(b.invested)}</td>
+      <td className="r">
+        {b.since_pct == null ? <Missing /> : <Delta value={b.since_pct} digits={1}>{pct(b.since_pct)}</Delta>}
+        {b.since_pct != null && b.capital_basis && (
+          <div className="text-[10px] text-ink3 max-w-[180px] whitespace-normal" title={b.capital_basis}>on {basisShort(b.capital_basis)}</div>
+        )}
+      </td>
       <td>{b.since_pct == null ? <Missing /> : <Spark values={b.spark} up={b.since_pct >= 0} />}</td>
       <td className="r num">{b.trades}</td>
       <td style={{ paddingLeft: 28 }}>
@@ -92,15 +104,15 @@ export function Books() {
         <p className="text-ink2 mt-1.5">Every book of money, real and paper, side by side.</p>
       </header>
       <Panel id="books-list" title="Books" span={12}
-        subtitle={`Real ${money(v.real_value)} · Paper ${money(v.paper_value)}`}>
+        subtitle={`Real ${money(v.real_value)} · Paper ${money(v.paper_value)} · equity is the money each book works with, invested what it holds at the last price`}>
         {v.rows.length === 0 ? (
           <Empty>No books yet. A book appears once a trading feed reports one.</Empty>
         ) : (
           <div className="table-scroll mt-4">
-            <table className="tbl" style={{ minWidth: 980 }}>
+            <table className="tbl" style={{ minWidth: 1080 }}>
               <thead>
                 <tr>
-                  <th>Book</th><th>Money</th><th>Status</th><th className="r">Value</th>
+                  <th>Book</th><th>Money</th><th>Status</th><th className="r">Equity</th><th className="r">Invested</th>
                   <th className="r">Since start</th><th>60 days</th><th className="r">Trades</th>
                   <th style={{ paddingLeft: 28 }}>Per trade vs expected</th><th>Slots</th><th>Next run</th>
                 </tr>
