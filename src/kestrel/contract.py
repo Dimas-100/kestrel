@@ -97,6 +97,9 @@ class RuleVersion(Model):
     version: str  # "v2.1"
     effective: dt.date
     summary: str = ""  # what changed, one line
+    # who placed the trades under this version: under a "hand" version a hand entry was the rule; under a "system"
+    # one it is a deviation. "" lets kestrel fall back to its own reading (every version after the first is system-run)
+    placed_by: Literal["hand", "system", ""] = ""
 
 
 class Criterion(Model):

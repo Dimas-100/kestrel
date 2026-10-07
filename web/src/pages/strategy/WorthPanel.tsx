@@ -23,7 +23,7 @@ export function WorthPanel({ v }: { v: StrategyView }) {
   const w = v.worth
   return (
     <Panel id="worth" title="Is it worth it?" span={7} height={380}
-      subtitle={`Yearly return against the worst drop along the way${w.window ? ` · every live point ${w.window}` : ''}`}
+      subtitle={`Yearly return against the worst drop along the way${w.window ? ` · every live point measured over ${w.window}; the backtest over its own window` : ''}`}
       actions={points.length > 0 && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
       {w.note && <p className="text-xs text-ink2 mt-2">{w.note}</p>}
       <div className="mt-auto pt-3">

@@ -34,15 +34,15 @@ describe('Strategy page', { timeout: 15_000 }, () => {
     const { router } = renderApp('/strategies/rsi2', {
       strategy: [{ id: 'rsi2', book: 'real', view: strategyFixture }, { id: 'rsi2', book: 'paper', view: paper }],
     })
-    await screen.findByText('Real book against the backtest')
+    await screen.findByText('Real book against the backtest · 34 closed trades')
     fireEvent.click(within(screen.getByRole('group', { name: 'Book' })).getByRole('button', { name: 'Paper' }))
-    expect(await screen.findByText('Paper book against the backtest')).toBeTruthy()
+    expect(await screen.findByText('Paper book against the backtest · 34 closed trades')).toBeTruthy()
     expect(router.state.location.search).toEqual({ book: 'paper' })
   })
 
   it('opens on the book the address names', async () => {
     renderApp('/strategies/rsi2?book=paper', withView(paper, 'paper'))
-    expect(await screen.findByText('Paper book against the backtest')).toBeTruthy()
+    expect(await screen.findByText('Paper book against the backtest · 34 closed trades')).toBeTruthy()
   })
 
   it('offers no toggle when the strategy has one kind of money', async () => {
@@ -105,13 +105,15 @@ describe('Strategy page', { timeout: 15_000 }, () => {
     renderApp('/strategies/rsi2')
     const card = await findPanel('Scorecard')
     const rows = within(card).getAllByRole('row').slice(1)
+    // every verdict carries its count and the band it was judged against
     expect(rows.map((r) => r.textContent)).toEqual([
-      'Win rate64.7%66.0%as expected',
-      'Average per trade+0.79%+0.84%as expected',
-      'Average win+2.59%+2.45%as expected',
-      'Average loss−2.51%−2.28%as expected',
-      'Trades per month2.83.1as expected',
+      'Win rateband 50.1% to 81.9%64.7%66.0%34within the band on 34 trades',
+      'Average per tradeband −0.17% to +1.85%+0.79%+0.84%34within the band on 34 trades',
+      'Average winband +1.23% to +3.68%+2.59%+2.45%22within the band on 22 trades',
+      'Average lossband −3.42% to −1.14%−2.51%−2.28%12within the band on 12 trades',
+      'Trades per monthband 1.6 to 4.72.83.134within the band on 34 trades',
     ])
+    expect(within(card).getByText('Real book against the backtest · 34 closed trades')).toBeTruthy()
     expect(within(card).getByText('34 real trades so far — enough to read a pattern')).toBeTruthy()
     expect(card.textContent).toContain('Paper, same rules: 71 trades · +0.83% · 69.0% wins')
   })
@@ -122,9 +124,9 @@ describe('Strategy page', { timeout: 15_000 }, () => {
     }))
     renderApp('/strategies/rsi2', withView({ ...strategyFixture, behaving: { ...strategyFixture.behaving, scorecard } }))
     const card = await findPanel('Scorecard')
-    expect(within(card).getByText('higher than expected')).toBeTruthy()
-    expect(within(card).getByText('lower than expected')).toBeTruthy()
-    expect(within(card).getByText('too early')).toBeTruthy()
+    expect(within(card).getByText('above the band on 34 trades')).toBeTruthy()
+    expect(within(card).getByText('below the band on 34 trades')).toBeTruthy()
+    expect(within(card).getByText('too early · 22')).toBeTruthy()
   })
 
   it('shows the figures alone when there is no backtest', async () => {
@@ -137,7 +139,7 @@ describe('Strategy page', { timeout: 15_000 }, () => {
     expect(within(card).getByText('No backtest to compare with.')).toBeTruthy()
     expect(within(panel('Average per trade, as trades add up')).getByText('The running average of every closed trade'))
       .toBeTruthy()
-    expect(within(card).getByText('Real book')).toBeTruthy()
+    expect(within(card).getByText('Real book · 34 closed trades')).toBeTruthy()
     expect(screen.queryByText('Backtest 2006–2020')).toBeNull()
   })
 

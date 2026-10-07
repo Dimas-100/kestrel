@@ -186,7 +186,7 @@ def test_worth_adds_the_backtest_long_term_accounts_and_benchmark_when_they_exis
         ("backtest", "Backtest", "2006–2020"), ("book", "Real book", "12 months"),
         ("long_term", "Long-term accounts", "12 months"), ("benchmark", "S&P 500", "12 months")]
     assert (worth.points[0].return_pct, worth.points[0].drop_pct) == (23.4, 11.7)
-    assert worth.window == "since 25 Sep" and worth.note == ""
+    assert worth.window == "25 Sep to 25 Sep" and worth.note == ""  # the same two endpoints for every live point
     lt_year = 160 / 148 - 1  # a straight line from 100 to 160 over 5 years: its last year grows 148 → 160
     assert worth.points[2].return_pct == pytest.approx(lt_year * 100, abs=0.2)
 

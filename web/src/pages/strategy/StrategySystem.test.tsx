@@ -202,6 +202,8 @@ describe('Strategy page: the system sections', { timeout: 15_000 }, () => {
     }
     renderApp('/strategies/rsi2', withView(thin))
     await waitFor(() => expect(screen.getAllByText(/16 real trades so far — limited evidence/).length).toBeGreaterThan(0))
+    // a row-level verdict on a thin sample says so, in muted ink
+    expect(screen.getAllByText('within the band on 34 trades, limited evidence').length).toBeGreaterThan(0)
     expect(screen.getByText('16 real trades so far — limited evidence; the plan judges the system over 30–50 — a sketch, not a verdict'))
       .toBeTruthy()
     expect(screen.getByText(/^71 trades: the funnel is still wide/)).toBeTruthy()
