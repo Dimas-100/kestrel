@@ -273,6 +273,12 @@ as JSON Schema. The smallest payload kestrel accepts is:
 Serve it at any address on this computer, or save it to a file, and point a `feed` source at it. Set
 `generated_at` each time the payload is rebuilt: it is how kestrel knows the feed is fresh.
 
+The Strategy pages say more when the payload carries the optional strategy facts listed in
+[`data-contract.md`](data-contract.md#what-the-strategy-pages-need-to-say-what-runs-how-it-performs-and-what-the-next-review-needs-2026-10-07):
+the rules in force and their history, the next review and its criteria, what each expectation rests on, who placed
+each side of a trade and the desk's own scoring of it, a book's capital basis and price date, and the runner's
+decision rows. Without them the page says so, part by part, and everything else still works.
+
 ### Troubleshooting
 
 | The source's line says | What to do |

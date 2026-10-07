@@ -25,7 +25,7 @@ export function SlotsPanel({ v }: { v: StrategyView }) {
   const money_ = v.book ?? 'real'
   const reported = s.total != null && s.days.length > 0
   return (
-    <Panel id="slots" title="Where the money works" span={5} height={452}
+    <Panel id="slots" title="Where the money works" span={12}
       subtitle={reported ? `${MONEY_WORD[money_]} book · slots in use, last ${s.days.length} sessions · ${s.total} slots`
         : undefined}
       actions={reported && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
@@ -40,7 +40,7 @@ export function SlotsPanel({ v }: { v: StrategyView }) {
               ? <SlotsStrip days={s.days} used={s.used} total={s.total} money={money_} ariaLabel="Slots in use each session" />
               : <SlotsTable days={s.days} used={s.used} total={s.total} />}
           </div>
-          <div className="grid grid-cols-2 gap-3 mt-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3.5">
             <Tile label="Slots in use">
               {s.avg_used == null ? '—' : num(s.avg_used, 1)} <span className="text-xs text-ink3">of {s.total} on average · {s.working_pct == null ? '—' : `${Math.round(s.working_pct)}%`}</span>
             </Tile>
@@ -58,7 +58,7 @@ export function SlotsPanel({ v }: { v: StrategyView }) {
         </>
       )}
       {s.watch.length > 0 && (
-        <div className="mt-auto border-t border-line pt-3">
+        <div className="mt-3.5 border-t border-line pt-3">
           <div className="label">Close to a signal</div>
           <div className="flex flex-wrap gap-2 mt-2">
             {s.watch.map((w, i) => (

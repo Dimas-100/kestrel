@@ -29,7 +29,9 @@ function Params({ params }: { params: string[] }) {
 /** The rule as numbered cards joined by arrows, then its gates and limits, then the sizing and the version. */
 export function HowItTrades({ rules }: { rules: Rules }) {
   const { steps, gates } = rules
-  const cols = Math.min(4, Math.max(1, steps.length))
+  // whole class names, so Tailwind's scanner finds them
+  const COLS = ['', 'min-[1180px]:grid-cols-1', 'min-[1180px]:grid-cols-2', 'min-[1180px]:grid-cols-3', 'min-[1180px]:grid-cols-4']
+  const cols = COLS[Math.min(4, Math.max(1, steps.length))]
   return (
     <Panel id="how" title="How it trades" span={12} subtitle={rulesSubtitle(steps, gates)}>
       {steps.length === 0 && gates.length === 0 ? (
@@ -37,10 +39,9 @@ export function HowItTrades({ rules }: { rules: Rules }) {
       ) : (
         <>
           {steps.length > 0 && (
-            <ol className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3.5"
-              style={{ gridTemplateColumns: undefined }} data-cols={cols}>
+            <ol className={`grid grid-cols-1 sm:grid-cols-2 ${cols} gap-3 min-[1180px]:gap-0 mt-3.5`}>
               {steps.map((step, i) => (
-                <li key={`${i}-${step.label}`} className="flex min-w-0 min-[1180px]:[grid-column:auto]">
+                <li key={`${i}-${step.label}`} className="flex min-w-0">
                   {i > 0 && (
                     <span aria-hidden="true" className="hidden min-[1180px]:flex w-8 flex-none items-center justify-center"
                       style={{ color: 'var(--ink3)' }}>

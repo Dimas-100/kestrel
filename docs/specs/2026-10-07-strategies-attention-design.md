@@ -1,6 +1,6 @@
 # Strategies that say what runs, how it performs, what needs you, and what the next review needs — design
 
-- **Date:** 2026-10-07 · **Status:** approved by the owner's goal statement (2026-10-07), built autonomously.
+- **Date:** 2026-10-07 · **Status:** built (plan: [`../plans/2026-10-07-strategies-attention.md`](../plans/2026-10-07-strategies-attention.md)); approved by the owner's goal statement of 2026-10-07.
 - **Parent specs:** [`2026-09-26-phase-3a-strategies-design.md`](2026-09-26-phase-3a-strategies-design.md) (the pages
   this reshapes), [`2026-09-25-kestrel-design.md`](2026-09-25-kestrel-design.md) §7 (the contract).
 - **Sibling:** the webull desk's feed grows in the same step (webull `docs/superpowers/specs/2026-10-07-kestrel-feed-strategy-facts-design.md`).
