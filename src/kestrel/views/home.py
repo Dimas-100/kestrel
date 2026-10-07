@@ -12,7 +12,8 @@ from ..metrics import growth_index, largest_remainder, max_drawdown_pct, opening
 from ..profile import Profile
 from ._base import View as View  # noqa: F401 - re-exported: other view modules import View from here
 from .books import MIN_TRADES_FOR_VERDICT as MIN_TRADES_FOR_VERDICT  # noqa: F401 - re-exported for strategy.py
-from .books import BookRow
+from .books import Attention as Attention  # noqa: F401 - the one shape every "needs you" list uses
+from .books import BookRow, StopFlag, protection_of, stop_attention, stop_flag
 from .books import book_rows as _book_rows
 
 CATEGORY_LABELS = {"long_term": "Long-term", "trading": "Trading", "cash": "Cash", "debt": "Debt", "other": "Other"}
@@ -77,13 +78,6 @@ class Comparison(View):
     review_at: int | None
 
 
-class Attention(View):
-    level: Literal["serious", "warning", "note"]
-    title: str
-    detail: str
-    link: str
-
-
 class TodayRun(View):
     time: dt.datetime
     label: str
@@ -104,6 +98,7 @@ class PositionRow(View):
     room_pct: float | None  # distance from the last price down to the stop
     pnl: float
     note: str
+    flag: StopFlag  # no_stop: the source says there is none; unknown_stop: none on record; signal_exit: none expected
 
 
 class Summary(View):
@@ -265,14 +260,16 @@ def _attention(snapshot: Snapshot, rows: list[BookRow], strategies_review: dict[
     from .plan import target_attention, thesis_attention  # local: plan.py imports this module at load time
 
     books = {b.id: b for b in snapshot.books}
+    strategies = {s.id: s for s in snapshot.strategies}
     items: list[Attention] = []
     for p in snapshot.positions:
         book = books.get(p.book_id)
-        if book is not None and book.money == "real" and p.stop_price is None and p.stop_resting is not True:
-            # the position's own book; its id is escaped so an odd id can't bend the link into another path
-            items.append(Attention(level="serious", title=f"{p.symbol} has no resting stop",
-                                   detail=f"{book.name} · real — no protective stop on record",
-                                   link=f"/books/{quote(p.book_id, safe='')}"))
+        if book is not None:
+            # serious when the source says there is no stop, a warning when none is on record, nothing for a
+            # strategy that exits on a signal; the link is the position's own book
+            item = stop_attention(book, p, stop_flag(p, protection_of(strategies.get(book.strategy_id))))
+            if item:
+                items.append(item)
     for source in snapshot.sources:
         item = _source_attention(source, now, tz)
         if item:
@@ -355,6 +352,8 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
                       for b in snapshot.books}
     attention = _attention(snapshot, rows, review_by_book, now, tz)
     books = {b.id: b for b in snapshot.books}
+    strategies = {s.id: s for s in snapshot.strategies}
+    protection = {b.id: protection_of(strategies.get(b.strategy_id)) for b in snapshot.books}
     positions = [
         PositionRow(
             book_id=p.book_id, book=books[p.book_id].name if p.book_id in books else p.book_id, symbol=p.symbol,
@@ -364,6 +363,7 @@ def home_view(snapshot: Snapshot, profile: Profile, now: dt.datetime) -> HomeVie
             room_pct=round((p.last_price - p.stop_price) / p.last_price * 100, 2)
             if p.stop_price is not None and p.last_price > 0 else None,
             pnl=round((p.last_price - p.entry_price) * p.quantity, 2), note=p.note,
+            flag=stop_flag(p, protection.get(p.book_id, "")),
         )
         for p in snapshot.positions
     ]

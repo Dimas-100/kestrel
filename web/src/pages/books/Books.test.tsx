@@ -8,11 +8,18 @@ describe('Books', { timeout: 15_000 }, () => {
   it('lists real books first, then paper, with totals and a sparkline, and links to the book', async () => {
     renderApp('/books')
     expect(await screen.findByRole('heading', { level: 1, name: 'Books' })).toBeTruthy()
-    expect(screen.getByText('Real $18,467.71 · Paper $269,609.85')).toBeTruthy()
+    expect(screen.getByText(/^Real \$18,467\.71 · Paper \$269,609\.85 · equity is the money each book works with/))
+      .toBeTruthy()
     const rows = screen.getAllByRole('row').slice(1) // drop the header row
     expect(rows).toHaveLength(booksFixture.rows.length)
     const first = within(rows[0])
     expect(first.getByText('Mean reversion')).toBeTruthy()
+    // equity and invested side by side, the same two figures on every book, and the basis the return rests on
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+    expect(headers.slice(3, 6)).toEqual(['Equity', 'Invested', 'Since start'])
+    expect(rows[0].textContent).toContain('$18,467.71$12,004.20')
+    expect(rows[0].textContent).toContain("on The trading account's value")
+    expect(rows[2].textContent).toContain('$3,200.00$877.54') // the IBS book: its $3,200 book, $878 of it invested
     expect(first.getByRole('link', { name: 'Mean reversion' }).getAttribute('href')).toBe('/books/rsi2-real')
     expect(first.getByRole('img', { name: /(up|down) since it started/ })).toBeTruthy()
     expect(within(rows[1]).getByText('PAPER')).toBeTruthy() // the second row is the first paper book

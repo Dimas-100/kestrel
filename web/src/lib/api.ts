@@ -116,6 +116,10 @@ export interface BookRow {
   money: Money
   status: string
   value: number
+  invested: number
+  equity: number | null
+  capital_basis: string
+  unrealized_pnl: number
   day_change: number | null
   since_pct: number | null
   started: string
@@ -127,6 +131,8 @@ export interface BookRow {
   slots_used: number
   slots_total: number | null
   next_run: string | null
+  prices_as_of: string | null
+  protection: Protection
 }
 
 export interface TodayRun {
@@ -149,7 +155,11 @@ export interface PositionRow {
   room_pct: number | null
   pnl: number
   note: string
+  flag: StopFlag
 }
+
+export type Protection = 'stop' | 'signal' | ''
+export type StopFlag = 'no_stop' | 'unknown_stop' | 'signal_exit' | null
 
 export interface HomeView {
   as_of: string
@@ -565,6 +575,8 @@ export interface EquitySeries {
   benchmark: (number | null)[] // the benchmark over the same dates, indexed from the same start day
   return_pct: number
   max_drop_pct: number
+  benchmark_label: string
+  benchmark_from: string | null
 }
 
 export interface DrawdownSeries {
@@ -579,6 +591,8 @@ export interface BookScorecard {
   avg_win_pct: number | null
   avg_loss_pct: number | null
   total_pnl: number
+  unrealized_pnl: number
+  combined_pnl: number
   best_pct: number | null
   worst_pct: number | null
   band_lo: number | null
@@ -598,7 +612,8 @@ export interface BookPosition {
   pnl_pct: number | null
   opened: string
   days: number
-  flag: 'no_stop' | null
+  flag: StopFlag
+  note: string
 }
 
 export interface BookTrade {
@@ -629,6 +644,9 @@ export interface BookView {
   strategy_id: string
   strategy_name: string
   account_id: string | null
+  attention: Attention[]
+  notes: string[]
+  freshness: string
   equity: EquitySeries
   drawdown: DrawdownSeries
   scorecard: BookScorecard

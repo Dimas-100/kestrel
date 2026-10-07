@@ -1416,6 +1416,16 @@
             }
           ],
           "default": null
+        },
+        "protection": {
+          "default": "",
+          "enum": [
+            "stop",
+            "signal",
+            ""
+          ],
+          "title": "Protection",
+          "type": "string"
         }
       },
       "required": [

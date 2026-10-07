@@ -33,6 +33,7 @@ from ..contract import (
 from ..metrics import expected_band, growth_index, max_drawdown_pct, opening_on, sum_series
 from ..profile import Profile
 from ._base import View
+from .books import Protection, protection_of, stop_attention, stop_flag
 from .home import MIN_TRADES_FOR_VERDICT, Attention, _book_rows
 
 BUCKET_LOW, BUCKETS = -10, 20  # 1-point buckets from -10% to +10%; returns beyond fold into the end buckets
@@ -282,6 +283,7 @@ class Performance(View):
     positions: int
     stops_covered: int | None  # real books: positions with a stop on record; None for paper
     stops_total: int | None
+    protection: Protection  # "stop": a resting stop is expected on every lot; "signal": exits on a signal; "": not said
     return_pct: float | None  # deposit-adjusted, since the history starts
     drawdown_now_pct: float | None  # below the running peak now (<= 0)
     drawdown_worst_pct: float | None  # the worst fall from a peak (<= 0)
@@ -803,11 +805,12 @@ def _rules(strategy) -> Rules:
                  gates=[s for s in strategy.steps if s.kind == "gate"], sizing=strategy.sizing)
 
 
-def _performance(snapshot: Snapshot, book: Book | None, trades: list[Trade], positions: list[Position]) -> Performance:
+def _performance(snapshot: Snapshot, book: Book | None, trades: list[Trade], positions: list[Position],
+                 protection: Protection = "") -> Performance:
     if book is None:
         return Performance(book_id=None, money=None, realized_pnl=0.0, unrealized_pnl=0.0, total_pnl=0.0,
                            capital=None, capital_basis="", deployed=0.0, deployed_pct=None, positions=0,
-                           stops_covered=None, stops_total=None, return_pct=None, drawdown_now_pct=None,
+                           stops_covered=None, stops_total=None, protection="", return_pct=None, drawdown_now_pct=None,
                            drawdown_worst_pct=None, since=None, days=None,
                            unavailable=["No book trades this strategy yet."])
     realized = round(sum(t.pnl for t in trades), 2)
@@ -843,6 +846,7 @@ def _performance(snapshot: Snapshot, book: Book | None, trades: list[Trade], pos
                        total_pnl=round(realized + unrealized, 2), capital=capital, capital_basis=basis,
                        deployed=deployed, deployed_pct=round(deployed / capital * 100, 1) if capital else None,
                        positions=len(positions), stops_covered=stops_covered, stops_total=stops_total,
+                       protection=protection,
                        return_pct=return_pct, drawdown_now_pct=now_dd, drawdown_worst_pct=worst_dd, since=since,
                        days=days, unavailable=unavailable)
 
@@ -974,14 +978,13 @@ def _attention(snapshot: Snapshot, strategy, books: list[Book], primary: Book | 
     page = f"/strategies/{quote(strategy.id, safe='')}"
     ids = {b.id for b in books}
     items: list[Attention] = []
+    protection = protection_of(strategy)
     for b in books:
-        if b.money != "real":
-            continue
         for p in snapshot.positions:
-            if p.book_id == b.id and p.stop_price is None and p.stop_resting is not True:
-                items.append(Attention(level="serious", title=f"{p.symbol} has no resting stop",
-                                       detail=f"{b.name} · real — no protective stop on record",
-                                       link=f"/books/{quote(b.id, safe='')}"))
+            if p.book_id == b.id:
+                item = stop_attention(b, p, stop_flag(p, protection))
+                if item:
+                    items.append(item)
     for a in snapshot.alerts:
         if a.link == page or any(a.link == f"/books/{quote(b_id, safe='')}" for b_id in ids):
             items.append(Attention(level=a.level, title=a.title, detail=a.detail, link=a.link))
@@ -1067,7 +1070,7 @@ def strategy_view(snapshot: Snapshot, profile: Profile, now: dt.datetime, strate
         steps=[s for s in strategy.steps if s.kind == "step"], sizing=strategy.sizing,
         attention=_attention(snapshot, strategy, books, primary, mine, review, now, profile.tz),
         review=review, rules=_rules(strategy),
-        performance=_performance(snapshot, primary, mine, positions),
+        performance=_performance(snapshot, primary, mine, positions, protection_of(strategy)),
         cycle=_cycle(snapshot, primary, now, profile.tz),
         adherence=_adherence(strategy, mine),
         research=_research(snapshot, strategy),

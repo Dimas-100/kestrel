@@ -2525,6 +2525,10 @@
       "money": "real",
       "status": "running",
       "value": 18467.71,
+      "invested": 12004.2,
+      "equity": 18467.71,
+      "capital_basis": "The trading account's value; deposits are taken out of the return",
+      "unrealized_pnl": 86.2,
       "day_change": -94.32,
       "since_pct": 18.96,
       "started": "2025-09-20",
@@ -2535,7 +2539,9 @@
       "verdict": "in_band",
       "slots_used": 4,
       "slots_total": 5,
-      "next_run": "2026-09-28T09:31:00-04:00"
+      "next_run": "2026-09-28T09:31:00-04:00",
+      "prices_as_of": "2026-09-25",
+      "protection": "stop"
     },
     {
       "id": "rsi2-paper",
@@ -2544,6 +2550,10 @@
       "money": "paper",
       "status": "running",
       "value": 113708.75,
+      "invested": 90595.5,
+      "equity": 100000.0,
+      "capital_basis": "The simulator's $100,000 starting cash",
+      "unrealized_pnl": 791.75,
       "day_change": -197.91,
       "since_pct": 13.71,
       "started": "2025-07-27",
@@ -2554,7 +2564,9 @@
       "verdict": "in_band",
       "slots_used": 5,
       "slots_total": 6,
-      "next_run": "2026-09-25T17:30:00-04:00"
+      "next_run": "2026-09-25T17:30:00-04:00",
+      "prices_as_of": "2026-09-25",
+      "protection": "stop"
     },
     {
       "id": "ibs-paper",
@@ -2563,6 +2575,10 @@
       "money": "paper",
       "status": "running",
       "value": 3252.51,
+      "invested": 877.54,
+      "equity": 3200.0,
+      "capital_basis": "The $3,200 virtual book, at cost",
+      "unrealized_pnl": 7.14,
       "day_change": 6.58,
       "since_pct": 1.64,
       "started": "2026-09-10",
@@ -2573,7 +2589,9 @@
       "verdict": "early",
       "slots_used": 1,
       "slots_total": 4,
-      "next_run": "2026-09-28T15:56:00-04:00"
+      "next_run": "2026-09-28T15:56:00-04:00",
+      "prices_as_of": "2026-09-25",
+      "protection": "signal"
     },
     {
       "id": "leader-paper",
@@ -2582,6 +2600,10 @@
       "money": "paper",
       "status": "running",
       "value": 24766.2,
+      "invested": 0.0,
+      "equity": 24766.2,
+      "capital_basis": "the book's own value",
+      "unrealized_pnl": 0.0,
       "day_change": -77.38,
       "since_pct": -0.94,
       "started": "2026-09-14",
@@ -2592,7 +2614,9 @@
       "verdict": "below",
       "slots_used": 0,
       "slots_total": 1,
-      "next_run": "2026-09-28T09:25:00-04:00"
+      "next_run": "2026-09-28T09:25:00-04:00",
+      "prices_as_of": null,
+      "protection": ""
     },
     {
       "id": "verticals-paper",
@@ -2601,6 +2625,10 @@
       "money": "paper",
       "status": "paused",
       "value": 127882.39,
+      "invested": 0.0,
+      "equity": 127882.39,
+      "capital_basis": "the book's own value",
+      "unrealized_pnl": 0.0,
       "day_change": 0.0,
       "since_pct": 27.88,
       "started": "2025-07-17",
@@ -2611,7 +2639,9 @@
       "verdict": "in_band",
       "slots_used": 0,
       "slots_total": 3,
-      "next_run": null
+      "next_run": null,
+      "prices_as_of": null,
+      "protection": ""
     }
   ],
   "today": [
@@ -2665,7 +2695,8 @@
       "stop_resting": true,
       "room_pct": null,
       "pnl": 25.2,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "rsi2-real",
@@ -2679,7 +2710,8 @@
       "stop_resting": null,
       "room_pct": 9.29,
       "pnl": 39.9,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "rsi2-real",
@@ -2693,7 +2725,8 @@
       "stop_resting": null,
       "room_pct": 7.0,
       "pnl": -32.5,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "rsi2-real",
@@ -2707,7 +2740,8 @@
       "stop_resting": null,
       "room_pct": 9.59,
       "pnl": 53.6,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "ibs-paper",
@@ -2721,7 +2755,8 @@
       "stop_resting": null,
       "room_pct": null,
       "pnl": 7.14,
-      "note": "Exits on strength"
+      "note": "Exits on strength",
+      "flag": "signal_exit"
     },
     {
       "book_id": "rsi2-paper",
@@ -2735,7 +2770,8 @@
       "stop_resting": null,
       "room_pct": 9.14,
       "pnl": 226.8,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "rsi2-paper",
@@ -2749,7 +2785,8 @@
       "stop_resting": null,
       "room_pct": 9.49,
       "pnl": 295.2,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "rsi2-paper",
@@ -2763,7 +2800,8 @@
       "stop_resting": null,
       "room_pct": 9.11,
       "pnl": 221.0,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "rsi2-paper",
@@ -2777,7 +2815,8 @@
       "stop_resting": null,
       "room_pct": 7.27,
       "pnl": -142.5,
-      "note": ""
+      "note": "",
+      "flag": null
     },
     {
       "book_id": "rsi2-paper",
@@ -2791,7 +2830,8 @@
       "stop_resting": null,
       "room_pct": 8.97,
       "pnl": 191.25,
-      "note": ""
+      "note": "",
+      "flag": null
     }
   ]
 }

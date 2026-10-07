@@ -172,6 +172,10 @@ class Strategy(Model):
     rules_effective: dt.date | None = None
     rules_history: list[RuleVersion] = []
     review: Review | None = None
+    # how an open position is protected: "stop" — a resting stop is expected on every lot, so a lot without one on
+    # record is a problem; "signal" — exits on a signal by design, no resting stop; "" — not said (kestrel reads a
+    # step labelled "Protect" as "stop", and otherwise treats a missing stop as not reported rather than missing)
+    protection: Literal["stop", "signal", ""] = ""
 
 
 class Book(Model):
