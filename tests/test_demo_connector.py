@@ -175,12 +175,12 @@ def test_demo_has_every_new_block():
     card = accounts["card"]
     assert (card.category, card.value, card.limit, card.rate_pct, card.cash) == ("debt", 640.0, 5000.0, 24.9, 0.0)
 
-    # 8 targets: 6 percent targets with an aim and a band, a sleeve of two symbols with a band only, a ratio
-    assert len(snap.targets) == 8 and len({t.id for t in snap.targets}) == 8
+    # 10 targets: 8 percent targets with an aim and a band, a sleeve of two symbols with a band only, a ratio
+    assert len(snap.targets) == 10 and len({t.id for t in snap.targets}) == 10
     percent = [t for t in snap.targets if t.unit == "%" and len(t.symbols) == 1]
     sleeve = [t for t in snap.targets if t.unit == "%" and len(t.symbols) == 2]
     ratio = [t for t in snap.targets if t.unit == "x"]
-    assert len(percent) == 6 and all(None not in (t.target, t.low, t.high) and t.actual is None for t in percent)
+    assert len(percent) == 8 and all(None not in (t.target, t.low, t.high) and t.actual is None for t in percent)
     assert len(sleeve) == 1 and sleeve[0].target is None and None not in (sleeve[0].low, sleeve[0].high)
     assert len(ratio) == 1 and ratio[0].actual is not None
     assert {t.account_id for t in snap.targets} - {None} <= set(accounts)
@@ -215,8 +215,8 @@ def test_demo_has_every_new_block():
     assert filings and all(e.date < today and e.url.startswith("https://www.sec.gov/") for e in filings)
     assert any(e.symbol not in held for e in snap.events)  # something not held, too
 
-    # a goal for an account, one for a category, one for net worth, one for several accounts, one on deposits
-    assert len(snap.goals) == 5
+    # a goal for an account, one for a category, one for net worth, one for several accounts, two on deposits
+    assert len(snap.goals) == 6
     assert all(g.account_id is None or g.account_id in accounts for g in snap.goals)
     assert all(set(g.account_ids) <= set(accounts) for g in snap.goals)
     by_id = {g.id: g for g in snap.goals}

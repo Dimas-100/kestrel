@@ -133,7 +133,7 @@ def test_kestrel_demo_prints_a_payload_a_feed_can_read(tmp_path, capsysbinary):
     path.write_bytes(capsysbinary.readouterr().out)
     snap = from_file(path)
     # the row stops at the first six non-zero kinds: events, goals, exposures and backtests are all non-zero too
-    assert snap.sources[0].detail == "6 accounts · 5 books · 4 strategies · 136 trades · 8 targets · 13 theses"
+    assert snap.sources[0].detail == "6 accounts · 5 books · 4 strategies · 136 trades · 10 targets · 13 theses"
     assert [a.id for a in snap.accounts] == ["roth", "brokerage", "trading", "savings", "checking", "card"]
 
 

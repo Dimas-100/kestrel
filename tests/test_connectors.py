@@ -120,12 +120,12 @@ def test_the_demo_left_in_next_to_a_feed_of_the_same_data_counts_once(tmp_path, 
     # kinds (accounts, books, strategies, trades, targets, theses): events, goals, exposures and backtests are all
     # non-zero too, but the row stops at six.
     assert snap.sources[-1].detail == (
-        "6 accounts · 5 books · 4 strategies · 136 trades · 8 targets · 13 theses · ignored duplicate ids: "
-        "roth, brokerage, trading, savings, checking, and 158 more")
+        "6 accounts · 5 books · 4 strategies · 136 trades · 10 targets · 13 theses · ignored duplicate ids: "
+        "roth, brokerage, trading, savings, checking, and 161 more")
     reversed_order = collect(Profile(sources=[feed, *DEMO_PROFILE.sources]), NOW)
     assert [(s.id, s.detail) for s in reversed_order.sources][:2] == [
-        ("copy", "6 accounts · 5 books · 4 strategies · 136 trades · 8 targets · 13 theses"),
-        ("demo-portfolio", "ignored duplicate ids: roth, brokerage, trading, savings, checking, and 158 more"),
+        ("copy", "6 accounts · 5 books · 4 strategies · 136 trades · 10 targets · 13 theses"),
+        ("demo-portfolio", "ignored duplicate ids: roth, brokerage, trading, savings, checking, and 161 more"),
     ]  # the note goes on the later source's first row
 
 

@@ -1527,6 +1527,16 @@
           "default": "",
           "title": "Note",
           "type": "string"
+        },
+        "rebalance": {
+          "default": "trades",
+          "enum": [
+            "trades",
+            "contributions",
+            "hold"
+          ],
+          "title": "Rebalance",
+          "type": "string"
         }
       },
       "required": [

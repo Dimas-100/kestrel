@@ -1,36 +1,78 @@
 {
   "as_of": "2026-09-25T21:08:00Z",
-  "summary": "5 goals ahead. The next is Save into savings this year, 75% there, by 31 Dec 2026. 2 targets are off plan. 2 theses need a look.",
+  "summary": "6 goals ahead. The next is Save into savings this year, 75% there, by 31 Dec 2026. 4 targets are outside their bands; 2 need a trade. 2 theses need a look.",
   "actions": [
     {
       "level": "warning",
-      "title": "Add $1,357.86 to XLP in Roth IRA",
-      "detail": "16.0% held · aim 20.0% · band 18–22%",
-      "link": ""
-    },
-    {
-      "level": "warning",
-      "title": "Trim $2,036.71 from XLV in Roth IRA",
-      "detail": "21.0% held · aim 15.0% · band 12–18%",
-      "link": ""
-    },
-    {
-      "level": "warning",
+      "kind": "thesis",
       "title": "Review HD: thesis on alert",
-      "detail": "Comparable sales fell for a third quarter",
-      "link": ""
+      "why": "Comparable sales fell for a third quarter. The price closed below its 200-day average.",
+      "detail": "medium conviction · held in Brokerage · reviewed 7d ago",
+      "anchor": "thesis-HD"
+    },
+    {
+      "level": "warning",
+      "kind": "target",
+      "title": "Trim $2,036.71 from XLV in Roth IRA",
+      "why": "The plan brings it back with a trade.",
+      "detail": "21.0% held · aim 15.0% · band 12–18%",
+      "anchor": "target-roth-xlv"
+    },
+    {
+      "level": "warning",
+      "kind": "target",
+      "title": "Add $1,357.86 to XLP in Roth IRA",
+      "why": "The plan brings it back with a trade.",
+      "detail": "16.0% held · aim 20.0% · band 18–22%",
+      "anchor": "target-roth-xlp"
     },
     {
       "level": "note",
+      "kind": "goal",
+      "title": "Put about $833.33 a month in deposits toward Roth IRA deposits this year",
+      "why": "Deposits since 1 January count; this spreads the rest evenly to 31 Dec 2026. It also moves Grow the Roth IRA, Net worth milestone and Long-term accounts combined.",
+      "detail": "to reach $7,000.00 by 31 Dec 2026 · 64% there",
+      "anchor": "goal-roth-this-year"
+    },
+    {
+      "level": "note",
+      "kind": "goal",
+      "title": "Put about $1,233.78 a month toward A year of spending in cash",
+      "why": "Save into savings this year ($150.00 a month) is part of this, not on top of it: $150.00 of the $1,233.78. It also moves Net worth milestone.",
+      "detail": "to reach $42,000.00 by 30 Jun 2027 · 74% there",
+      "anchor": "goal-cash-year"
+    },
+    {
+      "level": "note",
+      "kind": "target",
+      "title": "Steer new money to XLI in Brokerage",
+      "why": "The plan rebalances with new money only, so the next deposits go here.",
+      "detail": "4.0% held · aim 8.0% · band 6–10% · $1,033.36 to its low end",
+      "anchor": "target-brokerage-xli"
+    },
+    {
+      "level": "note",
+      "kind": "thesis",
       "title": "Look at XLE: thesis on watch",
-      "detail": "Oil fell for three months in a row",
-      "link": ""
+      "why": "Oil fell for three months in a row. Two large holdings cut their buyback plans.",
+      "detail": "low conviction · held in Brokerage · reviewed 30d ago",
+      "anchor": "thesis-XLE"
     },
     {
       "level": "note",
+      "kind": "target",
+      "title": "Send no new money to COST in Brokerage",
+      "why": "It sits over its band and comes down as new money goes elsewhere: no sale.",
+      "detail": "COST 12.0% (band 6–10%)",
+      "anchor": "target-brokerage-cost"
+    },
+    {
+      "level": "note",
+      "kind": "goal",
       "title": "Put about $150.00 a month in deposits toward Save into savings this year",
+      "why": "Counts toward A year of spending in cash too: the two amounts overlap, they don't add up.",
       "detail": "to reach $1,800.00 by 31 Dec 2026 · 75% there",
-      "link": ""
+      "anchor": "goal-save-this-year"
     }
   ],
   "passed": [
@@ -61,7 +103,9 @@
           "gap": 1357.86,
           "gap_unit": "money",
           "gap_text": "under the low end",
-          "note": "Staples to soften the drops"
+          "note": "Staples to soften the drops",
+          "rebalance": "trades",
+          "parent": null
         },
         {
           "id": "roth-xlv",
@@ -78,7 +122,9 @@
           "gap": -2036.71,
           "gap_unit": "money",
           "gap_text": "over the high end",
-          "note": "A health care tilt"
+          "note": "A health care tilt",
+          "rebalance": "trades",
+          "parent": null
         },
         {
           "id": "roth-spy",
@@ -95,15 +141,56 @@
           "gap": 0.0,
           "gap_unit": "money",
           "gap_text": "on plan",
-          "note": "The core: the whole market"
+          "note": "The core: the whole market",
+          "rebalance": "trades",
+          "parent": null
         }
-      ]
+      ],
+      "untargeted_pct": 1.0
     },
     {
       "account_id": "brokerage",
       "name": "Brokerage",
       "known": true,
       "rows": [
+        {
+          "id": "brokerage-cost",
+          "label": "COST",
+          "symbols": [
+            "COST"
+          ],
+          "unit": "%",
+          "target": 8.0,
+          "low": 6.0,
+          "high": 10.0,
+          "actual": 12.0,
+          "status": "over",
+          "gap": -1032.58,
+          "gap_unit": "money",
+          "gap_text": "over the high end",
+          "note": "Held and diluted: no new money, no sale",
+          "rebalance": "hold",
+          "parent": "brokerage-stocks"
+        },
+        {
+          "id": "brokerage-xli",
+          "label": "XLI",
+          "symbols": [
+            "XLI"
+          ],
+          "unit": "%",
+          "target": 8.0,
+          "low": 6.0,
+          "high": 10.0,
+          "actual": 4.0,
+          "status": "under",
+          "gap": 1033.36,
+          "gap_unit": "money",
+          "gap_text": "under the low end",
+          "note": "Industrials, built with new money",
+          "rebalance": "contributions",
+          "parent": null
+        },
         {
           "id": "brokerage-ko",
           "label": "KO",
@@ -119,7 +206,9 @@
           "gap": 0.0,
           "gap_unit": "money",
           "gap_text": "on plan",
-          "note": "A dividend holding"
+          "note": "A dividend holding",
+          "rebalance": "contributions",
+          "parent": null
         },
         {
           "id": "brokerage-spy",
@@ -136,7 +225,9 @@
           "gap": 0.0,
           "gap_unit": "money",
           "gap_text": "on plan",
-          "note": "The core: the whole market"
+          "note": "The core: the whole market",
+          "rebalance": "contributions",
+          "parent": null
         },
         {
           "id": "brokerage-stocks",
@@ -154,7 +245,9 @@
           "gap": 0.0,
           "gap_unit": "money",
           "gap_text": "on plan",
-          "note": "Two companies held for the long run"
+          "note": "Two companies held for the long run",
+          "rebalance": "hold",
+          "parent": null
         },
         {
           "id": "brokerage-xlk",
@@ -171,9 +264,12 @@
           "gap": 0.0,
           "gap_unit": "money",
           "gap_text": "on plan",
-          "note": "Technology, capped"
+          "note": "Technology, capped",
+          "rebalance": "contributions",
+          "parent": null
         }
-      ]
+      ],
+      "untargeted_pct": 9.0
     }
   ],
   "unscoped": [
@@ -190,7 +286,9 @@
       "gap": 0.0,
       "gap_unit": "x",
       "gap_text": "on plan",
-      "note": "Months of spending the cash accounts cover"
+      "note": "Months of spending the cash accounts cover",
+      "rebalance": "trades",
+      "parent": null
     }
   ],
   "theses": [
@@ -485,7 +583,216 @@
       "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
-      "unknown_reason": ""
+      "unknown_reason": "",
+      "part_of": [
+        "net-worth",
+        "long-term-together"
+      ],
+      "pace": {
+        "start": "2026-01-01",
+        "start_value": 58287.37,
+        "points": [
+          {
+            "date": "2026-01-01",
+            "value": 58287.37
+          },
+          {
+            "date": "2026-01-07",
+            "value": 59801.3
+          },
+          {
+            "date": "2026-01-13",
+            "value": 60434.73
+          },
+          {
+            "date": "2026-01-19",
+            "value": 61292.78
+          },
+          {
+            "date": "2026-01-23",
+            "value": 61612.27
+          },
+          {
+            "date": "2026-01-29",
+            "value": 61317.34
+          },
+          {
+            "date": "2026-02-04",
+            "value": 61832.41
+          },
+          {
+            "date": "2026-02-10",
+            "value": 61989.36
+          },
+          {
+            "date": "2026-02-16",
+            "value": 62947.96
+          },
+          {
+            "date": "2026-02-20",
+            "value": 64133.26
+          },
+          {
+            "date": "2026-02-26",
+            "value": 63495.4
+          },
+          {
+            "date": "2026-03-04",
+            "value": 64470.0
+          },
+          {
+            "date": "2026-03-10",
+            "value": 63840.64
+          },
+          {
+            "date": "2026-03-16",
+            "value": 64602.1
+          },
+          {
+            "date": "2026-03-20",
+            "value": 64610.9
+          },
+          {
+            "date": "2026-03-26",
+            "value": 65021.62
+          },
+          {
+            "date": "2026-04-01",
+            "value": 67639.2
+          },
+          {
+            "date": "2026-04-07",
+            "value": 66990.49
+          },
+          {
+            "date": "2026-04-13",
+            "value": 65897.35
+          },
+          {
+            "date": "2026-04-17",
+            "value": 65431.5
+          },
+          {
+            "date": "2026-04-23",
+            "value": 63823.41
+          },
+          {
+            "date": "2026-04-29",
+            "value": 63091.79
+          },
+          {
+            "date": "2026-05-05",
+            "value": 63940.27
+          },
+          {
+            "date": "2026-05-11",
+            "value": 63073.72
+          },
+          {
+            "date": "2026-05-15",
+            "value": 63247.7
+          },
+          {
+            "date": "2026-05-21",
+            "value": 62995.49
+          },
+          {
+            "date": "2026-05-27",
+            "value": 64370.31
+          },
+          {
+            "date": "2026-06-02",
+            "value": 65503.21
+          },
+          {
+            "date": "2026-06-08",
+            "value": 66442.45
+          },
+          {
+            "date": "2026-06-12",
+            "value": 67563.89
+          },
+          {
+            "date": "2026-06-18",
+            "value": 67429.62
+          },
+          {
+            "date": "2026-06-24",
+            "value": 66795.9
+          },
+          {
+            "date": "2026-06-30",
+            "value": 66051.22
+          },
+          {
+            "date": "2026-07-06",
+            "value": 66852.29
+          },
+          {
+            "date": "2026-07-10",
+            "value": 65949.24
+          },
+          {
+            "date": "2026-07-16",
+            "value": 65448.95
+          },
+          {
+            "date": "2026-07-22",
+            "value": 65283.08
+          },
+          {
+            "date": "2026-07-28",
+            "value": 66412.81
+          },
+          {
+            "date": "2026-08-03",
+            "value": 66388.38
+          },
+          {
+            "date": "2026-08-07",
+            "value": 65721.33
+          },
+          {
+            "date": "2026-08-13",
+            "value": 65903.0
+          },
+          {
+            "date": "2026-08-19",
+            "value": 66532.19
+          },
+          {
+            "date": "2026-08-25",
+            "value": 67487.95
+          },
+          {
+            "date": "2026-08-31",
+            "value": 67889.8
+          },
+          {
+            "date": "2026-09-04",
+            "value": 68115.64
+          },
+          {
+            "date": "2026-09-10",
+            "value": 68598.36
+          },
+          {
+            "date": "2026-09-16",
+            "value": 66574.61
+          },
+          {
+            "date": "2026-09-22",
+            "value": 67342.69
+          },
+          {
+            "date": "2026-09-25",
+            "value": 67890.81
+          }
+        ],
+        "required_now": 64389.98,
+        "ahead": 3500.83
+      },
+      "pace_note": ""
     },
     {
       "id": "cash-year",
@@ -495,14 +802,222 @@
       "current": 30895.98,
       "target": 42000.0,
       "progress_pct": 73.6,
-      "by": "2027-12-31",
-      "months_left": 15,
-      "monthly_needed": 740.27,
+      "by": "2027-06-30",
+      "months_left": 9,
+      "monthly_needed": 1233.78,
       "reached": false,
       "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
-      "unknown_reason": ""
+      "unknown_reason": "",
+      "part_of": [
+        "net-worth"
+      ],
+      "pace": {
+        "start": "2026-01-01",
+        "start_value": 26219.24,
+        "points": [
+          {
+            "date": "2026-01-01",
+            "value": 26219.24
+          },
+          {
+            "date": "2026-01-07",
+            "value": 26233.32
+          },
+          {
+            "date": "2026-01-13",
+            "value": 28497.44
+          },
+          {
+            "date": "2026-01-19",
+            "value": 28511.56
+          },
+          {
+            "date": "2026-01-23",
+            "value": 29265.55
+          },
+          {
+            "date": "2026-01-29",
+            "value": 27779.67
+          },
+          {
+            "date": "2026-02-04",
+            "value": 24543.85
+          },
+          {
+            "date": "2026-02-10",
+            "value": 26808.09
+          },
+          {
+            "date": "2026-02-16",
+            "value": 26822.33
+          },
+          {
+            "date": "2026-02-20",
+            "value": 27645.75
+          },
+          {
+            "date": "2026-02-26",
+            "value": 27660.03
+          },
+          {
+            "date": "2026-03-04",
+            "value": 24424.35
+          },
+          {
+            "date": "2026-03-10",
+            "value": 26688.75
+          },
+          {
+            "date": "2026-03-16",
+            "value": 26703.15
+          },
+          {
+            "date": "2026-03-20",
+            "value": 27812.09
+          },
+          {
+            "date": "2026-03-26",
+            "value": 27826.49
+          },
+          {
+            "date": "2026-04-01",
+            "value": 24590.91
+          },
+          {
+            "date": "2026-04-07",
+            "value": 26855.43
+          },
+          {
+            "date": "2026-04-13",
+            "value": 26869.95
+          },
+          {
+            "date": "2026-04-17",
+            "value": 29134.5
+          },
+          {
+            "date": "2026-04-23",
+            "value": 27984.08
+          },
+          {
+            "date": "2026-04-29",
+            "value": 27998.64
+          },
+          {
+            "date": "2026-05-05",
+            "value": 27013.26
+          },
+          {
+            "date": "2026-05-11",
+            "value": 27027.94
+          },
+          {
+            "date": "2026-05-15",
+            "value": 29292.62
+          },
+          {
+            "date": "2026-05-21",
+            "value": 28100.18
+          },
+          {
+            "date": "2026-05-27",
+            "value": 28114.89
+          },
+          {
+            "date": "2026-06-02",
+            "value": 27129.63
+          },
+          {
+            "date": "2026-06-08",
+            "value": 27144.43
+          },
+          {
+            "date": "2026-06-12",
+            "value": 29409.27
+          },
+          {
+            "date": "2026-06-18",
+            "value": 28334.24
+          },
+          {
+            "date": "2026-06-24",
+            "value": 28349.08
+          },
+          {
+            "date": "2026-06-30",
+            "value": 30613.92
+          },
+          {
+            "date": "2026-07-06",
+            "value": 27378.85
+          },
+          {
+            "date": "2026-07-10",
+            "value": 29643.81
+          },
+          {
+            "date": "2026-07-16",
+            "value": 28541.69
+          },
+          {
+            "date": "2026-07-22",
+            "value": 28556.69
+          },
+          {
+            "date": "2026-07-28",
+            "value": 30821.69
+          },
+          {
+            "date": "2026-08-03",
+            "value": 27586.69
+          },
+          {
+            "date": "2026-08-07",
+            "value": 29851.81
+          },
+          {
+            "date": "2026-08-13",
+            "value": 29866.93
+          },
+          {
+            "date": "2026-08-19",
+            "value": 28629.73
+          },
+          {
+            "date": "2026-08-25",
+            "value": 30894.85
+          },
+          {
+            "date": "2026-08-31",
+            "value": 30910.01
+          },
+          {
+            "date": "2026-09-04",
+            "value": 29925.23
+          },
+          {
+            "date": "2026-09-10",
+            "value": 29940.49
+          },
+          {
+            "date": "2026-09-16",
+            "value": 28619.24
+          },
+          {
+            "date": "2026-09-22",
+            "value": 30884.52
+          },
+          {
+            "date": "2026-09-25",
+            "value": 30895.98
+          }
+        ],
+        "required_now": 33950.36,
+        "ahead": -3054.38
+      },
+      "pace_note": ""
     },
     {
       "id": "net-worth",
@@ -519,7 +1034,213 @@
       "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
-      "unknown_reason": ""
+      "unknown_reason": "",
+      "part_of": [],
+      "pace": {
+        "start": "2026-01-01",
+        "start_value": 143051.34,
+        "points": [
+          {
+            "date": "2026-01-01",
+            "value": 143051.34
+          },
+          {
+            "date": "2026-01-07",
+            "value": 145629.69
+          },
+          {
+            "date": "2026-01-13",
+            "value": 149048.52
+          },
+          {
+            "date": "2026-01-19",
+            "value": 150500.34
+          },
+          {
+            "date": "2026-01-23",
+            "value": 153457.49
+          },
+          {
+            "date": "2026-01-29",
+            "value": 153176.41
+          },
+          {
+            "date": "2026-02-04",
+            "value": 150892.11
+          },
+          {
+            "date": "2026-02-10",
+            "value": 153277.0
+          },
+          {
+            "date": "2026-02-16",
+            "value": 154747.2
+          },
+          {
+            "date": "2026-02-20",
+            "value": 159051.03
+          },
+          {
+            "date": "2026-02-26",
+            "value": 157823.82
+          },
+          {
+            "date": "2026-03-04",
+            "value": 155733.9
+          },
+          {
+            "date": "2026-03-10",
+            "value": 156751.18
+          },
+          {
+            "date": "2026-03-16",
+            "value": 157590.27
+          },
+          {
+            "date": "2026-03-20",
+            "value": 159826.54
+          },
+          {
+            "date": "2026-03-26",
+            "value": 160521.88
+          },
+          {
+            "date": "2026-04-01",
+            "value": 162216.77
+          },
+          {
+            "date": "2026-04-07",
+            "value": 163197.39
+          },
+          {
+            "date": "2026-04-13",
+            "value": 161011.84
+          },
+          {
+            "date": "2026-04-17",
+            "value": 162141.19
+          },
+          {
+            "date": "2026-04-23",
+            "value": 158629.6
+          },
+          {
+            "date": "2026-04-29",
+            "value": 156798.95
+          },
+          {
+            "date": "2026-05-05",
+            "value": 157509.47
+          },
+          {
+            "date": "2026-05-11",
+            "value": 156020.07
+          },
+          {
+            "date": "2026-05-15",
+            "value": 157944.36
+          },
+          {
+            "date": "2026-05-21",
+            "value": 157323.36
+          },
+          {
+            "date": "2026-05-27",
+            "value": 159595.76
+          },
+          {
+            "date": "2026-06-02",
+            "value": 160592.97
+          },
+          {
+            "date": "2026-06-08",
+            "value": 161664.19
+          },
+          {
+            "date": "2026-06-12",
+            "value": 166116.61
+          },
+          {
+            "date": "2026-06-18",
+            "value": 165148.22
+          },
+          {
+            "date": "2026-06-24",
+            "value": 163685.33
+          },
+          {
+            "date": "2026-06-30",
+            "value": 164454.32
+          },
+          {
+            "date": "2026-07-06",
+            "value": 163144.12
+          },
+          {
+            "date": "2026-07-10",
+            "value": 163557.03
+          },
+          {
+            "date": "2026-07-16",
+            "value": 161971.43
+          },
+          {
+            "date": "2026-07-22",
+            "value": 161323.81
+          },
+          {
+            "date": "2026-07-28",
+            "value": 165333.92
+          },
+          {
+            "date": "2026-08-03",
+            "value": 162475.42
+          },
+          {
+            "date": "2026-08-07",
+            "value": 163304.76
+          },
+          {
+            "date": "2026-08-13",
+            "value": 163172.59
+          },
+          {
+            "date": "2026-08-19",
+            "value": 164171.66
+          },
+          {
+            "date": "2026-08-25",
+            "value": 168143.39
+          },
+          {
+            "date": "2026-08-31",
+            "value": 168072.06
+          },
+          {
+            "date": "2026-09-04",
+            "value": 167821.23
+          },
+          {
+            "date": "2026-09-10",
+            "value": 168150.83
+          },
+          {
+            "date": "2026-09-16",
+            "value": 163861.83
+          },
+          {
+            "date": "2026-09-22",
+            "value": 167322.11
+          },
+          {
+            "date": "2026-09-25",
+            "value": 168278.24
+          }
+        ],
+        "required_now": 165430.1,
+        "ahead": 2848.14
+      },
+      "pace_note": ""
     },
     {
       "id": "long-term-together",
@@ -536,7 +1257,12 @@
       "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
-      "unknown_reason": ""
+      "unknown_reason": "",
+      "part_of": [
+        "net-worth"
+      ],
+      "pace": null,
+      "pace_note": "no pace: too far out for a straight line, market growth is most of the way there"
     },
     {
       "id": "save-this-year",
@@ -553,12 +1279,450 @@
       "reached_on": null,
       "overdue": false,
       "missing_accounts": [],
-      "unknown_reason": ""
+      "unknown_reason": "",
+      "part_of": [
+        "cash-year",
+        "net-worth"
+      ],
+      "pace": {
+        "start": "2026-01-01",
+        "start_value": 0.0,
+        "points": [
+          {
+            "date": "2026-01-01",
+            "value": 150.0
+          },
+          {
+            "date": "2026-01-07",
+            "value": 150.0
+          },
+          {
+            "date": "2026-01-13",
+            "value": 150.0
+          },
+          {
+            "date": "2026-01-19",
+            "value": 150.0
+          },
+          {
+            "date": "2026-01-23",
+            "value": 150.0
+          },
+          {
+            "date": "2026-01-29",
+            "value": 150.0
+          },
+          {
+            "date": "2026-02-04",
+            "value": 300.0
+          },
+          {
+            "date": "2026-02-10",
+            "value": 300.0
+          },
+          {
+            "date": "2026-02-16",
+            "value": 300.0
+          },
+          {
+            "date": "2026-02-20",
+            "value": 300.0
+          },
+          {
+            "date": "2026-02-26",
+            "value": 300.0
+          },
+          {
+            "date": "2026-03-04",
+            "value": 450.0
+          },
+          {
+            "date": "2026-03-10",
+            "value": 450.0
+          },
+          {
+            "date": "2026-03-16",
+            "value": 450.0
+          },
+          {
+            "date": "2026-03-20",
+            "value": 450.0
+          },
+          {
+            "date": "2026-03-26",
+            "value": 450.0
+          },
+          {
+            "date": "2026-04-01",
+            "value": 600.0
+          },
+          {
+            "date": "2026-04-07",
+            "value": 600.0
+          },
+          {
+            "date": "2026-04-13",
+            "value": 600.0
+          },
+          {
+            "date": "2026-04-17",
+            "value": 600.0
+          },
+          {
+            "date": "2026-04-23",
+            "value": 600.0
+          },
+          {
+            "date": "2026-04-29",
+            "value": 600.0
+          },
+          {
+            "date": "2026-05-05",
+            "value": 750.0
+          },
+          {
+            "date": "2026-05-11",
+            "value": 750.0
+          },
+          {
+            "date": "2026-05-15",
+            "value": 750.0
+          },
+          {
+            "date": "2026-05-21",
+            "value": 750.0
+          },
+          {
+            "date": "2026-05-27",
+            "value": 750.0
+          },
+          {
+            "date": "2026-06-02",
+            "value": 900.0
+          },
+          {
+            "date": "2026-06-08",
+            "value": 900.0
+          },
+          {
+            "date": "2026-06-12",
+            "value": 900.0
+          },
+          {
+            "date": "2026-06-18",
+            "value": 900.0
+          },
+          {
+            "date": "2026-06-24",
+            "value": 900.0
+          },
+          {
+            "date": "2026-06-30",
+            "value": 900.0
+          },
+          {
+            "date": "2026-07-06",
+            "value": 1050.0
+          },
+          {
+            "date": "2026-07-10",
+            "value": 1050.0
+          },
+          {
+            "date": "2026-07-16",
+            "value": 1050.0
+          },
+          {
+            "date": "2026-07-22",
+            "value": 1050.0
+          },
+          {
+            "date": "2026-07-28",
+            "value": 1050.0
+          },
+          {
+            "date": "2026-08-03",
+            "value": 1200.0
+          },
+          {
+            "date": "2026-08-07",
+            "value": 1200.0
+          },
+          {
+            "date": "2026-08-13",
+            "value": 1200.0
+          },
+          {
+            "date": "2026-08-19",
+            "value": 1200.0
+          },
+          {
+            "date": "2026-08-25",
+            "value": 1200.0
+          },
+          {
+            "date": "2026-08-31",
+            "value": 1200.0
+          },
+          {
+            "date": "2026-09-04",
+            "value": 1350.0
+          },
+          {
+            "date": "2026-09-10",
+            "value": 1350.0
+          },
+          {
+            "date": "2026-09-16",
+            "value": 1350.0
+          },
+          {
+            "date": "2026-09-22",
+            "value": 1350.0
+          },
+          {
+            "date": "2026-09-25",
+            "value": 1350.0
+          }
+        ],
+        "required_now": 1320.33,
+        "ahead": 29.67
+      },
+      "pace_note": ""
+    },
+    {
+      "id": "roth-this-year",
+      "label": "Roth IRA deposits this year",
+      "scope_text": "Roth IRA",
+      "measure": "deposits",
+      "current": 4500.0,
+      "target": 7000.0,
+      "progress_pct": 64.3,
+      "by": "2026-12-31",
+      "months_left": 3,
+      "monthly_needed": 833.33,
+      "reached": false,
+      "reached_on": null,
+      "overdue": false,
+      "missing_accounts": [],
+      "unknown_reason": "",
+      "part_of": [
+        "roth-grow",
+        "net-worth",
+        "long-term-together"
+      ],
+      "pace": {
+        "start": "2026-01-01",
+        "start_value": 0.0,
+        "points": [
+          {
+            "date": "2026-01-01",
+            "value": 500.0
+          },
+          {
+            "date": "2026-01-07",
+            "value": 500.0
+          },
+          {
+            "date": "2026-01-13",
+            "value": 500.0
+          },
+          {
+            "date": "2026-01-19",
+            "value": 500.0
+          },
+          {
+            "date": "2026-01-23",
+            "value": 500.0
+          },
+          {
+            "date": "2026-01-29",
+            "value": 500.0
+          },
+          {
+            "date": "2026-02-04",
+            "value": 1000.0
+          },
+          {
+            "date": "2026-02-10",
+            "value": 1000.0
+          },
+          {
+            "date": "2026-02-16",
+            "value": 1000.0
+          },
+          {
+            "date": "2026-02-20",
+            "value": 1000.0
+          },
+          {
+            "date": "2026-02-26",
+            "value": 1000.0
+          },
+          {
+            "date": "2026-03-04",
+            "value": 1500.0
+          },
+          {
+            "date": "2026-03-10",
+            "value": 1500.0
+          },
+          {
+            "date": "2026-03-16",
+            "value": 1500.0
+          },
+          {
+            "date": "2026-03-20",
+            "value": 1500.0
+          },
+          {
+            "date": "2026-03-26",
+            "value": 1500.0
+          },
+          {
+            "date": "2026-04-01",
+            "value": 2000.0
+          },
+          {
+            "date": "2026-04-07",
+            "value": 2000.0
+          },
+          {
+            "date": "2026-04-13",
+            "value": 2000.0
+          },
+          {
+            "date": "2026-04-17",
+            "value": 2000.0
+          },
+          {
+            "date": "2026-04-23",
+            "value": 2000.0
+          },
+          {
+            "date": "2026-04-29",
+            "value": 2000.0
+          },
+          {
+            "date": "2026-05-05",
+            "value": 2500.0
+          },
+          {
+            "date": "2026-05-11",
+            "value": 2500.0
+          },
+          {
+            "date": "2026-05-15",
+            "value": 2500.0
+          },
+          {
+            "date": "2026-05-21",
+            "value": 2500.0
+          },
+          {
+            "date": "2026-05-27",
+            "value": 2500.0
+          },
+          {
+            "date": "2026-06-02",
+            "value": 3000.0
+          },
+          {
+            "date": "2026-06-08",
+            "value": 3000.0
+          },
+          {
+            "date": "2026-06-12",
+            "value": 3000.0
+          },
+          {
+            "date": "2026-06-18",
+            "value": 3000.0
+          },
+          {
+            "date": "2026-06-24",
+            "value": 3000.0
+          },
+          {
+            "date": "2026-06-30",
+            "value": 3000.0
+          },
+          {
+            "date": "2026-07-06",
+            "value": 3500.0
+          },
+          {
+            "date": "2026-07-10",
+            "value": 3500.0
+          },
+          {
+            "date": "2026-07-16",
+            "value": 3500.0
+          },
+          {
+            "date": "2026-07-22",
+            "value": 3500.0
+          },
+          {
+            "date": "2026-07-28",
+            "value": 3500.0
+          },
+          {
+            "date": "2026-08-03",
+            "value": 4000.0
+          },
+          {
+            "date": "2026-08-07",
+            "value": 4000.0
+          },
+          {
+            "date": "2026-08-13",
+            "value": 4000.0
+          },
+          {
+            "date": "2026-08-19",
+            "value": 4000.0
+          },
+          {
+            "date": "2026-08-25",
+            "value": 4000.0
+          },
+          {
+            "date": "2026-08-31",
+            "value": 4000.0
+          },
+          {
+            "date": "2026-09-04",
+            "value": 4500.0
+          },
+          {
+            "date": "2026-09-10",
+            "value": 4500.0
+          },
+          {
+            "date": "2026-09-16",
+            "value": 4500.0
+          },
+          {
+            "date": "2026-09-22",
+            "value": 4500.0
+          },
+          {
+            "date": "2026-09-25",
+            "value": 4500.0
+          }
+        ],
+        "required_now": 5134.62,
+        "ahead": -634.62
+      },
+      "pace_note": ""
     }
   ],
   "counts": {
-    "off_plan": 2,
+    "off_plan": 4,
     "theses_alert": 1,
-    "theses_watch": 1
+    "theses_watch": 1,
+    "unknown": 0,
+    "need_trade": 2
   }
 }

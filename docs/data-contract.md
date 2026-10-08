@@ -143,8 +143,10 @@ What the plan says an account should hold.
 | `target`, `low`, `high` | the aim and the band around it; at least one of the three |
 | `actual` | optional for `%`, required for `x` |
 | `note` | why |
+| `rebalance` | how the plan brings it back inside its band: `trades` (the default: buy or sell, so kestrel says "Add $X" or "Trim $X") · `contributions` (new money only, never a sale: under its band kestrel says to steer new money there; over it, that it dilutes as new money goes elsewhere) · `hold` (no new money and no sale: over its band it dilutes; under it is a decision to revisit, not a buy) |
 
-A target is **on plan** inside `[low, high]` (a missing end is open), **over** above it and **under** below it. A
+A target is **on plan** inside `[low, high]` (a missing end is open), **over** above it and **under** below it,
+whatever its `rebalance`: the policy changes only what kestrel suggests doing about it. A
 target with no aim, a ratio without its `actual`, or a `low` above its `high` fails validation, so the payload is
 dropped and the source shows as `error`.
 

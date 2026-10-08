@@ -312,6 +312,9 @@ class Target(Model):
     high: float | None = None
     actual: float | None = None
     note: str = ""
+    # how the plan brings it back inside its band: "trades" (buy or sell), "contributions" (new money only, never a
+    # sale: over the band it dilutes) or "hold" (no new money and no sale: under the band is a decision to revisit)
+    rebalance: Literal["trades", "contributions", "hold"] = "trades"
 
     @model_validator(mode="after")
     def _aimed(self) -> Target:

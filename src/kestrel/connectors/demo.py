@@ -79,7 +79,9 @@ CARD_CYCLE, CARD_PAID, CARD_OWED = 21, 9, 640.0
 MONTHLY_SPEND = 3500.0  # rent and a month of card charges, for the cash runway
 
 # What the plan says the long-term accounts should hold, in percent of each account (the demo's holdings sit well
-# inside or well outside each band, so a target's status doesn't flip as the dates move)
+# inside or well outside each band, so a target's status doesn't flip as the dates move). The Roth rebalances with
+# trades (no tax inside it); the brokerage never sells to rebalance: new money steers it, and its single stocks are
+# held and diluted.
 TARGETS = [
     Target(id="roth-spy", account_id="roth", label="SPY", symbols=["SPY"], target=60, low=55, high=65,
            note="The core: the whole market"),
@@ -88,13 +90,17 @@ TARGETS = [
     Target(id="roth-xlp", account_id="roth", label="XLP", symbols=["XLP"], target=20, low=18, high=22,
            note="Staples to soften the drops"),
     Target(id="brokerage-spy", account_id="brokerage", label="SPY", symbols=["SPY"], target=40, low=35, high=45,
-           note="The core: the whole market"),
+           note="The core: the whole market", rebalance="contributions"),
     Target(id="brokerage-xlk", account_id="brokerage", label="XLK", symbols=["XLK"], target=20, low=15, high=25,
-           note="Technology, capped"),
+           note="Technology, capped", rebalance="contributions"),
     Target(id="brokerage-ko", account_id="brokerage", label="KO", symbols=["KO"], target=5, low=3, high=7,
-           note="A dividend holding"),
+           note="A dividend holding", rebalance="contributions"),
+    Target(id="brokerage-xli", account_id="brokerage", label="XLI", symbols=["XLI"], target=8, low=6, high=10,
+           note="Industrials, built with new money", rebalance="contributions"),
     Target(id="brokerage-stocks", account_id="brokerage", label="Single stocks", symbols=["COST", "HD"], low=15,
-           high=25, note="Two companies held for the long run"),
+           high=25, note="Two companies held for the long run", rebalance="hold"),
+    Target(id="brokerage-cost", account_id="brokerage", label="COST", symbols=["COST"], target=8, low=6, high=10,
+           note="Held and diluted: no new money, no sale", rebalance="hold"),
 ]
 
 # Why each holding is owned: symbol → (health, conviction, reasons, wrong if, days since opened, days since the last
@@ -440,7 +446,7 @@ def _goals(today: date) -> list[Goal]:
         Goal(id="roth-grow", label="Grow the Roth IRA", target=100000.0, account_id="roth",
              by=date(today.year + 4, 12, 31), note="The monthly deposit, and time"),
         Goal(id="cash-year", label="A year of spending in cash", target=12 * MONTHLY_SPEND, category="cash",
-             by=date(today.year + 1, 12, 31), note="Twelve months of rent and card spending"),
+             by=date(today.year + 1, 6, 30), note="Twelve months of rent and card spending"),
         Goal(id="net-worth", label="Net worth milestone", target=250000.0, by=date(today.year + 3, 6, 30),
              note="Everything owned, less what is owed"),
         Goal(id="long-term-together", label="Long-term accounts combined", target=200000.0,
@@ -448,6 +454,8 @@ def _goals(today: date) -> list[Goal]:
              note="Roth IRA and brokerage together"),
         Goal(id="save-this-year", label="Save into savings this year", target=12 * 150.0, account_id="savings",
              measure="deposits", by=date(today.year, 12, 31), note="What goes into savings each month"),
+        Goal(id="roth-this-year", label="Roth IRA deposits this year", target=7000.0, account_id="roth",
+             measure="deposits", by=date(today.year, 12, 31), note="This year's contributions"),
     ]
 
 

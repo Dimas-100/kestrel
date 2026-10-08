@@ -5,7 +5,7 @@ import pytest
 from kestrel.connectors import collect
 from kestrel.contract import Account, Goal, Holding, Series, Snapshot, Target, Thesis, ValuePoint
 from kestrel.profile import DEMO_PROFILE, Profile
-from kestrel.views.plan import _months_between, plan_view, target_attention, thesis_attention, thesis_rows
+from kestrel.views.plan import PacePoint, _months_between, plan_view, target_attention, thesis_attention, thesis_rows
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
 TODAY = dt.date(2026, 9, 25)
@@ -437,7 +437,7 @@ def test_target_attention_names_the_account_id_when_no_source_sent_it():
 def test_demo_plan_matches_demo_home_off_plan_targets(demo_plan):
     off_plan_ids = {r.id for a in demo_plan.accounts for r in a.rows if r.status in ("over", "under")}
     off_plan_ids |= {r.id for r in demo_plan.unscoped if r.status in ("over", "under")}
-    assert demo_plan.counts.off_plan == len(off_plan_ids) == 2
+    assert demo_plan.counts.off_plan == len(off_plan_ids) == 4
     assert demo_plan.counts.theses_alert == 1 and demo_plan.counts.theses_watch == 1
     # cross-check against Home's own Needs-you list, not just this view's internal count: the two must never
     # disagree, since Home computes its plan-related items from these same functions
@@ -461,8 +461,8 @@ def test_summary_names_the_next_goal_and_what_needs_a_look():
     theses = [Thesis(symbol="HD", health="alert", reasons=["Sales fell"]), Thesis(symbol="KO", health="watch")]
     v = plan_view(snap(accounts=[a], holdings=[holding("a", "Y", 100)], targets=[under], goals=goals, theses=theses),
                   Profile(), NOW)
-    assert v.summary == ("2 goals ahead. The next is Trip, 50% there, by 25 Jul 2027. 1 target is off plan. "
-                         "2 theses need a look.")
+    assert v.summary == ("2 goals ahead. The next is Trip, 50% there, by 25 Jul 2027. 1 target is outside its band "
+                         "and needs a trade. 2 theses need a look.")
 
 
 def test_summary_when_everything_is_fine_or_undated():
@@ -494,18 +494,25 @@ def test_actions_say_what_to_do_this_month_warnings_first():
     s = snap(accounts=[a], holdings=[holding("a", "Y", 100), holding("a", "X", 200), holding("a", "Z", 700)],
              targets=[under, over, ratio], goals=goals, theses=theses, account_history=history)
     v = plan_view(s, Profile(), NOW)
-    assert [(x.level, x.title, x.detail) for x in v.actions] == [
-        ("warning", "Add $80.00 to XLP in A", "10.0% held · aim 20.0% · band 18–22%"),
-        ("warning", "Trim $20.00 from XLV in A", "20.0% held · aim 15.0% · band 12–18%"),
-        ("warning", "Cash runway is 1.0x under its band", "3.0x actual · aim 6.0x · band 4–8x"),
-        ("warning", "Review HD: thesis on alert", "Sales fell"),
-        ("warning", "Household was due 1 Jan 2026", "50% there"),
-        ("note", "Look at KO: thesis on watch", "Volume is soft"),
-        ("note", "Put about $100.00 a month toward Trip", "to reach $2,000.00 by 25 Jul 2027 · 50% there"),
-        ("note", "Put about $300.00 a month in deposits toward Savings this year",
-         "to reach $1,200.00 by 31 Dec 2026 · 25% there"),
+    # ranked (spec 2026-10-08 §3): alert theses, overdue goals, trades by the size of the money gap; then the goal the
+    # others sit inside, theses on watch, and last the goal already named inside another's action
+    assert [(x.level, x.kind, x.title, x.detail, x.anchor) for x in v.actions] == [
+        ("warning", "thesis", "Review HD: thesis on alert", "not held", "thesis-HD"),
+        ("warning", "goal", "Household was due 1 Jan 2026", "$1,000.00 of $2,000.00", "goal-late"),
+        ("warning", "target", "Add $80.00 to XLP in A", "10.0% held · aim 20.0% · band 18–22%", "target-under"),
+        ("warning", "target", "Trim $20.00 from XLV in A", "20.0% held · aim 15.0% · band 12–18%", "target-over"),
+        ("warning", "target", "Cash runway is 1.0x under its band", "3.0x actual · aim 6.0x · band 4–8x",
+         "target-ratio"),
+        ("note", "goal", "Put about $100.00 a month toward Trip", "to reach $2,000.00 by 25 Jul 2027 · 50% there",
+         "goal-soon"),
+        ("note", "thesis", "Look at KO: thesis on watch", "not held", "thesis-KO"),
+        ("note", "goal", "Put about $300.00 a month in deposits toward Savings this year",
+         "to reach $1,200.00 by 31 Dec 2026 · 25% there", "goal-deposits"),
     ]
-    assert all(x.link == "" for x in v.actions)
+    whys = [x.why for x in v.actions]
+    assert whys[0] == "Sales fell." and whys[2] == "The plan brings it back with a trade."
+    assert whys[5] == "Savings this year ($300.00 a month) is part of this, and alone covers it."
+    assert whys[7] == "Counts toward Trip too: the two amounts overlap, they don't add up."
 
 
 def test_a_points_gap_action_names_the_points_and_the_account():
@@ -524,7 +531,8 @@ def test_nothing_to_do_is_an_empty_list_and_the_demo_has_actions():
 
 def test_the_demo_plan_has_a_summary_and_actions(demo_plan):
     assert demo_plan.summary.startswith(
-        "5 goals ahead. The next is Save into savings this year, 75% there, by 31 Dec 2026.")
+        "6 goals ahead. The next is Save into savings this year, 75% there, by 31 Dec 2026. 4 targets are outside "
+        "their bands; 2 need a trade.")
     assert [x.level for x in demo_plan.actions][:3] == ["warning", "warning", "warning"]
     assert any(t.startswith("Put about") for t in (x.title for x in demo_plan.actions))
 
@@ -556,3 +564,227 @@ def test_the_passed_list_holds_round_numbers_and_reached_goals_newest_first():
         (TODAY, "$15,000", "round"), (d(2026, 7, 1), "$10,000", "round"), (d(2026, 7, 1), "Trip", "goal")]
     assert plan_view(snap(accounts=[account("a", 100)]), Profile(), NOW).passed == []
 
+
+
+# ---------------------------------------------------------------- accurate to the plan (2026-10-08)
+
+def _policy_snap(rebalance):
+    a = account("a", 1000)
+    under = Target(id="under", account_id="a", label="XLP", symbols=["Y"], target=20, low=18, high=22,
+                   rebalance=rebalance)  # 10%: $80 under
+    over = Target(id="over", account_id="a", label="XLV", symbols=["X"], target=15, low=12, high=18,
+                  rebalance=rebalance)  # 20%: $20 over
+    return snap(accounts=[a], holdings=[holding("a", "Y", 100), holding("a", "X", 200), holding("a", "Z", 700)],
+                targets=[under, over])
+
+
+def test_the_status_is_the_plain_fact_whatever_the_policy():
+    for rebalance in ("trades", "contributions", "hold"):
+        rows = {r.id: r for r in plan_view(_policy_snap(rebalance), Profile(), NOW).accounts[0].rows}
+        assert (rows["under"].status, rows["over"].status) == ("under", "over")
+        assert rows["under"].rebalance == rebalance
+
+
+def test_new_money_only_never_says_trim():
+    v = plan_view(_policy_snap("contributions"), Profile(), NOW)
+    assert [(x.level, x.title, x.why, x.detail) for x in v.actions] == [
+        ("note", "Steer new money to XLP in A",
+         "The plan rebalances with new money only, so the next deposits go here.",
+         "10.0% held · aim 20.0% · band 18–22% · $80.00 to its low end"),
+        ("note", "Send no new money to XLV in A",
+         "It sits over its band and comes down as new money goes elsewhere: no sale.", "XLV 20.0% (band 12–18%)"),
+    ]
+    assert not any(x.title.startswith(("Trim", "Add")) for x in v.actions)
+    assert v.counts.off_plan == 2 and v.counts.need_trade == 0
+    assert "2 targets are outside their bands; none needs a trade." in v.summary
+
+
+def test_held_and_diluted_is_a_revisit_not_a_buy():
+    v = plan_view(_policy_snap("hold"), Profile(), NOW)
+    assert [(x.level, x.title) for x in v.actions] == [
+        ("note", "Revisit XLP in A: under its band"), ("note", "Send no new money to XLV in A")]
+    assert v.actions[0].why == "Held and diluted by plan: under its band is a decision to revisit, not a buy."
+
+
+def test_home_hears_about_a_target_only_when_it_needs_something():
+    trades = {(i.level, i.title) for i in target_attention(_policy_snap("trades"))}
+    assert trades == {("warning", "XLP is under plan in A"), ("warning", "XLV is over plan in A")}
+    steer = target_attention(_policy_snap("contributions"))
+    assert [(i.level, i.title, i.detail) for i in steer] == [
+        ("note", "XLP is under plan in A", "under the low end · steer new money here")]
+    hold = target_attention(_policy_snap("hold"))
+    assert [(i.level, i.detail) for i in hold] == [("note", "under the low end · a decision to revisit, not a buy")]
+
+
+def test_the_dilute_note_names_every_holding_over_its_band_in_one_account():
+    a = account("a", 1000)
+    targets = [Target(id=i, account_id="a", label=i.upper(), symbols=[i.upper()], target=10, low=5, high=15,
+                      rebalance="contributions") for i in ("p", "q", "r")]
+    holdings = [holding("a", "P", 300), holding("a", "Q", 300), holding("a", "R", 100), holding("a", "Z", 300)]
+    v = plan_view(snap(accounts=[a], holdings=holdings, targets=targets), Profile(), NOW)
+    assert [x.title for x in v.actions] == ["Send no new money to P or Q in A"]
+    assert v.actions[0].why.startswith("Each sits over its band")
+
+
+def test_a_sleeve_and_its_members_nest_and_are_never_summed():
+    a = account("a", 1000)
+    sleeve = Target(id="core", account_id="a", label="Growth core", symbols=["M", "N", "O"], low=45, high=50,
+                    rebalance="hold")
+    m = Target(id="m", account_id="a", label="M", symbols=["M"], target=22, low=16.5, high=27.5)
+    n = Target(id="n", account_id="a", label="N", symbols=["N"], target=12, low=9, high=15)
+    s_ = Target(id="s", account_id="a", label="S", symbols=["S"], target=15, low=11, high=19)
+    holdings = [holding("a", "M", 180), holding("a", "N", 140), holding("a", "O", 90), holding("a", "S", 320),
+                holding("a", "Z", 270)]
+    rows = {r.id: r for r in plan_view(snap(accounts=[a], holdings=holdings, targets=[sleeve, m, n, s_]),
+                                       Profile(), NOW).accounts[0].rows}
+    assert (rows["m"].parent, rows["n"].parent, rows["s"].parent, rows["core"].parent) == ("core", "core", None, None)
+    # each share is its own: the sleeve's 41% and the members' 18% and 14% are never stacked into one bar
+    assert (rows["core"].actual, rows["m"].actual, rows["s"].actual) == (41.0, 18.0, 32.0)
+
+
+def test_the_untargeted_share_counts_each_symbol_once_and_includes_cash():
+    a = account("a", 1000)
+    sleeve = Target(id="two", account_id="a", label="Two", symbols=["A", "B"], low=15, high=25)
+    member = Target(id="a1", account_id="a", label="A", symbols=["A"], target=10, low=5, high=15)
+    holdings = [holding("a", "A", 100), holding("a", "B", 100), holding("a", "C", 400)]  # $400 of cash besides
+    v = plan_view(snap(accounts=[a], holdings=holdings, targets=[sleeve, member]), Profile(), NOW)
+    assert v.accounts[0].untargeted_pct == 80.0
+    lone = Target(id="t", account_id="b", label="X", symbols=["X"], target=5)
+    nothing = plan_view(snap(accounts=[account("b", 1000)], targets=[lone]), Profile(), NOW)
+    assert nothing.accounts[0].untargeted_pct is None  # no holdings reported: unknown, never a fake 100%
+
+
+def test_a_target_kestrel_cannot_measure_is_never_called_on_plan():
+    a = account("a", 1000)
+    on = Target(id="on", account_id="a", label="B", symbols=["X"], target=10, low=5, high=15)
+    blind = Target(id="blind", account_id="a", label="Core", symbols=[], low=50, high=70)
+    gone = Target(id="gone", account_id="missing", label="VTI", symbols=["VTI"], target=60, low=55, high=65)
+    hold = [holding("a", "X", 100)]
+    v = plan_view(snap(accounts=[a], holdings=hold, targets=[on, blind]), Profile(), NOW)
+    assert v.counts.unknown == 1
+    assert v.summary == "No goals yet. 1 of 2 targets on plan; 1 can't be measured yet."
+    v = plan_view(snap(targets=[gone]), Profile(), NOW)
+    assert v.summary == "No goals yet. No target can be measured yet."
+    off = Target(id="off", account_id="a", label="C", symbols=["X"], target=50, low=45, high=55)
+    v = plan_view(snap(accounts=[a], holdings=hold, targets=[off, blind]), Profile(), NOW)
+    assert v.summary == ("No goals yet. 1 target is outside its band and needs a trade. 1 target can't be measured "
+                         "yet.")
+
+
+def test_a_goal_knows_the_goals_it_is_part_of():
+    accounts = [account("roth", 600), account("brok", 400)]
+    goals = [Goal(id="household", label="Household", target=5000, account_ids=["roth", "brok"]),
+             Goal(id="retire", label="Retire", target=9000, account_id="roth"),
+             Goal(id="roth-dep", label="Roth deposits", target=700, account_id="roth", measure="deposits",
+                  by=d(2026, 12, 31)),
+             Goal(id="other", label="Other", target=900, account_id="roth"),
+             Goal(id="done", label="Done", target=100, account_ids=["roth", "brok"])]
+    history = [Series(id="roth", points=[ValuePoint(date=d(2026, 1, 2), value=100, net_flow=100),
+                                         ValuePoint(date=TODAY, value=600)])]
+    rows = {g.id: g for g in plan_view(snap(accounts=accounts, goals=goals, account_history=history),
+                                       Profile(), NOW).goals}
+    # deposits raise the value of every goal over the same or more accounts; a reached goal moves no more
+    assert rows["roth-dep"].part_of == ["household", "retire", "other"]
+    # a value goal sits inside a strictly larger scope only: two milestones of one number are never part of each other
+    assert rows["retire"].part_of == ["household"] and rows["other"].part_of == ["household"]
+    assert rows["household"].part_of == []
+
+
+def test_the_goal_others_sit_inside_says_how_much_of_its_monthly_they_are():
+    accounts = [account("roth", 6000), account("brok", 4000)]
+    goals = [Goal(id="household", label="Household $20k", target=20000, account_ids=["roth", "brok"],
+                  by=d(2026, 12, 31)),
+             Goal(id="roth-dep", label="Roth deposits", target=3000, account_id="roth", measure="deposits",
+                  by=d(2026, 12, 31)),
+             Goal(id="brok-dep", label="Brokerage deposits", target=1500, account_id="brok", measure="deposits",
+                  by=d(2026, 12, 31))]
+    history = [Series(id=i, points=[ValuePoint(date=d(2026, 1, 2), value=v, net_flow=0),
+                                    ValuePoint(date=TODAY, value=v)]) for i, v in (("roth", 6000), ("brok", 4000))]
+    v = plan_view(snap(accounts=accounts, goals=goals, account_history=history), Profile(), NOW)
+    assert [x.title for x in v.actions] == [
+        "Put about $3,333.33 a month toward Household $20k",
+        "Put about $500.00 a month in deposits toward Brokerage deposits",
+        "Put about $1,000.00 a month in deposits toward Roth deposits"]
+    assert v.actions[0].why == ("Brokerage deposits ($500.00 a month) and Roth deposits ($1,000.00 a month) are part "
+                                "of this, not on top of it: $1,500.00 of the $3,333.33.")
+    assert v.actions[1].why == "Counts toward Household $20k too: the two amounts overlap, they don't add up."
+
+
+def test_a_lone_goal_names_the_other_goals_it_also_moves():
+    accounts = [account("s", 1000)]
+    goals = [Goal(id="dep", label="Save", target=1800, account_id="s", measure="deposits", by=d(2026, 12, 31)),
+             Goal(id="cash", label="A year in cash", target=40000, account_id="s", by=d(2030, 1, 1))]
+    history = [Series(id="s", points=[ValuePoint(date=d(2026, 1, 2), value=100, net_flow=1350),
+                                      ValuePoint(date=TODAY, value=1000)])]
+    v = plan_view(snap(accounts=accounts, goals=goals, account_history=history), Profile(), NOW)
+    assert v.actions[0].why == ("Deposits since 1 January count; this spreads the rest evenly to 31 Dec 2026. "
+                                "It also moves A year in cash.")
+
+
+def _daily(start, days, value, step=1):
+    return [ValuePoint(date=start + dt.timedelta(days=i), value=value) for i in range(0, days, step)]
+
+
+def test_a_deposits_goal_has_a_pace_when_its_history_covers_the_year():
+    pts = _daily(d(2026, 1, 1), 268, 1000, step=7)  # weekly, from 1 January
+    pts[4] = pts[4].model_copy(update={"net_flow": 900.0})
+    goal = Goal(id="dep", label="Save", target=1800, account_id="a", measure="deposits", by=d(2026, 12, 31))
+    row = plan_view(snap(accounts=[account("a", 1000)], goals=[goal], account_history=[Series(id="a", points=pts)]),
+                    Profile(), NOW).goals[0]
+    assert row.pace is not None and row.pace_note == ""
+    assert row.pace.start == d(2026, 1, 1) and row.pace.start_value == 0.0
+    assert row.pace.points[0].value == 0.0 and row.pace.points[-1] == PacePoint(date=TODAY, value=900.0)
+    # the straight line from 0 on 1 January to $1,800 on 31 December, read on 25 September (267 of 364 days)
+    assert row.pace.required_now == round(1800 * 267 / 364, 2)
+    assert row.pace.ahead == round(900 - 1800 * 267 / 364, 2)
+
+
+def test_a_long_pace_is_thinned_and_keeps_its_last_point():
+    goal = Goal(id="v", label="Grow", target=5000, account_id="a", by=d(2027, 12, 31))
+    pts = _daily(d(2026, 1, 1), 268, 1000)
+    row = plan_view(snap(accounts=[account("a", 1000)], goals=[goal], account_history=[Series(id="a", points=pts)]),
+                    Profile(), NOW).goals[0]
+    assert row.pace is not None and len(row.pace.points) <= 61
+    assert row.pace.points[-1].date == TODAY and row.pace.start_value == 1000.0
+
+
+def test_no_pace_when_an_account_s_history_starts_late_or_the_goal_needs_none():
+    late = Series(id="b", points=_daily(d(2026, 6, 3), 115, 500))
+    early = Series(id="a", points=_daily(d(2026, 1, 1), 268, 1000))
+    goal = Goal(id="both", label="Both", target=5000, account_ids=["a", "b"], by=d(2026, 12, 31))
+    row = plan_view(snap(accounts=[account("a", 1000), account("b", 500)], goals=[goal],
+                         account_history=[early, late]), Profile(), NOW).goals[0]
+    assert row.pace is None and row.pace_note == "no pace yet: history for B starts 3 Jun 2026"
+    undated = Goal(id="u", label="U", target=5000, account_id="a")
+    row = plan_view(snap(accounts=[account("a", 1000)], goals=[undated], account_history=[early]),
+                    Profile(), NOW).goals[0]
+    assert row.pace is None and row.pace_note == ""
+    few = Series(id="a", points=_daily(d(2026, 1, 1), 268, 1000, step=60))
+    one = Goal(id="one", label="One", target=5000, account_id="a", by=d(2026, 12, 31))
+    row = plan_view(snap(accounts=[account("a", 1000)], goals=[one], account_history=[few]), Profile(), NOW).goals[0]
+    assert row.pace is None and row.pace_note == "no pace yet: too little history since 1 January"
+
+
+def test_a_value_goal_decades_out_gets_no_straight_line_pace():
+    goal = Goal(id="retire", label="Retire", target=1_000_000, account_id="a", by=d(2064, 5, 7))
+    pts = _daily(d(2026, 1, 1), 268, 1000)
+    row = plan_view(snap(accounts=[account("a", 1000)], goals=[goal], account_history=[Series(id="a", points=pts)]),
+                    Profile(), NOW).goals[0]
+    assert row.pace is None and row.pace_note.startswith("no pace: too far out")
+
+
+def test_several_theses_on_watch_are_one_note_naming_each_reason():
+    theses = [Thesis(symbol="A", health="watch", reasons=["Margins fell."]), Thesis(symbol="B", health="watch")]
+    v = plan_view(snap(theses=theses), Profile(), NOW)
+    assert [(x.title, x.why, x.anchor) for x in v.actions] == [
+        ("Look at 2 theses on watch: A and B", "A — Margins fell; B.", "theses")]
+
+
+def test_the_demo_ranks_trades_first_and_steers_its_brokerage_with_new_money(demo_plan):
+    titles = [x.title for x in demo_plan.actions]
+    assert titles[:3] == ["Review HD: thesis on alert", "Trim $2,036.71 from XLV in Roth IRA",
+                          "Add $1,357.86 to XLP in Roth IRA"]
+    assert "Steer new money to XLI in Brokerage" in titles and "Send no new money to COST in Brokerage" in titles
+    assert not any(t.startswith(("Trim", "Add")) and "Brokerage" in t for t in titles)
+    brokerage = next(a for a in demo_plan.accounts if a.account_id == "brokerage")
+    assert {r.id: r.parent for r in brokerage.rows}["brokerage-cost"] == "brokerage-stocks"
