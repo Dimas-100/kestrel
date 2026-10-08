@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { GoalRow } from '../../lib/api'
-import { monthlyText, monthsBetween, nextDated, timelinePosition, yearTicks } from './timeline'
+import {
+  clusterByX, clusterLabel, groupByDay, monthlyText, monthsBetween, nextDated, timelinePosition, yearTicks,
+} from './timeline'
 
 const goal = (over: Partial<GoalRow>): GoalRow => ({
   id: 'g', label: 'Goal', scope_text: 'Roth IRA', measure: 'value', current: 500, target: 1000, progress_pct: 50,
   by: '2027-12-31', months_left: 15, monthly_needed: 33.33, reached: false, reached_on: null, overdue: false, missing_accounts: [],
-  unknown_reason: '', ...over,
+  unknown_reason: '', part_of: [], pace: null, pace_note: '', ...over,
 })
 
 describe('the goal timeline', () => {
@@ -51,5 +53,22 @@ describe('the goal timeline', () => {
     expect(monthlyText(goal({ measure: 'value', monthly_needed: 100 }))).toBe('about $100.00 a month, before any market growth')
     expect(monthlyText(goal({ measure: 'deposits', monthly_needed: 100 }))).toBe('about $100.00 a month in deposits')
     expect(monthlyText(goal({ monthly_needed: null }))).toBeNull()
+  })
+})
+
+describe('goals due together', () => {
+  it('joins marks closer than the gap into one cluster at their middle', () => {
+    const marks = [{ item: 'a', x: 100 }, { item: 'b', x: 100 }, { item: 'c', x: 108 }, { item: 'd', x: 300 }]
+    expect(clusterByX(marks, 14)).toEqual([{ items: ['a', 'b', 'c'], x: 308 / 3 }, { items: ['d'], x: 300 }])
+  })
+
+  it('labels a cluster by its count and its day, or its span of days', () => {
+    expect(clusterLabel([{ by: '2026-12-31' }, { by: '2026-12-31' }, { by: '2026-12-31' }])).toBe('3 goals · 31 Dec 2026')
+    expect(clusterLabel([{ by: '2027-06-30' }, { by: '2027-07-31' }])).toBe('2 goals · 30 Jun 2027 – 31 Jul 2027')
+  })
+
+  it('groups consecutive goals sharing a day', () => {
+    const groups = groupByDay([goal({ id: 'a', by: '2026-12-31' }), goal({ id: 'b', by: '2026-12-31' }), goal({ id: 'c' })])
+    expect(groups.map((g) => [g.by, g.goals.map((x) => x.id)])).toEqual([['2026-12-31', ['a', 'b']], ['2027-12-31', ['c']]])
   })
 })

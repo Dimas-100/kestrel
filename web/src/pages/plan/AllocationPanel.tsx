@@ -1,23 +1,27 @@
-// How each account sits against its plan: a bar of what is held and a dotted bar of the aims, one block per account,
-// off-plan accounts first; the legend says each target's gap in words; a table of every target behind the toggle
-// (spec 2026-10-05 plan page §2.3). A ratio target, or one with no account, keeps its band bar.
+// How each account sits against its plan (spec 2026-10-08 plan §4.3): one block per account, two abreast when there
+// is room, each target one row on the account's shared scale: the band as a wash, the aim as a dotted tick (the
+// expected convention), what is held as a solid bar (real money). Never stacked or normalised, so every share reads
+// at its own width. A sleeve's members sit indented under it; the status word and the plan's policy are in words.
+// A table of every target behind the toggle.
 import { Link } from '@tanstack/react-router'
 import { type CSSProperties, useState } from 'react'
 import { Empty } from '../../charts/marks'
 import { CATEGORY_COLOR, Missing, Panel, Seg } from '../../components/bits'
-import type { AccountTargets, TargetRow } from '../../lib/api'
+import type { AccountTargets, Rebalance, TargetRow } from '../../lib/api'
 import { money, num } from '../../lib/format'
-import { allocationSegments, type Segment } from './allocation'
-import { PlanBar, unitText } from './PlanBar'
+import { axisTicks, domainFor, nestRows, percentDomain, rowGeometry } from './allocation'
+import { unitText } from './PlanBar'
 
 const VIEWS = ['Chart', 'Table'] as const
-const LABEL_MIN_PCT = 12 // a segment narrower than this carries its label in the legend only
 
 export const STATUS_WORD: Record<TargetRow['status'], string> = {
   on: 'On plan', over: 'Over', under: 'Under', unknown: 'Unknown',
 }
 const STATUS_COLOR: Record<TargetRow['status'], string> = {
   on: 'var(--ink3)', over: 'var(--warn)', under: 'var(--warn)', unknown: 'var(--ink3)',
+}
+export const POLICY_WORD: Record<Rebalance, string> = {
+  trades: 'Trades', contributions: 'New money only', hold: 'Hold and dilute',
 }
 
 /** The gap, worded for a person, formatted strictly by `gap_unit` — never inferred from which list the row came
@@ -32,6 +36,14 @@ export function gapLine(row: TargetRow): string | null {
   return `${amount} ${row.gap_text}`
 }
 
+/** What the plan does about a row off its band, in words; nothing for a trade (its gap says it) or a row on plan. */
+export function policyPhrase(row: TargetRow): string | null {
+  if (row.status === 'under' && row.rebalance === 'contributions') return 'steer new money here'
+  if (row.status === 'under' && row.rebalance === 'hold') return 'a decision to revisit, not a buy'
+  if (row.status === 'over' && row.rebalance !== 'trades') return 'dilutes with new money, no sale'
+  return null
+}
+
 const offPlan = (rows: TargetRow[]) => rows.filter((r) => r.status === 'over' || r.status === 'under').length
 
 function bandText(row: TargetRow): string {
@@ -43,117 +55,139 @@ function bandText(row: TargetRow): string {
   return '—'
 }
 
-/** One bar: segments abreast with 2 px of panel between them, a filled one for what is held, a dotted one for the
- *  aim (the expected convention), the remainder of the held bar in the neutral cash grey as Other. */
-function Bar({ segments, other, color, dotted, label }: {
-  segments: Segment[]; other: number; color: string; dotted: boolean; label: string
-}) {
-  const seg = (s: Segment, fill: string, text: string): CSSProperties => ({
-    width: `${s.pct}%`, minWidth: s.pct > 0 ? 3 : 0, background: dotted ? 'transparent' : fill,
-    border: dotted ? '1.5px dotted var(--ref)' : 'none', color: text, borderRadius: 3,
-  })
+const pct = (f: number) => `${(f * 100).toFixed(2)}%`
+
+/** One target on its scale: the band washed, the held share a solid bar from zero with a rounded data end, the aim
+ *  a dotted tick; an actual past the scale's end stops at the edge with an arrow. */
+function RangeBar({ row, domain, color }: { row: TargetRow; domain: [number, number]; color: string }) {
+  const g = rowGeometry(row, domain)
+  const aim = row.target != null ? `, aim ${unitText(row.target, row.unit)}` : ''
+  const label = row.actual == null ? `${row.label}: not measured, band ${bandText(row)}${aim}`
+    : `${row.label}: ${unitText(row.actual, row.unit)} ${row.unit === 'x' ? 'actual' : 'held'}, band ${bandText(row)}${aim}`
+  const hasBand = row.low != null || row.high != null
   return (
-    <div role="img" aria-label={label} className="flex h-5" style={{ gap: 2 }}>
-      {segments.map((s) => (
-        <div key={s.id} className="flex items-center overflow-hidden" style={seg(s, color, dotted ? 'var(--ink2)' : 'var(--on-acc)')}>
-          {s.pct >= LABEL_MIN_PCT && (
-            <span className="text-[10px] font-medium px-1.5 whitespace-nowrap">{s.label} {num(s.pct, 0)}%</span>
-          )}
-        </div>
-      ))}
-      {!dotted && other > 0 && (
-        <div className="flex items-center overflow-hidden" style={{ width: `${other}%`, minWidth: 3, background: 'var(--s3)',
-          opacity: 0.55, borderRadius: 3, color: 'var(--on-acc)' }}>
-          {other >= LABEL_MIN_PCT && <span className="text-[10px] font-medium px-1.5 whitespace-nowrap">Other {num(other, 0)}%</span>}
-        </div>
+    <div className="range-bar" role="img" aria-label={label}>
+      <span className="range-track" />
+      {hasBand && <span className="range-band" style={{ left: pct(g.bandStart), width: pct(Math.max(0, g.bandEnd - g.bandStart)) }} />}
+      {g.actual != null && (
+        <span className="range-held" style={{ width: pct(g.actual), background: color }} />
       )}
+      {g.actual != null && g.clamped && (
+        <span aria-hidden="true" className="range-arrow" style={{ color }}>{g.actual === 1 ? '→' : '←'}</span>
+      )}
+      {g.target != null && <span className="range-aim" style={{ left: pct(g.target) }} />}
     </div>
   )
 }
 
-function LegendRow({ row, aim }: { row: TargetRow; aim: { pct: number; fromBand: boolean } | null }) {
+function StatusLine({ row }: { row: TargetRow }) {
   const off = row.status === 'over' || row.status === 'under'
-  const gap = gapLine(row)
+  const gap = off && row.rebalance === 'trades' ? gapLine(row) : null
+  const phrase = policyPhrase(row)
   return (
-    <li className="flex items-baseline justify-between gap-3 py-1 text-xs flex-wrap">
-      <span className="min-w-0">
-        <span className="font-medium text-ink1">{row.label}</span>
-        {row.symbols.length > 0 && <span className="text-ink3 ml-1.5">{row.symbols.join(', ')}</span>}
+    <div className="range-status text-xs text-ink3">
+      <span style={{ color: STATUS_COLOR[row.status] }} className={off ? 'font-medium' : undefined}>
+        {STATUS_WORD[row.status]}
       </span>
-      <span className="num text-ink2 whitespace-nowrap">
-        {row.actual == null ? '—' : unitText(row.actual, row.unit)}
-        {' → '}
-        {row.target != null ? unitText(row.target, row.unit) : aim?.fromBand ? `band ${bandText(row)}` : '—'}
-        {row.target != null && (row.low != null || row.high != null) && <span className="text-ink3"> ({bandText(row)})</span>}
-      </span>
-      <span className="whitespace-nowrap" style={{ color: STATUS_COLOR[row.status] }}>
-        {STATUS_WORD[row.status]}{off && gap && <><span className="text-ink3"> · </span><span className="text-ink3">{gap}</span></>}
-      </span>
+      {row.status === 'unknown' && <> · can&rsquo;t be measured yet</>}
+      {row.target != null && <> · aim <span className="num">{unitText(row.target, row.unit)}</span></>}
+      {(row.low != null || row.high != null) && <> · band <span className="num">{bandText(row)}</span></>}
+      {gap && <> · <span className="num">{gap}</span></>}
+      {phrase && <> · {phrase}</>}
+      {row.unit === 'x' && <> · a ratio, on its own scale</>}
+    </div>
+  )
+}
+
+function RangeRow({ row, depth, parentLabel, domain, color }: {
+  row: TargetRow; depth: 0 | 1; parentLabel: string | null; domain: [number, number]; color: string
+}) {
+  return (
+    <li id={`target-${row.id}`} tabIndex={-1} className="range-row" data-depth={depth}>
+      <div className="range-label min-w-0">
+        <div className="text-sm font-medium truncate">
+          {row.label}{parentLabel && <span className="sr-only">, in {parentLabel}</span>}
+        </div>
+        {row.symbols.length > 1 && <div className="text-[11px] text-ink3 truncate">{row.symbols.join(' · ')}</div>}
+      </div>
+      <RangeBar row={row} domain={domainFor(row, domain)} color={color} />
+      <div className="range-figure num text-sm text-right">
+        {row.actual == null ? <Missing /> : unitText(row.actual, row.unit)}
+      </div>
+      <StatusLine row={row} />
     </li>
   )
 }
 
+function Axis({ domain }: { domain: [number, number] }) {
+  return (
+    <div className="range-row range-axis" aria-hidden="true">
+      <span />
+      <div className="range-ticks">
+        {axisTicks(domain).map((t, i) => (
+          <span key={t} className="num text-[10px] text-ink3" style={{ left: `${i * 50}%` }}>{num(t, 0)}%</span>
+        ))}
+      </div>
+      <span />
+    </div>
+  )
+}
+
 function AccountBlock({ a, category }: { a: AccountTargets; category: string }) {
-  const alloc = allocationSegments(a.rows)
-  const shares = a.rows.filter((r) => r.unit === '%' && r.actual != null)
-  const ratios = a.rows.filter((r) => !(r.unit === '%' && r.actual != null))
+  const domain = percentDomain(a.rows)
+  const placed = nestRows(a.rows)
+  const labels = new Map(a.rows.map((r) => [r.id, r.label]))
   const color = CATEGORY_COLOR[category] ?? 'var(--s1)'
   const known = a.rows.filter((r) => r.status !== 'unknown').length
   return (
-    <section role="group" aria-label={a.name} className="py-4 border-t border-line first:border-t-0 first:pt-2">
-      <div className="flex items-baseline justify-between gap-3">
+    <section role="group" aria-label={a.name} className="alloc-account">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
         {a.known ? (
           <Link to="/accounts/$accountId" params={{ accountId: a.account_id }} className="text-sm font-semibold"
             style={{ color: 'var(--ink1)' }}>{a.name}</Link>
         ) : <span className="text-sm font-semibold">{a.name}</span>}
         <span className="text-xs text-ink3 whitespace-nowrap">
           {known > 0 ? `${known - offPlan(a.rows)} of ${known} on plan` : 'nothing measured yet'}
+          {known < a.rows.length && known > 0 && ` · ${a.rows.length - known} not measured`}
         </span>
       </div>
-      {shares.length > 0 && (
-        <div className="mt-3 flex flex-col gap-1.5">
-          <Bar segments={alloc.actual} other={alloc.other} color={color} dotted={false} label={`${a.name}, what is held`} />
-          <Bar segments={alloc.aim} other={0} color={color} dotted label={`${a.name}, the aim`} />
-          <div className="flex justify-between text-[10px] text-ink3"><span>held</span><span>aim, dotted</span></div>
-        </div>
-      )}
       <ul className="mt-2">
-        {a.rows.map((row) => {
-          const aim = alloc.aim.find((s) => s.id === row.id) ?? null
-          return <LegendRow key={row.id} row={row} aim={aim} />
-        })}
+        {placed.map(({ row, depth }) => (
+          <RangeRow key={row.id} row={row} depth={depth} domain={domain} color={color}
+            parentLabel={row.parent ? labels.get(row.parent) ?? null : null} />
+        ))}
       </ul>
-      {ratios.filter((r) => r.unit === 'x').map((row) => (
-        <div key={row.id} className="mt-2"><PlanBar row={row} /></div>
-      ))}
+      {a.rows.some((r) => r.unit === '%') && <Axis domain={domain} />}
+      {a.untargeted_pct != null && (
+        <p className="text-xs text-ink3 mt-2">
+          <span className="num">{num(a.untargeted_pct, 1)}%</span> of {a.name} sits in no target, cash included.
+        </p>
+      )}
     </section>
   )
 }
 
 function OtherTargets({ rows }: { rows: TargetRow[] }) {
   return (
-    <section role="group" aria-label="Other targets" className="py-4 border-t border-line">
-      <div className="label">Other targets</div>
-      <ul>
+    <section role="group" aria-label="Other targets" className="alloc-account">
+      <div className="text-sm font-semibold">Other targets</div>
+      <ul className="mt-2">
         {rows.map((row) => (
-          <li key={row.id} className="py-2">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-sm font-medium">{row.label}</span>
-              <span className="text-xs whitespace-nowrap" style={{ color: STATUS_COLOR[row.status] }}>{STATUS_WORD[row.status]}</span>
-            </div>
-            <PlanBar row={row} />
-            <div className="flex items-center justify-between text-xs text-ink3 mt-1 gap-3">
-              <span>
-                {row.actual == null ? <Missing /> : unitText(row.actual, row.unit)} actual
-                {row.target != null && <> · {unitText(row.target, row.unit)} aim</>}
-              </span>
-              <span className="text-right">{gapLine(row) ?? <Missing />}</span>
-            </div>
-            {row.note && <p className="text-xs text-ink3 mt-1">{row.note}</p>}
-          </li>
+          <RangeRow key={row.id} row={row} depth={0} parentLabel={null} domain={percentDomain([row])}
+            color="var(--s3)" />
         ))}
       </ul>
     </section>
+  )
+}
+
+function Key() {
+  return (
+    <div className="range-key text-xs text-ink3" aria-hidden="true">
+      <span><i className="key-held" style={{ background: CATEGORY_COLOR.long_term }} />held</span>
+      <span><i className="key-band" />band</span>
+      <span><i className="key-aim" />aim</span>
+    </div>
   )
 }
 
@@ -162,11 +196,11 @@ function TargetsTable({ accounts, unscoped }: { accounts: AccountTargets[]; unsc
                ...unscoped.map((row) => ({ row, where: '' }))]
   return (
     <div className="table-scroll mt-3.5">
-      <table className="tbl" style={{ minWidth: 720, '--row': '40px' } as CSSProperties}>
+      <table className="tbl" style={{ minWidth: 860, '--row': '40px' } as CSSProperties}>
         <thead>
           <tr>
             <th>Target</th><th>Account</th><th className="r">Actual</th><th className="r">Aim</th><th className="r">Band</th>
-            <th>Status</th><th>Gap</th>
+            <th>Status</th><th>Gap</th><th>Policy</th>
           </tr>
         </thead>
         <tbody>
@@ -179,6 +213,7 @@ function TargetsTable({ accounts, unscoped }: { accounts: AccountTargets[]; unsc
               <td className="r num">{bandText(row)}</td>
               <td style={{ color: STATUS_COLOR[row.status] }}>{STATUS_WORD[row.status]}</td>
               <td className="text-ink2">{gapLine(row) ?? <Missing />}</td>
+              <td className="text-ink2">{POLICY_WORD[row.rebalance]}</td>
             </tr>
           ))}
         </tbody>
@@ -192,15 +227,15 @@ export function AllocationPanel({ accounts, unscoped }: { accounts: AccountTarge
   const empty = accounts.length === 0 && unscoped.length === 0
   const ordered = [...accounts].sort((a, b) => offPlan(b.rows) - offPlan(a.rows))
   return (
-    <Panel id="allocation" title="Allocation against plan" span={7}
-      subtitle={empty ? undefined : 'What each account holds against its aim, off plan first'}
-      actions={!empty && <Seg label="View" options={VIEWS} value={view} onChange={setView} />}>
+    <Panel id="allocation" title="Allocation against plan" span={12}
+      subtitle={empty ? undefined : 'Each target on its account’s scale, off plan first'}
+      actions={!empty && <>{view === 'Chart' && <Key />}<Seg label="View" options={VIEWS} value={view} onChange={setView} /></>}>
       {empty ? (
         <Empty>No targets yet. An investing feed sends what each account should hold.</Empty>
       ) : view === 'Table' ? (
         <TargetsTable accounts={ordered} unscoped={unscoped} />
       ) : (
-        <div className="mt-1">
+        <div className="alloc-accounts mt-3">
           {ordered.map((a) => <AccountBlock key={a.account_id} a={a} category="long_term" />)}
           {unscoped.length > 0 && <OtherTargets rows={unscoped} />}
         </div>

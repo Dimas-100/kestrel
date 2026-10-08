@@ -1,34 +1,58 @@
-// An account's percent targets as the segments of two bars: what is held, and what is aimed for (spec 2026-10-05
-// plan page §2.3). Pure: the panel only draws what this returns.
+// An account's targets as one row each on a shared scale (spec 2026-10-08 plan §4.3): never stacked, summed or
+// normalised, so a holding at 32 % of the account draws at 32 % of the scale whatever the other rows say. A sleeve's
+// members sit indented under it. Pure: the panel only draws what this returns.
+import { bandGeometry, type Band } from '../../charts/geometry'
 import type { TargetRow } from '../../lib/api'
 
-export interface Segment {
-  id: string
-  label: string
-  pct: number // the share of the account, 0..100
-  status: TargetRow['status']
+export interface Placed {
+  row: TargetRow
+  depth: 0 | 1 // 1: a member of the sleeve listed just above it
 }
 
-export interface AimSegment extends Segment {
-  fromBand: boolean // true when the row has no aim and the middle of its band (or 0 with no band) stands in
+/** The rows in the view's order, each sleeve followed at once by its members; a member whose sleeve isn't in the
+ *  list stays at the top level where it was. */
+export function nestRows(rows: TargetRow[]): Placed[] {
+  const ids = new Set(rows.map((r) => r.id))
+  const kids = (id: string) => rows.filter((r) => r.parent === id)
+  const out: Placed[] = []
+  for (const row of rows) {
+    if (row.parent != null && ids.has(row.parent)) continue
+    out.push({ row, depth: 0 })
+    for (const kid of kids(row.id)) out.push({ row: kid, depth: 1 })
+  }
+  return out
 }
 
-export interface Allocation {
-  actual: Segment[] // the rows' shares, scaled down together when they add past 100
-  other: number // what the targets don't cover, 0..100
-  aim: AimSegment[] // the same rows, the aims
+const STEP = 10
+
+/** One scale for every "%" row of an account, 0 up to the next 10 above the largest band edge, aim or actual (with
+ *  a tenth to spare), never past 100: the rows compare with each other, and a band reads at a useful width. */
+export function percentDomain(rows: TargetRow[]): [number, number] {
+  const values = rows.filter((r) => r.unit === '%')
+    .flatMap((r) => [r.low, r.high, r.target, r.actual])
+    .filter((v): v is number => v != null)
+  const top = Math.max(STEP, ...values) * 1.1
+  return [0, Math.min(100, Math.ceil(top / STEP) * STEP)]
 }
 
-/** Only the percent rows with a measured actual take part; a ratio row or an unknown one can't be a share. */
-export function allocationSegments(rows: TargetRow[]): Allocation {
-  const shares = rows.filter((r): r is TargetRow & { actual: number } => r.unit === '%' && r.actual != null)
-  const sum = shares.reduce((acc, r) => acc + Math.max(0, r.actual), 0)
-  const scale = sum > 100 ? 100 / sum : 1
-  const actual = shares.map((r) => ({ id: r.id, label: r.label, pct: Math.max(0, r.actual) * scale, status: r.status }))
-  const aim = shares.map((r) => {
-    const fromBand = r.target == null
-    const pct = r.target ?? (r.low != null && r.high != null ? (r.low + r.high) / 2 : (r.low ?? r.high ?? 0))
-    return { id: r.id, label: r.label, pct: Math.max(0, pct), status: r.status, fromBand }
-  })
-  return { actual, other: Math.max(0, 100 - sum * scale), aim }
+/** A ratio ("x") row has no natural bound: its own scale, from 0 to a little past its largest figure. */
+export function ratioDomain(row: TargetRow): [number, number] {
+  const values = [row.low, row.high, row.target, row.actual].filter((v): v is number => v != null)
+  const top = Math.max(1, ...values) * 1.15
+  return [0, Math.ceil(top * 2) / 2]
+}
+
+export function domainFor(row: TargetRow, accountDomain: [number, number]): [number, number] {
+  return row.unit === '%' ? accountDomain : ratioDomain(row)
+}
+
+/** The row's band, aim and actual as fractions of its scale. */
+export function rowGeometry(row: TargetRow, domain: [number, number]): Band {
+  return bandGeometry(row.low, row.high, row.target, row.actual, domain)
+}
+
+/** The axis labels under an account's rows: the ends and the middle. */
+export function axisTicks(domain: [number, number]): number[] {
+  const [lo, hi] = domain
+  return [lo, (lo + hi) / 2, hi]
 }

@@ -1,45 +1,42 @@
 import { describe, expect, it } from 'vitest'
 import type { TargetRow } from '../../lib/api'
-import { allocationSegments } from './allocation'
+import { axisTicks, nestRows, percentDomain, ratioDomain, rowGeometry } from './allocation'
 
-const row = (over: Partial<TargetRow>): TargetRow => ({
-  id: 'r', label: 'SPY', symbols: ['SPY'], unit: '%', target: 60, low: 55, high: 65, actual: 62, status: 'on',
-  gap: 0, gap_unit: 'money', gap_text: 'on plan', note: '', ...over,
-})
+function row(partial: Partial<TargetRow> & { id: string }): TargetRow {
+  return {
+    label: partial.id, symbols: [partial.id], unit: '%', target: null, low: null, high: null, actual: null,
+    status: 'on', gap: null, gap_unit: null, gap_text: '', note: '', rebalance: 'trades', parent: null, ...partial,
+  }
+}
 
-describe('allocation segments', () => {
-  it('turns the percent rows into actual segments, the remainder as Other, and aim segments in the same order', () => {
-    const out = allocationSegments([
-      row({ id: 'xlp', label: 'XLP', actual: 16, target: 20, status: 'under' }),
-      row({ id: 'xlv', label: 'XLV', actual: 21, target: 15, status: 'over' }),
-      row({ id: 'spy', label: 'SPY', actual: 62, target: 60 }),
-    ])
-    expect(out.actual.map((s) => [s.id, s.pct, s.status])).toEqual([['xlp', 16, 'under'], ['xlv', 21, 'over'], ['spy', 62, 'on']])
-    expect(out.other).toBeCloseTo(1)
-    expect(out.aim.map((s) => [s.id, s.pct, s.fromBand])).toEqual([['xlp', 20, false], ['xlv', 15, false], ['spy', 60, false]])
+describe('allocation rows', () => {
+  it('draws a share at its own width on the scale, never scaled down by the other rows', () => {
+    // a sleeve (41 %) and its members (17 %, 14 %) beside a 32 % holding add past 100: none of them shrinks
+    const rows = [row({ id: 'core', symbols: ['M', 'N', 'A'], low: 45, high: 50, actual: 41.1 }),
+                  row({ id: 'schd', actual: 32, target: 15, low: 11.25, high: 18.75 }),
+                  row({ id: 'm', actual: 17.3, target: 22, low: 16.5, high: 27.5, parent: 'core' }),
+                  row({ id: 'n', actual: 13.6, target: 12, low: 9, high: 15, parent: 'core' })]
+    const domain = percentDomain(rows)
+    expect(domain).toEqual([0, 60])
+    expect(rowGeometry(rows[1], domain).actual).toBeCloseTo(32 / 60)
+    expect(rowGeometry(rows[0], domain).actual).toBeCloseTo(41.1 / 60)
   })
 
-  it('scales actual shares that add past 100 and leaves no remainder', () => {
-    const out = allocationSegments([row({ id: 'a', actual: 60 }), row({ id: 'b', actual: 60 })])
-    expect(out.actual.map((s) => s.pct)).toEqual([50, 50])
-    expect(out.other).toBe(0)
+  it('nests a sleeve’s members under it, in the view’s order otherwise', () => {
+    const rows = [row({ id: 'n', parent: 'core' }), row({ id: 'core', symbols: ['M', 'N'] }), row({ id: 'x' }),
+                  row({ id: 'm', parent: 'core' }), row({ id: 'orphan', parent: 'gone' })]
+    expect(nestRows(rows).map((p) => [p.row.id, p.depth])).toEqual(
+      [['core', 0], ['n', 1], ['m', 1], ['x', 0], ['orphan', 0]])
   })
 
-  it('aims from the middle of a band when a row has none, and nothing when it has neither', () => {
-    const out = allocationSegments([
-      row({ id: 'stocks', label: 'Single stocks', target: null, low: 15, high: 25, actual: 22 }),
-      row({ id: 'free', label: 'Free', target: null, low: null, high: null, actual: 5 }),
-    ])
-    expect(out.aim.map((s) => [s.id, s.pct, s.fromBand])).toEqual([['stocks', 20, true], ['free', 0, true]])
+  it('keeps the scale between 10 and 100, in steps of ten', () => {
+    expect(percentDomain([row({ id: 'a', actual: 2, high: 3 })])).toEqual([0, 20])
+    expect(percentDomain([row({ id: 'a', actual: 95, high: 99 })])).toEqual([0, 100])
+    expect(percentDomain([row({ id: 'r', unit: 'x', actual: 400 })])).toEqual([0, 20])
   })
 
-  it('leaves out ratio rows and rows with no actual', () => {
-    const out = allocationSegments([
-      row({ id: 'ratio', unit: 'x', actual: 3, target: 6 }),
-      row({ id: 'blind', actual: null, status: 'unknown' }),
-      row({ id: 'spy' }),
-    ])
-    expect(out.actual.map((s) => s.id)).toEqual(['spy'])
-    expect(out.other).toBeCloseTo(38)
+  it('gives a ratio its own scale and the axis its ends and middle', () => {
+    expect(ratioDomain(row({ id: 'r', unit: 'x', actual: 0.75, target: 1.75, low: 1.31, high: 2.19 }))).toEqual([0, 3])
+    expect(axisTicks([0, 60])).toEqual([0, 30, 60])
   })
 })

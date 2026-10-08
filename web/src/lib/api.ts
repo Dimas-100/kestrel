@@ -1022,6 +1022,8 @@ export function useSettings() {
 export type TargetStatus = 'on' | 'over' | 'under' | 'unknown'
 export type Health = 'ok' | 'watch' | 'alert' | 'none'
 export type GapUnit = 'money' | 'pts' | 'x'
+// how the plan brings a target back inside its band: a trade, new money only, or neither (held and diluted)
+export type Rebalance = 'trades' | 'contributions' | 'hold'
 
 export interface TargetRow {
   id: string
@@ -1037,6 +1039,8 @@ export interface TargetRow {
   gap_unit: GapUnit | null // what `gap` is measured in — never infer money from where the row is grouped
   gap_text: string // "under the low end" / "over the high end" / "on plan" / "" when unknown
   note: string
+  rebalance: Rebalance
+  parent: string | null // the multi-symbol row (a sleeve) in the same account that holds this row's symbols
 }
 
 export interface AccountTargets {
@@ -1044,6 +1048,7 @@ export interface AccountTargets {
   name: string // the account's name, or its bare id when no source ever sent it (see `known`)
   known: boolean // false: this account_id names no account any source sent — never link to it
   rows: TargetRow[]
+  untargeted_pct: number | null // the share in no symbol a "%" target names, cash included; null when unknown
 }
 
 export interface ThesisRow {
@@ -1078,6 +1083,26 @@ export interface GoalRow {
   overdue: boolean // by has passed and it isn't reached (the view's answer; a far placeholder date never is)
   missing_accounts: string[] // account id(s) this goal names that no source sent
   unknown_reason: string // why current is unknown when no account is missing ("" otherwise)
+  part_of: string[] // ids of other unreached value goals whose accounts include all of this one's
+  pace: GoalPace | null // the actual since 1 January against the straight line, when the history can be trusted
+  pace_note: string // why there is no pace ("" when there is one, or none is expected)
+}
+
+export interface GoalPace {
+  start: string
+  start_value: number
+  points: { date: string; value: number }[] // the actual, from start to today
+  required_now: number // where the straight line is today
+  ahead: number // current minus required_now: above zero is ahead of the line
+}
+
+export interface PlanAction {
+  level: 'warning' | 'note'
+  kind: 'target' | 'thesis' | 'goal'
+  title: string
+  why: string // the reason it is on the list, in a sentence
+  detail: string // the figures behind it
+  anchor: string // the element on the page that backs it: target-<id>, goal-<id>, thesis-<symbol>, theses
 }
 
 export interface Passed {
@@ -1089,13 +1114,13 @@ export interface Passed {
 export interface PlanView {
   as_of: string
   summary: string // the header's sentence: goals ahead and the next, targets off plan, theses needing a look
-  actions: Attention[] // this month's to-do, warnings first; the link is empty (the page is the plan)
+  actions: PlanAction[] // this month's to-do, ranked: the first three are the priorities
   passed: Passed[] // round numbers the net worth crossed and goals reached, newest first
   accounts: AccountTargets[]
   unscoped: TargetRow[]
   theses: ThesisRow[]
   goals: GoalRow[]
-  counts: { off_plan: number; theses_alert: number; theses_watch: number }
+  counts: { off_plan: number; theses_alert: number; theses_watch: number; unknown: number; need_trade: number }
 }
 
 export function usePlan() {

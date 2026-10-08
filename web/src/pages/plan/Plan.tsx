@@ -1,5 +1,5 @@
-// Your plan: the goals in time, what to do this month, how each account sits against its plan, and why each
-// holding is owned (spec 2026-10-05 plan page).
+// Your plan: this month's priorities first, then the goals in time, how each account sits against its plan, and why
+// each holding is owned (specs 2026-10-05 plan page and 2026-10-08 plan accuracy and focus).
 import { usePlan } from '../../lib/api'
 import { AllocationPanel } from './AllocationPanel'
 import { MilestonesPanel } from './MilestonesPanel'
@@ -27,8 +27,8 @@ export function Plan() {
         </div>
       ) : (
         <div className="grid12">
+          <ThisMonthPanel actions={v.actions} counts={v.counts} />
           <MilestonesPanel goals={v.goals} passed={v.passed} today={v.as_of.slice(0, 10)} />
-          <ThisMonthPanel actions={v.actions} />
           <AllocationPanel accounts={v.accounts} unscoped={v.unscoped} />
           <ThesesPanel theses={v.theses} />
         </div>

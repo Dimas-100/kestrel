@@ -1,7 +1,7 @@
 // The goals in time: months between days, a log scale that gives the next years room while 2064 still fits, the
 // year ticks, the next few dated goals, and the monthly line said for what it is (spec 2026-10-05 plan page §2.1).
 import type { GoalRow } from '../../lib/api'
-import { money } from '../../lib/format'
+import { longDate, money } from '../../lib/format'
 
 const DAY_MS = 86_400_000
 const MONTH_DAYS = 30.4375
@@ -53,4 +53,43 @@ export function monthlyText(g: Pick<GoalRow, 'measure' | 'monthly_needed'>): str
   return g.measure === 'deposits'
     ? `about ${money(g.monthly_needed)} a month in deposits`
     : `about ${money(g.monthly_needed)} a month, before any market growth`
+}
+
+export interface Cluster<T> {
+  items: T[]
+  x: number // where the cluster's mark sits: the middle of its members
+}
+
+/** Marks closer than `minGap` px to the previous one join its cluster (goals due on one day always do: they share
+ *  an x), so a few deadlines together read as one labelled mark instead of dots drawn over each other. */
+export function clusterByX<T>(marks: { item: T; x: number }[], minGap: number): Cluster<T>[] {
+  const sorted = [...marks].sort((a, b) => a.x - b.x)
+  const out: { items: T[]; xs: number[] }[] = []
+  for (const m of sorted) {
+    const last = out[out.length - 1]
+    if (last && m.x - last.xs[last.xs.length - 1] <= minGap) {
+      last.items.push(m.item)
+      last.xs.push(m.x)
+    } else out.push({ items: [m.item], xs: [m.x] })
+  }
+  return out.map((c) => ({ items: c.items, x: c.xs.reduce((s, x) => s + x, 0) / c.xs.length }))
+}
+
+/** "3 goals · 31 Dec 2026" for goals due on one day, "2 goals · 30 Jun – 31 Dec 2027" for a few days close
+ *  together on the line. */
+export function clusterLabel(goals: { by: string }[]): string {
+  const days = [...new Set(goals.map((g) => g.by.slice(0, 10)))].sort()
+  const when = days.length === 1 ? longDate(days[0]) : `${longDate(days[0])} – ${longDate(days[days.length - 1])}`
+  return `${goals.length} goals · ${when}`
+}
+
+/** Consecutive goals that share a day, in order: the next cards group under their date. */
+export function groupByDay<T extends { by: string | null }>(goals: T[]): { by: string | null; goals: T[] }[] {
+  const out: { by: string | null; goals: T[] }[] = []
+  for (const g of goals) {
+    const last = out[out.length - 1]
+    if (last && last.by === g.by) last.goals.push(g)
+    else out.push({ by: g.by, goals: [g] })
+  }
+  return out
 }

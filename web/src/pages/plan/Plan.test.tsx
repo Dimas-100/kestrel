@@ -37,6 +37,36 @@ describe('Plan', { timeout: 15_000 }, () => {
     const table = tableRows(panel)
     expect(table).toHaveLength(planFixture.goals.length)
     expect(table[0]).toContain(planFixture.goals[0].label)
+    expect(table.find((r) => r.startsWith('Save into savings this year'))).toMatch(/(ahead|behind) \$/)
+  })
+
+  it('Milestones: goals due on one day are one labelled cluster on the line and one group of cards', async () => {
+    renderApp('/plan')
+    const panel = await screen.findByRole('region', { name: 'Milestones' })
+    const line = within(panel).getByRole('img', { name: 'Your goals in time' })
+    expect(line.querySelector('[data-cluster="2"]')?.textContent).toBe('2 goals · 31 Dec 20262')
+    expect(panel.textContent).toContain('Due 31 Dec 2026 · 2 goals')
+  })
+
+  it('Milestones: a card says which goals it counts toward and draws its pace when the history allows', async () => {
+    renderApp('/plan')
+    const panel = await screen.findByRole('region', { name: 'Milestones' })
+    const save = panel.querySelector('#goal-save-this-year') as HTMLElement
+    expect(save.textContent).toContain('Counts toward A year of spending in cash, Net worth milestone too.')
+    expect(within(save).getByRole('img', { name: /^Save into savings this year: (Ahead of|Behind) the straight line by \$/ })).toBeTruthy()
+    const later = panel.querySelector('#goal-long-term-together') as HTMLElement // after the next three: a compact row
+    expect(later.tagName).toBe('LI')
+    expect(later.textContent).toContain('by 31 Dec 2031')
+  })
+
+  it('Milestones: the newest three passed show, the rest sit closed under "n earlier"', async () => {
+    const passed = ['2026-09-01', '2026-08-01', '2026-07-01', '2026-06-01', '2026-05-01']
+      .map((date, i) => ({ date, label: `$${15 - i}0,000`, kind: 'round' as const }))
+    renderApp('/plan', { plan: { ...planFixture, passed } })
+    const panel = await screen.findByRole('region', { name: 'Milestones' })
+    expect(rows(within(panel).getByRole('list', { name: 'Passed' }))).toHaveLength(3)
+    const earlier = within(panel).getByText('2 earlier').closest('details') as HTMLDetailsElement
+    expect(earlier.open).toBe(false)
   })
 
   it('Milestones: an overdue goal says was due, never a monthly pace; a far placeholder date is never overdue', async () => {
@@ -79,51 +109,86 @@ describe('Plan', { timeout: 15_000 }, () => {
     expect(within(panel).getAllByRole('article')).toHaveLength(1)
   })
 
-  it('This month: warnings first with their level word, then notes; a check when there is nothing to do', async () => {
+  it('This month: the three priorities as numbered cards with why and a link, the rest closed', async () => {
     renderApp('/plan')
     const panel = await screen.findByRole('region', { name: 'This month' })
-    const items = rows(panel)
-    expect(items).toHaveLength(planFixture.actions.length)
-    expect(items[0].textContent).toContain('Warning')
-    expect(items[0].textContent).toContain(planFixture.actions[0].title)
-    expect(items[0].textContent).toContain(planFixture.actions[0].detail)
-    const levels = items.map((li) => (li.textContent?.includes('Warning') ? 'warning' : 'note'))
-    expect(levels).toEqual(planFixture.actions.map((a) => a.level))
-    expect(within(panel).queryByRole('link')).toBeNull() // the page is the plan: nothing to open
-    renderApp('/plan', { plan: { ...planFixture, actions: [] } })
-    expect((await screen.findAllByText(/^Nothing to do this month/)).length).toBeGreaterThan(0)
+    const top = within(panel).getByRole('list', { name: 'This month’s priorities' })
+    const cards = [...top.children] as HTMLElement[]
+    expect(cards).toHaveLength(3)
+    planFixture.actions.slice(0, 3).forEach((a, i) => {
+      expect(cards[i].textContent).toContain(String(i + 1))
+      expect(within(cards[i]).getByRole('heading', { level: 3 }).textContent).toBe(a.title)
+      expect(cards[i].textContent).toContain(a.why)
+    })
+    expect(cards[0].textContent).toContain('Warning')
+    expect(within(cards[1]).getByRole('link', { name: 'See it in Allocation' }).getAttribute('href'))
+      .toBe(`#${planFixture.actions[1].anchor}`)
+    const rest = panel.querySelector('details') as HTMLDetailsElement
+    expect(rest.open).toBe(false)
+    expect(rest.querySelector('summary')?.textContent).toBe(`Also this month (${planFixture.actions.length - 3})`)
   })
 
-  it('Allocation: one block per account, off-plan accounts first, a bar of shares, a dotted aim bar and the legend', async () => {
+  it('This month: a priority’s link opens and focuses the place that backs it', async () => {
+    renderApp('/plan')
+    const panel = await screen.findByRole('region', { name: 'This month' })
+    const watch = planFixture.actions.find((a) => a.kind === 'thesis' && a.level === 'note')
+    expect(watch).toBeTruthy()
+    fireEvent.click(within(panel).getAllByRole('link', { name: 'See it in Theses' }).at(-1) as HTMLElement)
+    expect(document.activeElement?.id).toBe(watch?.anchor)
+  })
+
+  it('This month: nothing to do says so, and never calls an unmeasured target on plan', async () => {
+    renderApp('/plan', { plan: { ...planFixture, actions: [] } })
+    expect((await screen.findAllByText(/^Nothing to do this month: every measured target/)).length).toBeGreaterThan(0)
+    renderApp('/plan', { plan: { ...planFixture, actions: [], counts: { ...planFixture.counts, unknown: 2 } } })
+    const line = (await screen.findAllByText(/can’t be measured yet/)).at(-1) as HTMLElement
+    expect(line.textContent).toContain('2 targets can’t be measured yet, so they aren’t counted as on plan')
+    expect(line.textContent).not.toContain('every target is on plan')
+  })
+
+  it('Allocation: one row per target on the account’s scale, never stacked, off-plan accounts first', async () => {
     renderApp('/plan')
     const panel = await screen.findByRole('region', { name: 'Allocation against plan' })
-    // the account blocks are sections; the view toggle and the other-targets section are groups too
     const blocks = within(panel).getAllByRole('group').filter((g) => g.tagName === 'SECTION' && g.getAttribute('aria-label') !== 'Other targets')
     expect(blocks.map((b) => b.getAttribute('aria-label'))).toEqual(['Roth IRA', 'Brokerage'])
     expect(blocks[0].textContent).toContain('1 of 3 on plan')
-    expect(within(blocks[0]).getByRole('img', { name: 'Roth IRA, what is held' })).toBeTruthy()
-    expect(within(blocks[0]).getByRole('img', { name: 'Roth IRA, the aim' })).toBeTruthy()
-    const legend = rows(blocks[0]).map((li) => li.textContent ?? '')
-    expect(legend[0]).toContain('XLP')
-    expect(legend[0]).toContain('Under')
-    expect(legend[0]).toContain('under the low end')
-    expect(legend[1]).toContain('Over')
-    const ratio = planFixture.unscoped[0] // the ratio target keeps its band bar, read with the row's decimals
-    expect(within(panel).getByRole('img', { name: `${ratio.label}: actual ${unitText(ratio.actual as number, ratio.unit)}` })).toBeTruthy()
+    // each share is drawn and named at its own figure, with its band and aim
+    expect(within(blocks[0]).getByRole('img', { name: 'XLP: 16.0% held, band 18–22%, aim 20.0%' })).toBeTruthy()
+    const xlp = blocks[0].querySelector('#target-roth-xlp') as HTMLElement
+    expect(xlp.textContent).toContain('Under')
+    expect(xlp.textContent).toContain('$1,357.86 under the low end')
+    expect(blocks[1].textContent).toContain('9.0% of Brokerage sits in no target, cash included.')
+    const ratio = planFixture.unscoped[0] // a ratio keeps its own scale
+    expect(within(panel).getByRole('img', { name: `${ratio.label}: ${unitText(ratio.actual as number, ratio.unit)} actual, band from 4x, aim 6.0x` })).toBeTruthy()
     fireEvent.click(within(panel).getByRole('button', { name: 'Table' }))
     const table = tableRows(panel)
     expect(table).toHaveLength(planFixture.accounts.reduce((n, a) => n + a.rows.length, 0) + planFixture.unscoped.length)
-    expect(table[0]).toContain('XLP')
-    expect(table[0]).toContain('Roth IRA')
+    expect(table.find((r) => r.startsWith('XLI'))).toContain('New money only')
+  })
+
+  it('Allocation: a sleeve’s members sit under it, and a plan that never sells never reads as trim', async () => {
+    renderApp('/plan')
+    const panel = await screen.findByRole('region', { name: 'Allocation against plan' })
+    const brokerage = within(panel).getByRole('group', { name: 'Brokerage' })
+    const ids = [...brokerage.querySelectorAll('li.range-row')].map((li) => [li.id, li.getAttribute('data-depth')])
+    const sleeve = ids.findIndex(([id]) => id === 'target-brokerage-stocks')
+    expect(ids[sleeve + 1]).toEqual(['target-brokerage-cost', '1'])
+    const cost = brokerage.querySelector('#target-brokerage-cost') as HTMLElement
+    expect(cost.textContent).toContain('Over')
+    expect(cost.textContent).toContain('dilutes with new money, no sale')
+    expect(cost.textContent).toContain(', in Single stocks')
+    expect((brokerage.querySelector('#target-brokerage-xli') as HTMLElement).textContent).toContain('steer new money here')
+    expect(brokerage.textContent).not.toMatch(/Trim|\$[\d,.]+ over the high end/)
   })
 
   it('Allocation: a zero-value known account’s gap is in points, never a bogus dollar figure, to two decimals when tiny', async () => {
+    const base = { symbols: [], unit: '%' as const, note: '', rebalance: 'trades' as const, parent: null }
     const v: PlanView = { ...planFixture,
-      accounts: [{ account_id: 'z', name: 'Zero', known: true, rows: [
-        { id: 't3', label: 'VTI', symbols: ['VTI'], unit: '%', target: 60, low: 55, high: 65, actual: 0,
-          status: 'under', gap: 55, gap_unit: 'pts', gap_text: 'under the low end', note: '' },
-        { id: 't4', label: 'BND', symbols: ['BND'], unit: '%', target: 10, low: 9, high: 11, actual: 11.05,
-          status: 'over', gap: -0.05, gap_unit: 'pts', gap_text: 'over the high end', note: '' },
+      accounts: [{ account_id: 'z', name: 'Zero', known: true, untargeted_pct: null, rows: [
+        { ...base, id: 't3', label: 'VTI', symbols: ['VTI'], target: 60, low: 55, high: 65, actual: 0,
+          status: 'under', gap: 55, gap_unit: 'pts', gap_text: 'under the low end' },
+        { ...base, id: 't4', label: 'BND', symbols: ['BND'], target: 10, low: 9, high: 11, actual: 11.05,
+          status: 'over', gap: -0.05, gap_unit: 'pts', gap_text: 'over the high end' },
       ] }] }
     renderApp('/plan', { plan: v })
     const panel = await screen.findByRole('region', { name: 'Allocation against plan' })
@@ -134,20 +199,28 @@ describe('Plan', { timeout: 15_000 }, () => {
 
   it('Allocation: a target naming an unsent account sits under its own id, unlinked, not "Across every account"', async () => {
     const v: PlanView = { ...planFixture,
-      accounts: [{ account_id: 'ghost', name: 'ghost', known: false, rows: [{
+      accounts: [{ account_id: 'ghost', name: 'ghost', known: false, untargeted_pct: null, rows: [{
         id: 'g1', label: 'VTI', symbols: ['VTI'], unit: '%', target: 60, low: 55, high: 65, actual: null,
-        status: 'unknown', gap: null, gap_unit: null, gap_text: '', note: '' }] }], unscoped: [] }
+        status: 'unknown', gap: null, gap_unit: null, gap_text: '', note: '', rebalance: 'trades', parent: null }] }],
+      unscoped: [] }
     renderApp('/plan', { plan: v })
     const panel = await screen.findByRole('region', { name: 'Allocation against plan' })
     const block = within(panel).getByRole('group', { name: 'ghost' })
     expect(within(block).queryByRole('link')).toBeNull()
+    expect(block.textContent).toContain('can’t be measured yet')
     expect(within(panel).queryByText('Across every account')).toBeNull()
   })
 
-  it('Theses: chips count each health, alert leads, and the wrong-if list stays behind a disclosure', async () => {
+  it('Theses: chips count each health, the exceptions lead and open, the healthy and unrated ones closed', async () => {
     renderApp('/plan')
     const theses = await screen.findByRole('region', { name: 'Theses' })
     expect(theses.textContent).toContain('1 alert · 1 watch · 2 ok · 9 not rated')
+    const exceptions = within(theses).getByRole('list', { name: 'Theses that need a look' })
+    expect([...exceptions.children].map((li) => li.id)).toEqual(['thesis-HD', 'thesis-XLE'])
+    const closed = [...theses.querySelectorAll('details.also')] as HTMLDetailsElement[]
+    expect(closed.map((d) => [d.querySelector('summary')?.textContent, d.open])).toEqual(
+      [['2 holding', false], ['9 not rated', false]])
+    expect(closed[0].querySelector('#thesis-COST')).toBeTruthy()
     const items = rows(theses)
     expect(items[0].textContent).toContain('HD')
     expect(items[0].textContent).toContain('Alert')
@@ -159,7 +232,7 @@ describe('Plan', { timeout: 15_000 }, () => {
 
   it('names an investing feed in the empty state', async () => {
     const empty: PlanView = { ...planFixture, summary: '', actions: [], accounts: [], unscoped: [], theses: [], goals: [],
-      counts: { off_plan: 0, theses_alert: 0, theses_watch: 0 } }
+      counts: { off_plan: 0, theses_alert: 0, theses_watch: 0, unknown: 0, need_trade: 0 } }
     renderApp('/plan', { plan: empty })
     const text = await screen.findByText(/^No plan yet\./)
     expect(text.textContent).toContain('investing feed')
@@ -189,6 +262,9 @@ describe('Plan', { timeout: 15_000 }, () => {
     const list = within(panel).getByRole('list', { name: 'Passed' })
     expect(rows(list).map((li) => li.textContent)).toEqual(['$150,000passed 1 Sep 2026', 'Donereached 15 Aug 2026'])
     const first = nextDated(planFixture.goals, 1)[0]
+    const card = within(panel).getAllByRole('article')[0]
+    expect(within(card).queryByRole('slider')).toBeNull() // the what-if opens on demand
+    fireEvent.click(within(card).getByRole('button', { name: 'Try a monthly amount' }))
     const slider = within(panel).getByRole('slider', { name: `${first.label}: a month` }) as HTMLInputElement
     expect(Number(slider.value)).toBe(Math.round(first.monthly_needed as number))
     fireEvent.change(slider, { target: { value: String(Math.round((first.monthly_needed as number) * 2)) } })

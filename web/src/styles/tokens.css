@@ -154,13 +154,66 @@ p .num, .prose .num, .panel-sub .num { font-family: var(--k-sans); letter-spacin
   .ev-mark { width: 13px; height: 13px; }
 }
 
-/* --- the Plan page's goal cards: three abreast with hairlines between, stacked on a phone ------------------ */
+/* --- the Plan page's goal cards: three abreast with hairlines between, grouped under their date, stacked on a phone */
 .goal-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 24px; }
 .goal-cards > article + article { border-left: 1px solid var(--line); padding-left: 20px; }
+.goal-group { grid-column: 1 / -1; margin: 6px 0 10px; }
+.goal-group:not(:first-child) { margin-top: 22px; }
 @media (max-width: 900px) {
   .goal-cards { grid-template-columns: 1fr; gap: 0; }
   .goal-cards > article + article { border-left: 0; padding-left: 0; border-top: 1px solid var(--line);
     padding-top: 14px; margin-top: 14px; }
+}
+
+/* --- the Plan page's priorities: three numbered cards abreast, stacked on a phone; the rest behind a disclosure */
+.priorities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.priority { display: flex; flex-direction: column; min-width: 0; padding: 14px 16px; border-radius: 10px;
+  background: var(--panel2); box-shadow: inset 0 0 0 1px var(--line); }
+.priority-rank { font-size: 24px; line-height: 1; font-weight: 500; color: var(--ink3); letter-spacing: -0.02em; }
+@media (max-width: 900px) { .priorities { grid-template-columns: 1fr; } }
+details.also > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+details.also > summary::-webkit-details-marker { display: none; }
+details.also > summary::before { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); margin-right: 2px; }
+details.also[open] > summary::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: no-preference) { details.also > summary::before { transition: transform 150ms ease-out; } }
+
+/* --- the Plan page's range rows: each target on its account's scale; band washed, aim dotted, held solid ------ */
+.alloc-accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 8px 32px; }
+.alloc-account { min-width: 0; padding-top: 6px; }
+.range-row { display: grid; grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) 4.25rem; column-gap: 12px;
+  row-gap: 2px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); border-radius: 2px; }
+.range-row[data-depth="1"] { margin-left: 14px; padding-left: 10px; border-top-style: dashed;
+  box-shadow: inset 1px 0 0 var(--line2); }
+.range-row[data-depth="1"] { grid-template-columns: minmax(0, calc(7.5rem - 24px)) minmax(0, 1fr) 4.25rem; }
+.range-status { grid-column: 2 / 4; }
+.range-bar { position: relative; height: 16px; }
+.range-track { position: absolute; inset: 4px 0; border-radius: 999px; background: var(--panel2);
+  box-shadow: inset 0 0 0 1px var(--line); }
+.range-band { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--line2); }
+.range-held { position: absolute; left: 0; top: 4px; height: 8px; border-radius: 0 4px 4px 0; }
+.range-aim { position: absolute; top: -2px; bottom: -2px; width: 0; border-left: 2px dotted var(--ref);
+  transform: translateX(-1px); }
+.range-arrow { position: absolute; right: -2px; top: 50%; transform: translate(100%, -50%); font-size: 12px; line-height: 1; }
+.range-axis { border-top: 0; padding: 0 0 2px; }
+.range-ticks { position: relative; height: 12px; }
+.range-ticks > span { position: absolute; top: 0; transform: translateX(-50%); }
+.range-ticks > span:first-child { transform: none; }
+.range-ticks > span:last-child { transform: translateX(-100%); }
+.range-key { display: inline-flex; gap: 12px; align-items: center; }
+.range-key > span { display: inline-flex; align-items: center; gap: 5px; }
+.range-key i { display: inline-block; }
+.key-held { width: 14px; height: 8px; border-radius: 0 3px 3px 0; }
+.key-band { width: 14px; height: 12px; border-radius: 3px; background: var(--line2); }
+.key-aim { width: 0; height: 12px; border-left: 2px dotted var(--ref); }
+.range-row:focus-visible, .goal-card:focus-visible, li[id^="thesis-"]:focus-visible, li[id^="goal-"]:focus-visible,
+ul#theses:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .range-row, .range-row[data-depth="1"] { grid-template-columns: minmax(0, 1fr) auto; }
+  .range-bar, .range-status { grid-column: 1 / -1; }
+  .range-axis > span:first-child, .range-axis > span:last-child { display: none; }
+  .range-axis .range-ticks { grid-column: 1 / -1; }
+  .range-key { display: none; }
 }
 
 /* --- the progress ring's one reveal: the arc draws itself when the page opens; nothing moves for reduced motion */
