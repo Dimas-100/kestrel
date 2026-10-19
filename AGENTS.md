@@ -29,6 +29,9 @@ command kestrel runs itself) and `rails` (a trading-rails install's own paper st
    - Names, account numbers, balances, holdings and machine paths arrive only at runtime, through the gitignored
      `profile.toml` and the user's connectors.
    - Demo data is fictional ("Alex").
+   - Tests, specs, fixtures and commit messages use invented round figures (1,000, 250) and invented names only.
+     Never paste a number read from the live server, `profile.toml` or Dimas's messages into them. The ship guard
+     refuses a push carrying cents-precision amounts in test, fixture and spec files.
    - Never commit `profile.toml`, `.env*`, `data/`, keys, or symbols copied from a real book.
    
    `tests/test_hygiene.py` enforces the mechanical part (paths, private hosts, personal email addresses); the rest
