@@ -1127,10 +1127,17 @@ export interface DebtLine {
 }
 
 export interface Runway {
-  months: number
-  monthly_out: number // what left the cash accounts over the window, scaled to a month
+  unit: 'days' | 'months' // how the figure reads: days under 60, months from 60
+  days_cover: number // today's cash over the pace per day, rounded down; never below 0
+  months: number // the same in months, to one decimal; never below 0
+  daily_out: number // what left the cash accounts per day, moves between them left out
+  monthly_out: number // the same scaled to a month
   days: number // the window, from the oldest to the newest row on any cash account
   since: string
+  through: string // the newest row
+  stale: boolean // the newest row is over a week older than the view's day
+  moved: number // what moved between your own cash accounts in the window (one side of each pair): left out
+  moved_count: number
   aim: number | null // the band of the first ratio target whose label contains "runway"
   low: number | null
   high: number | null
@@ -1138,8 +1145,36 @@ export interface Runway {
 
 export interface MonthFlow {
   month: string // "2026-09"
-  money_in: number
+  money_in: number // moves between your own cash accounts left out of both
   money_out: number // as a positive amount
+  net: number
+  moved: number // what moved between your own cash accounts this month, left out
+  start: string // the first and last day of the month the window covers
+  end: string
+  days: number
+  partial: boolean // the first month of the window, or the current one (month to date)
+}
+
+export interface ReservesTotals {
+  cash: number
+  owed: number // recorded debt: what the feeds know is owed
+  net: number
+  utilization_pct: number | null // over the debts with a limit on record
+  cash_count: number
+  debt_count: number
+  limited_count: number
+  oldest_as_of: string | null
+  newest_as_of: string | null
+  stale: string[] // cash and debt lines whose balance is over a week old, oldest first
+}
+
+export interface Rates {
+  owed: number // positive balances owed
+  rated_owed: number // of which a line carries an APR: every interest figure covers this part only
+  rated_owed_pct: number | null
+  unrated: string[] // lines with a balance owed and no APR, largest first
+  cash: number
+  rated_cash: number
 }
 
 export interface Spread {
@@ -1154,13 +1189,15 @@ export interface Spread {
 
 export interface ReservesView {
   as_of: string
+  today: string // the view's day in the profile's zone
   summary: string // the header's sentence: cash after debts, and how long it would last when the pace is known
   runway: Runway | null
   flows: MonthFlow[] // one per calendar month with rows on a cash account, ascending
   cash: CashLine[]
   debts: DebtLine[]
-  totals: { cash: number; owed: number; net: number; utilization_pct: number | null }
+  totals: ReservesTotals
   spread: Spread | null
+  rates: Rates | null
 }
 
 export function useReserves() {

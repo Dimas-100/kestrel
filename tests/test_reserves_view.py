@@ -5,7 +5,7 @@ import pytest
 from kestrel.connectors import collect
 from kestrel.contract import Account, Snapshot, Target, Transaction
 from kestrel.profile import DEMO_PROFILE, Profile
-from kestrel.views.reserves import reserves_view
+from kestrel.views.reserves import moves_of, reserves_view
 
 NOW = dt.datetime(2026, 9, 25, 21, 8, tzinfo=dt.timezone.utc)
 
@@ -180,8 +180,8 @@ def test_runway_from_the_pace_money_left_the_cash_accounts_with_the_band_from_a_
     # 2,000 out over 25 days (1 to 25 Sep, inclusive) -> 2,435.00 a month; 10,000 of cash lasts 4.1 months
     assert (r.days, r.since, r.monthly_out, r.months) == (25, dt.date(2026, 9, 1), 2435.0, 4.1)
     assert (r.aim, r.low, r.high) == (6.0, 4.0, 8.0)
-    assert v.summary == ("$9,900.00 in cash after debts. At the pace money has left your cash these 25 days, it would "
-                         "last about 4.1 months.")
+    assert v.summary == ("$9,900.00 in cash after recorded debts. Leaving aside moves between your own accounts, money "
+                         "has left your cash at about $80.00 a day these 25 days: it would last about 4.1 months.")
 
 
 def test_runway_is_none_without_rows_a_short_window_or_any_money_out():
@@ -192,7 +192,7 @@ def test_runway_is_none_without_rows_a_short_window_or_any_money_out():
     assert reserves_view(with_rows(inflow, (), *CASH), Profile(), NOW).runway is None
     v = reserves_view(with_rows(ROWS, (), *CASH), Profile(), NOW)
     assert (v.runway.aim, v.runway.low, v.runway.high) == (None, None, None)  # no runway target: no band
-    assert reserves_view(with_rows([], (), *CASH), Profile(), NOW).summary == "$10,000.00 in cash after debts."
+    assert reserves_view(with_rows([], (), *CASH), Profile(), NOW).summary == "$10,000.00 in cash after recorded debts."
 
 
 def test_flows_count_each_month_in_and_out_over_the_cash_accounts_only():
@@ -217,5 +217,148 @@ def test_the_demo_has_a_runway_with_its_band_and_three_months_of_flows(demo_rese
     assert len(demo_reserves.flows) >= 3
     assert all(f.money_in >= 0 and f.money_out >= 0 for f in demo_reserves.flows)
     assert demo_reserves.summary.startswith(
-        "$30,255.98 in cash after debts. At the pace money has left your cash these")
+        "$30,255.98 in cash after recorded debts. Leaving aside moves between your own accounts, money has left your "
+        "cash at about $")
+
+
+# ------------------------------------------------- estimates with their definitions (2026-10-08 reserves estimates)
+
+def test_a_move_between_your_own_cash_accounts_is_left_out_of_the_pace_and_the_flows():
+    rows = [row("checking", "2026-09-01", -1000), row("checking", "2026-09-25", -500),
+            # checking -> savings the same day, and savings -> checking two days apart: total cash never moved
+            row("checking", "2026-09-10", -400, "Withdrawal to Rainy Day Fund"),
+            row("savings", "2026-09-10", 400, "Deposit from Checking"),
+            row("savings", "2026-09-14", -250, "Online transfer to CHK 1234"),
+            row("checking", "2026-09-16", 250, "Online transfer from SAV 5678")]
+    v = reserves_view(with_rows(rows, (), *CASH), Profile(), NOW)
+    r = v.runway
+    # only the 1,500 that left for good counts: 60.00 a day over 25 days; 10,000 / 60 = 166 days -> months
+    assert (r.days, r.daily_out, r.moved, r.moved_count) == (25, 60.0, 650.0, 2)
+    assert (r.unit, r.months) == ("months", 5.5)
+    sep = v.flows[-1]
+    assert (sep.money_in, sep.money_out, sep.moved, sep.net) == (0.0, 1500.0, 650.0, -1500.0)
+
+
+def test_a_move_needs_two_cash_accounts_the_same_amount_and_at_most_three_days():
+    card = account("card", "debt", 100, rate_pct=20.0)
+    t = "Online transfer"
+    rows = [row("checking", "2026-09-01", -100), row("checking", "2026-09-25", -100),
+            row("checking", "2026-09-05", -300, t), row("card", "2026-09-05", 300, t),  # a card payment left the cash
+            row("checking", "2026-09-08", -200, t), row("savings", "2026-09-12", 200, t),  # four days apart
+            row("checking", "2026-09-15", -75, t), row("savings", "2026-09-15", 75.01, t),  # a cent apart
+            row("checking", "2026-09-18", -40, t), row("checking", "2026-09-18", 40, t),  # the same account
+            # the same amount the same day, but a brokerage on one side and an account not on file on the other
+            row("checking", "2026-09-21", -150, "BROKERAGE SVC LLC"),
+            row("savings", "2026-09-21", 150, f"{t} from CHK 0001")]
+    r = reserves_view(with_rows(rows, (), *CASH, card), Profile(), NOW).runway
+    assert (r.moved, r.moved_count) == (0.0, 0)
+    assert r.monthly_out == round((100 + 100 + 300 + 200 + 75 + 40 + 150) / 25 * 30.4375, 2)
+
+
+def test_a_payment_to_yourself_pairs_with_the_deposit_that_names_you():
+    rows = [row("checking", "2026-09-01", -100), row("checking", "2026-09-25", -100),
+            Transaction(account_id="checking", date=dt.date(2026, 9, 12), amount=-190.0,
+                        description="Zelle payment to Alex Rivera Conf# abc123"),
+            Transaction(account_id="savings", date=dt.date(2026, 9, 12), amount=190.0, description="ALEX RIVERA",
+                        counterparty="Alex Rivera"),
+            # a category the feed gives is enough on both sides
+            Transaction(account_id="savings", date=dt.date(2026, 9, 20), amount=-60.0, description="SAV 12",
+                        category="Transfer"),
+            Transaction(account_id="checking", date=dt.date(2026, 9, 21), amount=60.0, description="CHK 34",
+                        category="transfer")]
+    r = reserves_view(with_rows(rows, (), *CASH), Profile(), NOW).runway
+    assert (r.moved, r.moved_count) == (250.0, 2)
+
+
+def test_each_row_is_in_at_most_one_move_closest_date_then_the_same_bank_first():
+    t = "Online transfer"
+    third = account("other", "cash", 500)
+    rows = [row("checking", "2026-09-01", -10), row("checking", "2026-09-25", -10),
+            row("checking", "2026-09-10", -300, t), row("savings", "2026-09-12", 300, t),
+            row("other", "2026-09-10", 300, t)]
+    v = reserves_view(with_rows(rows, (), *CASH, third), Profile(), NOW)
+    assert (v.runway.moved, v.runway.moved_count) == (300.0, 1)
+    # the same-day 300 into "other" is the pair; the 300 into savings two days later is money in
+    assert v.flows[-1].money_in == 300.0
+    # two same-day candidates: the account at the same bank wins
+    banked = (account("checking", "cash", 3000, institution="Bank A"),
+              account("savings", "cash", 7000, institution="Bank A"),
+              account("other", "cash", 500, institution="Bank B"))
+    rows = [row("checking", "2026-09-01", -10), row("checking", "2026-09-25", -10),
+            row("checking", "2026-09-10", -300, t), row("other", "2026-09-10", 300, t),
+            row("savings", "2026-09-10", 300, t)]
+    snapshot = with_rows(rows, (), *banked)
+    assert [(o, i) for o, i in moves_of(snapshot.transactions, snapshot.accounts)] == [(2, 4)]
+
+
+def test_coverage_reads_in_whole_days_rounded_down_under_sixty_days():
+    small = (account("checking", "cash", 845.0),)
+    rows = [row("checking", "2026-09-01", -2000), row("checking", "2026-09-30", -2500)]  # 150.00 a day over 30 days
+    v = reserves_view(with_rows(rows, (), *small), Profile(), dt.datetime(2026, 10, 1, 12, tzinfo=dt.timezone.utc))
+    r = v.runway
+    assert (r.daily_out, r.days_cover, r.unit) == (150.0, 5, "days")  # 845 / 150 = 5.63: never overstated
+    assert v.summary == ("$845.00 in cash after recorded debts. Leaving aside moves between your own accounts, money "
+                         "has left your cash at about $150.00 a day these 30 days: it would last about 5 days.")
+
+
+def test_overdrawn_cash_covers_no_days_and_reads_as_debts_over_cash():
+    rows = [row("checking", "2026-09-01", -1000), row("checking", "2026-09-25", -500)]
+    v = reserves_view(with_rows(rows, (), account("checking", "cash", -20.0), account("card", "debt", 500.0)),
+                      Profile(), NOW)
+    assert (v.runway.days_cover, v.runway.months, v.runway.unit) == (0, 0.0, "days")
+    assert v.summary.startswith("Recorded debts are $520.00 more than your cash. ")
+    assert v.summary.endswith("it would not last a day.")
+
+
+def test_partial_months_carry_the_days_they_cover():
+    rows = [row("checking", "2026-07-10", -100), row("checking", "2026-08-15", 2000),
+            row("checking", "2026-08-20", -700), row("checking", "2026-09-03", -300)]
+    v = reserves_view(with_rows(rows, (), *CASH), Profile(), NOW)  # NOW is 25 Sep in the default zone too
+    got = [(f.month, f.start, f.end, f.days, f.partial) for f in v.flows]
+    assert got == [("2026-07", dt.date(2026, 7, 10), dt.date(2026, 7, 31), 22, True),
+                   ("2026-08", dt.date(2026, 8, 1), dt.date(2026, 8, 31), 31, False),
+                   ("2026-09", dt.date(2026, 9, 1), dt.date(2026, 9, 25), 25, True)]
+    assert [f.net for f in v.flows] == [-100.0, 1300.0, -300.0]
+
+
+def test_rates_on_record_cover_only_the_lines_that_carry_one():
+    s = snap(account("store", "debt", 540.0, limit=1200.0, name="Store card"),
+             account("charge", "debt", 310.5, name="Charge card"),
+             account("visa", "debt", 260.0, rate_pct=22.0, limit=2000.0, name="Visa"),
+             account("paid", "debt", -10.0, name="Paid card"),  # a credit balance owes nothing and needs no rate
+             account("checking", "cash", 912.4), account("savings", "cash", 15.6, rate_pct=2.5))
+    v = reserves_view(s, Profile(), NOW)
+    rates = v.rates
+    assert (rates.owed, rates.rated_owed, rates.rated_owed_pct) == (1110.5, 260.0, 23.41)
+    assert rates.unrated == ["Store card", "Charge card"]  # largest balance first
+    assert (rates.cash, rates.rated_cash) == (928.0, 15.6)
+    assert (v.totals.debt_count, v.totals.limited_count, v.totals.cash_count) == (4, 2, 2)
+
+
+def test_no_rates_block_without_anything_owed_or_any_cash():
+    assert reserves_view(snap(account("brokerage", "long_term", 1000.0)), Profile(), NOW).rates is None
+    paid = reserves_view(snap(account("card", "debt", 0.0, rate_pct=20.0)), Profile(), NOW).rates
+    assert paid is not None and (paid.owed, paid.rated_owed_pct) == (0.0, None)
+
+
+def test_balances_and_bank_rows_over_a_week_old_are_named():
+    old = dt.datetime(2026, 9, 10, 12, tzinfo=dt.timezone.utc)
+    s = Snapshot(generated_at=NOW, accounts=[
+        account("checking", "cash", 3000),
+        Account(id="manual", name="Manual savings", category="cash", value=500, as_of=old),
+        Account(id="card", name="Card", category="debt", value=100, as_of=NOW - dt.timedelta(days=7))],
+        transactions=[row("checking", "2026-08-01", -100), row("checking", "2026-09-15", -100)])
+    v = reserves_view(s, Profile(), NOW)
+    assert v.totals.stale == ["Manual savings"]  # seven days is still fresh; fifteen is not
+    assert (v.totals.oldest_as_of, v.totals.newest_as_of) == (dt.date(2026, 9, 10), dt.date(2026, 9, 25))
+    assert (v.runway.through, v.runway.stale) == (dt.date(2026, 9, 15), True)  # no bank rows for ten days
+    assert v.today == dt.date(2026, 9, 25)
+
+
+def test_the_demo_leaves_its_savings_transfers_out_and_ends_on_a_month_to_date(demo_reserves):
+    r = demo_reserves.runway
+    assert r.moved > 0 and r.moved_count >= 3  # Alex's monthly transfer into savings
+    assert (r.stale, r.unit) == (False, "months")
+    assert demo_reserves.flows[-1].partial and demo_reserves.flows[-1].end == dt.date(2026, 9, 25)
+    assert demo_reserves.rates.rated_owed_pct == 100.0 and demo_reserves.totals.stale == []
 

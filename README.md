@@ -31,8 +31,9 @@ One line per page; each has its own empty state naming what kind of source fills
 - **Accounts** — every account's value and its deposits-vs-market growth, everything held added up across accounts.
 - **Account** — one account's value, growth and holdings, and for a bank account its transactions.
 - **Plan** — targets against their band per account, thesis health and conviction, goal progress.
-- **Reserves** — cash and debt: balances, rates, credit utilization, and the spread between what you earn and what
-  you owe.
+- **Reserves** — cash − recorded debt = the difference, how long the cash would last (moves between your own
+  accounts left out, with how it is worked out beside it), money in and out by month, each debt as a card, and the
+  interest on the part of the debt that has a rate on record.
 
 <img alt="Accounts: how much of this year's growth you put in and how much the market added, then every account by value" src="docs/images/accounts-light.png">
 

@@ -1,7 +1,8 @@
-// Every cash account, largest first: name and institution, its share of all the cash as a bar, the balance and the
-// rate. A balance older than a week says when it is from: a manual balance can sit for months.
+// Every cash account, largest first: the institution's tile, name and institution, its share of all the cash as a bar,
+// the balance and the rate. A balance older than a week says when it is from: a manual balance can sit for months. A
+// full-width row of its own, as tall as its rows (spec 2026-10-08 reserves estimates §3.5).
 import { Empty } from '../../charts/marks'
-import { Missing, Panel } from '../../components/bits'
+import { InstitutionTile, Missing, Panel } from '../../components/bits'
 import type { CashLine } from '../../lib/api'
 import { money, monthLabel, num } from '../../lib/format'
 
@@ -17,7 +18,8 @@ function Share({ name, pct }: { name: string; pct: number | null }) {
   if (pct == null) return <Missing />
   return (
     <div role="img" aria-label={`${name}: ${num(pct, 1)}% of your cash`} className="flex items-center justify-end gap-2">
-      <span className="relative w-14 h-1.5 rounded-full overflow-hidden bg-panel2" style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>
+      {/* the bar steps aside on a phone, where the percent alone keeps the row from scrolling sideways */}
+      <span className="relative w-14 h-1.5 rounded-full overflow-hidden bg-panel2 max-sm:hidden" style={{ boxShadow: 'inset 0 0 0 1px var(--line)' }}>
         <span className="absolute inset-y-0 left-0" style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: 'var(--s3)' }} />
       </span>
       <span className="num text-xs min-w-[46px] text-right">{num(pct, 1)}%</span>
@@ -27,7 +29,7 @@ function Share({ name, pct }: { name: string; pct: number | null }) {
 
 export function CashPanel({ cash, viewDay }: { cash: CashLine[]; viewDay: string }) {
   return (
-    <Panel id="cash" title="Cash" subtitle={cash.length > 0 ? 'Largest first' : undefined} span={6}>
+    <Panel id="cash" title="Cash" subtitle={cash.length > 0 ? 'Largest first' : undefined} span={12}>
       {cash.length === 0 ? (
         <Empty>No cash accounts yet.</Empty>
       ) : (
@@ -40,12 +42,17 @@ export function CashPanel({ cash, viewDay }: { cash: CashLine[]; viewDay: string
                 return (
                   <tr key={c.id}>
                     <td>
-                      <div className="font-medium">{c.name}</div>
-                      {(c.institution || stale) && (
-                        <div className="text-xs text-ink3">
-                          {c.institution}{c.institution && stale && ' · '}{stale}
+                      <div className="flex items-center gap-3">
+                        <InstitutionTile institution={c.institution || c.name} category="cash" size={32} />
+                        <div className="min-w-0">
+                          <div className="font-medium">{c.name}</div>
+                          {(c.institution || stale) && (
+                            <div className="text-xs text-ink3">
+                              {c.institution}{c.institution && stale && ' · '}{stale}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </td>
                     <td className="r"><Share name={c.name} pct={c.share_pct} /></td>
                     <td className="r num">{money(c.value)}</td>

@@ -1,7 +1,10 @@
 # The Reserves page, as your reserves — design
 
 - **Date:** 2026-10-05
-- **Status:** design; built alongside.
+- **Status:** design; built alongside. The figures' definitions and the page order were revised by
+  [`2026-10-08-reserves-estimates-design.md`](2026-10-08-reserves-estimates-design.md): moves between your own
+  accounts are left out of the pace, coverage reads in days when short, partial months are named, and rate coverage
+  and freshness are said beside the figures.
 - **Parent spec:** [`2026-09-25-kestrel-design.md`](2026-09-25-kestrel-design.md) (§4 pages, §5 visual system).
   Reshapes the Reserves page that [the Phase 5 spec](2026-09-27-phase-5-one-dashboard-design.md) §4.3 defined; its
   totals and spread rules are unchanged. Builds on [`2026-10-05-transactions-design.md`](2026-10-05-transactions-design.md):

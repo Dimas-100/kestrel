@@ -1,11 +1,19 @@
 {
   "as_of": "2026-09-25T21:08:00Z",
-  "summary": "$30,255.98 in cash after debts. At the pace money has left your cash these 80 days, it would last about 5.8 months.",
+  "today": "2026-09-25",
+  "summary": "$30,255.98 in cash after recorded debts. Leaving aside moves between your own accounts, money has left your cash at about $168.20 a day these 80 days: it would last about 6.0 months.",
   "runway": {
-    "months": 5.8,
-    "monthly_out": 5290.77,
+    "unit": "months",
+    "days_cover": 183,
+    "months": 6.0,
+    "daily_out": 168.2,
+    "monthly_out": 5119.56,
     "days": 80,
     "since": "2026-07-01",
+    "through": "2026-09-18",
+    "stale": false,
+    "moved": 450.0,
+    "moved_count": 3,
     "aim": 6.0,
     "low": 4.0,
     "high": null
@@ -13,18 +21,36 @@
   "flows": [
     {
       "month": "2026-07",
-      "money_in": 4650.0,
-      "money_out": 4517.08
+      "money_in": 4500.0,
+      "money_out": 4367.08,
+      "net": 132.92,
+      "moved": 150.0,
+      "start": "2026-07-01",
+      "end": "2026-07-31",
+      "days": 31,
+      "partial": false
     },
     {
       "month": "2026-08",
-      "money_in": 4650.0,
-      "money_out": 4652.32
+      "money_in": 4500.0,
+      "money_out": 4502.32,
+      "net": -2.32,
+      "moved": 150.0,
+      "start": "2026-08-01",
+      "end": "2026-08-31",
+      "days": 31,
+      "partial": false
     },
     {
       "month": "2026-09",
-      "money_in": 4650.0,
-      "money_out": 4736.53
+      "money_in": 4500.0,
+      "money_out": 4586.53,
+      "net": -86.53,
+      "moved": 150.0,
+      "start": "2026-09-01",
+      "end": "2026-09-25",
+      "days": 25,
+      "partial": true
     }
   ],
   "cash": [
@@ -64,7 +90,13 @@
     "cash": 30895.98,
     "owed": 640.0,
     "net": 30255.98,
-    "utilization_pct": 12.8
+    "utilization_pct": 12.8,
+    "cash_count": 2,
+    "debt_count": 1,
+    "limited_count": 1,
+    "oldest_as_of": "2026-09-25",
+    "newest_as_of": "2026-09-25",
+    "stale": []
   },
   "spread": {
     "owed_rate_pct": 24.9,
@@ -74,5 +106,13 @@
     "yearly_earned": 993.96,
     "pay_down": 640.0,
     "pay_down_saves": 133.12
+  },
+  "rates": {
+    "owed": 640.0,
+    "rated_owed": 640.0,
+    "rated_owed_pct": 100.0,
+    "unrated": [],
+    "cash": 30895.98,
+    "rated_cash": 24242.85
   }
 }

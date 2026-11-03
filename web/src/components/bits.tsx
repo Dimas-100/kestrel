@@ -31,12 +31,13 @@ export function Delta({ value, digits = 2, children }: { value: number; digits?:
   )
 }
 
-export function Panel({ id, title, subtitle, actions, span, height, children }: {
+/** `lead` marks the one panel that summarises its page: a wash and an edge in the accent. */
+export function Panel({ id, title, subtitle, actions, span, height, lead = false, children }: {
   id: string; title: string; subtitle?: string; actions?: ReactNode; span: 4 | 5 | 6 | 7 | 8 | 12; height?: number
-  children: ReactNode
+  lead?: boolean; children: ReactNode
 }) {
   return (
-    <section className={`panel span-${span}`} aria-labelledby={`${id}-title`}
+    <section className={`panel span-${span}${lead ? ' panel-lead' : ''}`} aria-labelledby={`${id}-title`}
       style={height ? ({ '--h': `${height}px` } as CSSProperties) : undefined}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
